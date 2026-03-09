@@ -107,6 +107,41 @@ def extract_span(html: str, class_name: str) -> str | None:
     return None
 
 
+def _find_examples(block: str) -> list[tuple[str, str]]:
+    """Find all (ex_text_html, ex_tail) pairs, correctly handling nested spans."""
+    results = []
+    pos = 0
+    marker = '<span class="x">'
+    while True:
+        start = block.find(marker, pos)
+        if start == -1:
+            break
+        content_start = start + len(marker)
+        depth, p = 1, content_start
+        while p < len(block) and depth > 0:
+            open_next  = block.find("<span",   p)
+            close_next = block.find("</span>", p)
+            if close_next == -1:
+                break
+            if open_next != -1 and open_next < close_next:
+                depth += 1
+                p = open_next + 5
+            else:
+                depth -= 1
+                if depth == 0:
+                    ex_text_html = block[content_start:close_next]
+                    span_end = p + len("</span>")
+                    li_end = block.find("</li>", span_end)
+                    ex_tail = block[span_end:li_end] if li_end != -1 else ""
+                    results.append((ex_text_html, ex_tail))
+                    pos = li_end + 5 if li_end != -1 else span_end
+                    break
+                p = close_next + 7
+        else:
+            break
+    return results
+
+
 def _parse_senses(html: str, media_files: set) -> list:
     """Extract a flat list of senses from any HTML fragment."""
     senses = []
@@ -137,10 +172,9 @@ def _parse_senses(html: str, media_files: set) -> list:
         definition_zh = strip_tags(m.group(1)) if m else ""
 
         examples = []
-        for ex_text_html, ex_tail in re.findall(
-            r'<span class="x">(.*?)</span>(.*?)</li>', block, re.DOTALL
-        ):
+        for ex_text_html, ex_tail in _find_examples(block):
             text = strip_tags(ex_text_html)
+
             if not text:
                 continue
             m = re.search(r'<chn>(.*?)</chn>', ex_tail, re.DOTALL)
@@ -534,8 +568,8 @@ def main():
     else:
         words = [w.lower() for w in args]
 
-    word_deck  = genanki.Deck(DECK_ID_WORDS,  "OALD10::5000")
-    idiom_deck = genanki.Deck(DECK_ID_IDIOMS, "OALD10::5000-Idioms")
+    word_deck  = genanki.Deck(DECK_ID_WORDS,  "Oxford Advanced Learner's Dictionary::5000")
+    idiom_deck = genanki.Deck(DECK_ID_IDIOMS, "Oxford Advanced Learner's Dictionary::5000-Idioms")
     word_media: set[Path]  = set()
     idiom_media: set[Path] = set()
     missing = []
