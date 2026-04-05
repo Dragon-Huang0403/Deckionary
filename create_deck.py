@@ -6,6 +6,7 @@ Usage:
     python create_deck.py run              # single word
     python create_deck.py run abandon set  # multiple words
     python create_deck.py --5000           # Oxford 5000 list (oxford-5000.csv)
+    python create_deck.py --custom         # custom word list (custom-words.csv)
     python create_deck.py --all            # every word in the dictionary
 
 Requirements:
@@ -25,12 +26,15 @@ import genanki
 CONTENTS = Path("oxford.dictionary/Contents").resolve()
 BODY = CONTENTS / "Body.data"
 INDEX_CACHE = Path(".oald10_index.json")
+VARIANT_CACHE = Path(".oald10_variants.json")
 INCLUDE_ALL_AUDIO = False
 
 # ── Fixed IDs (must be stable across deck rebuilds) ───────────────────────────
 MODEL_ID       = 1_718_200_004  # bumped: added Verb Forms field
 DECK_ID_WORDS  = 1_718_200_002
 DECK_ID_IDIOMS = 1_718_200_003
+DECK_ID_CUSTOM_WORDS  = 1_718_200_005
+DECK_ID_CUSTOM_IDIOMS = 1_718_200_006
 
 # ── Index ─────────────────────────────────────────────────────────────────────
 
@@ -62,17 +66,71 @@ def load_index() -> dict:
     return json.loads(INDEX_CACHE.read_text())
 
 
-def get_entry_html(index: dict, word: str) -> str | None:
-    key = word.lower().strip()
-    if key not in index:
-        return None
-    pos = index[key]
+def _read_entry_at(pos: int) -> str:
     with open(BODY, "rb") as f:
         f.seek(pos)
         header = f.read(12)
         sz2 = struct.unpack_from("<I", header, 4)[0]
         compressed = f.read(sz2 - 4)
     return zlib.decompress(compressed).decode("utf-8", errors="replace")
+
+
+def load_variants(index: dict) -> dict:
+    """Build a map of variant spellings → headword (e.g. normalcy → normality)."""
+    if VARIANT_CACHE.exists():
+        return json.loads(VARIANT_CACHE.read_text())
+    print("Building variant index (one-time)…", file=sys.stderr)
+    variants = {}
+    for headword, pos in index.items():
+        try:
+            html = _read_entry_at(pos)
+        except Exception:
+            continue
+        for m in re.finditer(r'<span class="v"[^>]*>([^<]+)</span>', html):
+            variant = m.group(1).strip().lower()
+            if variant and variant not in index:
+                variants[variant] = headword
+    VARIANT_CACHE.write_text(json.dumps(variants, ensure_ascii=False))
+    print(f"Variant index built: {len(variants)} variants.", file=sys.stderr)
+    return variants
+
+
+def _fuzzy_match(index: dict, key: str) -> str | None:
+    """Try common fuzzy matches: strip plurals/suffixes, match with trademark symbols, etc."""
+    # Match headwords containing trademark symbols (e.g. cellophane → cellophane™)
+    for headword in index:
+        stripped = re.sub(r'[™®©]', '', headword)
+        if stripped == key:
+            return headword
+    # Try stripping common plural/verb suffixes
+    for suffix in ('s', 'es', 'ies', 'ed', 'ing', 'ly'):
+        if key.endswith(suffix):
+            base = key[:-len(suffix)]
+            if base in index:
+                return base
+            # ies → y (e.g. commodities → commodity)
+            if suffix == 'ies' and (base + 'y') in index:
+                return base + 'y'
+            # es after removing, check base+e (e.g. closed → close)
+            if suffix == 'ed' and (base + 'e') in index:
+                return base + 'e'
+    return None
+
+
+def get_entry_html(index: dict, word: str, variants: dict | None = None) -> str | None:
+    key = word.lower().strip()
+    if key not in index:
+        if variants and key in variants:
+            key = variants[key]
+            print(f'  → resolved variant: {word} → {key}', file=sys.stderr)
+        else:
+            fuzzy = _fuzzy_match(index, key)
+            if fuzzy:
+                key = fuzzy
+                print(f'  → fuzzy match: {word} → {key}', file=sys.stderr)
+            else:
+                return None
+    return _read_entry_at(index[key])
 
 
 # ── HTML parsing ──────────────────────────────────────────────────────────────
@@ -557,7 +615,9 @@ def main():
         sys.exit(1)
 
     index = load_index()
+    variants = load_variants(index)
 
+    custom_mode = False
     if args == ["--all"]:
         words = list(index.keys())
     elif args == ["--5000"]:
@@ -567,17 +627,29 @@ def main():
             sys.exit(1)
         with open(csv_path, encoding="utf-8") as f:
             words = list(dict.fromkeys(row["word"].strip().lower() for row in csv.DictReader(f)))
+    elif args == ["--custom"]:
+        custom_mode = True
+        csv_path = Path("custom-words.csv")
+        if not csv_path.exists():
+            print("custom-words.csv not found.", file=sys.stderr)
+            sys.exit(1)
+        with open(csv_path, encoding="utf-8") as f:
+            words = list(dict.fromkeys(row["word"].strip().lower() for row in csv.DictReader(f) if row["word"].strip()))
     else:
         words = [w.lower() for w in args]
 
-    word_deck  = genanki.Deck(DECK_ID_WORDS,  "Oxford Advanced Learner's Dictionary::5000")
-    idiom_deck = genanki.Deck(DECK_ID_IDIOMS, "Oxford Advanced Learner's Dictionary::5000-Idioms")
+    if custom_mode:
+        word_deck  = genanki.Deck(DECK_ID_CUSTOM_WORDS,  "Oxford Advanced Learner's Dictionary::Custom")
+        idiom_deck = genanki.Deck(DECK_ID_CUSTOM_IDIOMS, "Oxford Advanced Learner's Dictionary::Custom-Idioms")
+    else:
+        word_deck  = genanki.Deck(DECK_ID_WORDS,  "Oxford Advanced Learner's Dictionary::5000")
+        idiom_deck = genanki.Deck(DECK_ID_IDIOMS, "Oxford Advanced Learner's Dictionary::5000-Idioms")
     word_media: set[Path]  = set()
     idiom_media: set[Path] = set()
     missing = []
 
     for word in words:
-        html = get_entry_html(index, word)
+        html = get_entry_html(index, word, variants)
         if html is None:
             print(f'  skipped (not found): {word}', file=sys.stderr)
             missing.append(word)
@@ -612,10 +684,11 @@ def main():
     all_media = word_media | idiom_media
     pkg = genanki.Package([word_deck, idiom_deck])
     pkg.media_files = [str(p) for p in all_media]
-    pkg.write_to_file("oald10.apkg")
+    out_file = "oald10-custom.apkg" if custom_mode else "oald10.apkg"
+    pkg.write_to_file(out_file)
 
     print(file=sys.stderr)
-    print(f"  Saved → oald10.apkg", file=sys.stderr)
+    print(f"  Saved → {out_file}", file=sys.stderr)
     print(f"    OALD10:        {len(word_deck.notes)} notes", file=sys.stderr)
     print(f"    OALD10 Idioms: {len(idiom_deck.notes)} notes", file=sys.stderr)
     print(f"    Audio files:   {len(all_media)}", file=sys.stderr)

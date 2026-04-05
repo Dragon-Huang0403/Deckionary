@@ -1,2 +1,4 @@
 oxford.dictionary
 .oald10_index.json
+.oald10_variants.json
+*.apkg

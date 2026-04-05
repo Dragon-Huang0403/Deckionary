@@ -38,9 +38,11 @@ OALD10/
 │       ├── oald10.js           ← entry interactivity
 │       └── *.mp3               ← ~275 000 audio files (word + sentence)
 ├── oxford-5000.csv             ← Oxford 5000 word list (optional, for --5000)
+├── custom-words.csv            ← your own word list (optional, for --custom)
 ├── list_words.py
 ├── lookup_word.py
 ├── create_deck.py
+├── clean_csv.py
 └── README.md
 ```
 
@@ -83,6 +85,12 @@ python lookup_word.py run --html
 
 **First run** builds a word→offset index and saves it as `.oald10_index.json` (~10 seconds). Every subsequent lookup is instant.
 
+### `clean_csv.py` — remove empty lines from custom-words.csv
+
+```bash
+python clean_csv.py
+```
+
 ### `create_deck.py` — generate an Anki deck
 
 Creates an `.apkg` file importable into Anki. Each card shows the headword on the front and IPA, part of speech, definitions, and examples (with audio) on the back.
@@ -91,16 +99,29 @@ Creates an `.apkg` file importable into Anki. Each card shows the headword on th
 python create_deck.py run                  # single word
 python create_deck.py run abandon set      # multiple words
 python create_deck.py --5000               # Oxford 5000 word list
+python create_deck.py --custom             # custom word list
 python create_deck.py --all                # all 62 137 entries
 ```
 
-Output is always `oald10.apkg` in the current directory. Import it in Anki via **File → Import**.
+- `--5000` outputs `oald10.apkg`
+- `--custom` outputs `oald10-custom.apkg`
 
-The deck bundles all referenced audio files directly into the `.apkg`, so pronunciation and sentence audio work immediately after import without any extra setup.
+Import in Anki via **File → Import**. The deck bundles all referenced audio files directly into the `.apkg`, so pronunciation and sentence audio work immediately after import.
 
 #### Oxford 5000 word list
 
 `--5000` reads `oxford-5000.csv` and deduplicates by headword before lookup. The CSV is sourced from [Berehulia/Oxford-3000-5000](https://github.com/Berehulia/Oxford-3000-5000).
+
+#### Custom word list
+
+`--custom` reads `custom-words.csv` — a simple CSV with a `word` column, one word per line. The deck is created under `Oxford Advanced Learner's Dictionary::Custom` with separate deck IDs so it won't conflict with the Oxford 5000 deck.
+
+#### Word resolution
+
+When a word isn't found directly in the dictionary, the script tries two fallbacks:
+
+1. **Variant lookup** — resolves alternative spellings (e.g. `normalcy` → `normality`). Built from `(also ...)` references in the dictionary. Cached in `.oald10_variants.json`.
+2. **Fuzzy matching** — strips common suffixes like plurals (`petrochemicals` → `petrochemical`) and ignores trademark symbols (`cellophane` → `cellophane™`).
 
 ---
 
