@@ -136,6 +136,8 @@ def _parse_senses(html: str) -> list[SenseData]:
                 audio_us=audio_us,
             ))
 
+        xrefs = _parse_xrefs(block)
+
         senses.append(SenseData(
             sense_num=sense_num,
             cefr_level=cefr_level,
@@ -145,6 +147,7 @@ def _parse_senses(html: str) -> list[SenseData]:
             definition=definition,
             definition_zh=definition_zh,
             examples=examples,
+            xrefs=xrefs,
         ))
     return senses
 
@@ -292,13 +295,33 @@ def _parse_collocations(block: str) -> list[CollocationData]:
 
 
 def _parse_xrefs(block: str) -> list[XrefData]:
-    """Parse cross-references (see also, compare)."""
+    """Parse cross-references (see also, compare) using depth-aware span parsing."""
     results = []
-    for m in re.finditer(r'<span class="xrefs"[^>]*xt="(\w+)"[^>]*>(.*?)</span>\s*</span>', block, re.DOTALL):
-        xref_type = m.group(1)
-        content = m.group(2)
-        for xh in re.finditer(r'<span class="xh"[^>]*>([^<]+)</span>', content):
-            results.append(XrefData(xref_type=xref_type, target_word=xh.group(1).strip()))
+    for m in re.finditer(r'<span class="xrefs"[^>]*>', block):
+        # Extract xt attribute from the opening tag
+        xt_m = re.search(r'xt="(\w+)"', m.group(0))
+        if not xt_m:
+            continue
+        xref_type = xt_m.group(1)
+
+        # Depth-aware extraction of inner content
+        depth, pos = 1, m.end()
+        while pos < len(block) and depth > 0:
+            open_next = block.find("<span", pos)
+            close_next = block.find("</span>", pos)
+            if close_next == -1:
+                break
+            if open_next != -1 and open_next < close_next:
+                depth += 1
+                pos = open_next + 5
+            else:
+                depth -= 1
+                if depth == 0:
+                    content = block[m.end():close_next]
+                    for xh in re.finditer(r'<span class="xh"[^>]*>([^<]+)</span>', content):
+                        results.append(XrefData(xref_type=xref_type, target_word=xh.group(1).strip()))
+                    break
+                pos = close_next + 7
     return results
 
 
@@ -378,15 +401,30 @@ def _parse_pos_block(block: str, fallback_headword: str) -> EntryData | None:
     audio_us = next((a for a in all_audio if re.match(r"[^_].*__us_", a)), "")
 
     groups = []
+    # Track xrefs found at sense/group level to deduplicate entry-level
+    claimed_xrefs: set[tuple[str, str]] = set()
+
+    def _claim_group_xrefs(fragment: str, senses: list[SenseData]) -> list[XrefData]:
+        """Parse xrefs from a group fragment, subtract those already on senses."""
+        sense_xref_keys = {(x.xref_type, x.target_word) for s in senses for x in s.xrefs}
+        claimed_xrefs.update(sense_xref_keys)
+        group_xrefs = [
+            x for x in _parse_xrefs(fragment)
+            if (x.xref_type, x.target_word) not in sense_xref_keys
+        ]
+        claimed_xrefs.update((x.xref_type, x.target_word) for x in group_xrefs)
+        return group_xrefs
 
     # Senses before any shcut-g / idm-g section
     first_section = min(
         (block.find(t) for t in ('<span class="shcut-g"', '<span class="idm-g"') if block.find(t) != -1),
         default=len(block),
     )
-    pre_senses = _parse_senses(block[:first_section])
+    pre_fragment = block[:first_section]
+    pre_senses = _parse_senses(pre_fragment)
     if pre_senses:
-        groups.append(SenseGroupData(senses=pre_senses))
+        pre_xrefs = _claim_group_xrefs(pre_fragment, pre_senses)
+        groups.append(SenseGroupData(senses=pre_senses, xrefs=pre_xrefs))
 
     # Senses grouped under topic headers (shcut-g)
     for shcut in re.findall(
@@ -402,19 +440,23 @@ def _parse_pos_block(block: str, fallback_headword: str) -> EntryData | None:
             topic_zh = chn.group(1).strip() if chn else ""
         senses = _parse_senses(shcut)
         if senses:
-            groups.append(SenseGroupData(topic_en=topic_en, topic_zh=topic_zh, senses=senses))
+            group_xrefs = _claim_group_xrefs(shcut, senses)
+            groups.append(SenseGroupData(topic_en=topic_en, topic_zh=topic_zh, senses=senses, xrefs=group_xrefs))
 
     if not groups:
         return None
 
     verb_forms = _parse_verb_forms(block) if pos == "verb" else []
 
+    # Entry-level xrefs: all xrefs in block minus those claimed at sense/group level
+    all_xrefs = _parse_xrefs(block)
+    entry_xrefs = [x for x in all_xrefs if (x.xref_type, x.target_word) not in claimed_xrefs]
+
     # New fields
     synonyms = _parse_synonyms(block)
     word_origin_plain, word_origin_html = _parse_word_origin(block)
     word_family = _parse_word_family(block)
     collocations = _parse_collocations(block)
-    xrefs = _parse_xrefs(block)
     phrasal_verbs = _parse_phrasal_verbs(block)
     extra_examples = _parse_extra_examples(block)
 
@@ -436,7 +478,7 @@ def _parse_pos_block(block: str, fallback_headword: str) -> EntryData | None:
         word_origin_html=word_origin_html,
         word_family=word_family,
         collocations=collocations,
-        xrefs=xrefs,
+        xrefs=entry_xrefs,
         phrasal_verbs=phrasal_verbs,
         extra_examples=extra_examples,
     )

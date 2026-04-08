@@ -66,11 +66,19 @@ def api_search():
                     "definition": s.definition,
                     "definition_zh": s.definition_zh,
                     "examples": examples,
+                    "xrefs": [
+                        {"xref_type": x.xref_type, "target_word": x.target_word}
+                        for x in s.xrefs
+                    ],
                 })
             groups.append({
                 "topic_en": g.topic_en,
                 "topic_zh": g.topic_zh,
                 "senses": senses,
+                "xrefs": [
+                    {"xref_type": x.xref_type, "target_word": x.target_word}
+                    for x in g.xrefs
+                ],
             })
 
         verb_forms = [

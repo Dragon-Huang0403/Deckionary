@@ -2,7 +2,7 @@
 
 import sqlite3
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 TABLES = """
 CREATE TABLE IF NOT EXISTS sources (
@@ -151,14 +151,18 @@ CREATE TABLE IF NOT EXISTS collocations (
 CREATE INDEX IF NOT EXISTS idx_collocations_entry ON collocations(entry_id);
 
 CREATE TABLE IF NOT EXISTS xrefs (
-    id          INTEGER PRIMARY KEY,
-    entry_id    INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
-    xref_type   TEXT NOT NULL,
-    target_word TEXT NOT NULL,
-    sort_order  INTEGER NOT NULL DEFAULT 0
+    id              INTEGER PRIMARY KEY,
+    entry_id        INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+    sense_group_id  INTEGER REFERENCES sense_groups(id) ON DELETE CASCADE,
+    sense_id        INTEGER REFERENCES senses(id) ON DELETE CASCADE,
+    xref_type       TEXT NOT NULL,
+    target_word     TEXT NOT NULL,
+    sort_order      INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_xrefs_entry ON xrefs(entry_id);
+CREATE INDEX IF NOT EXISTS idx_xrefs_sense_group ON xrefs(sense_group_id);
+CREATE INDEX IF NOT EXISTS idx_xrefs_sense ON xrefs(sense_id);
 
 CREATE TABLE IF NOT EXISTS phrasal_verbs (
     id          INTEGER PRIMARY KEY,

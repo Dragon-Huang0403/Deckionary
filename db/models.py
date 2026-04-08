@@ -13,6 +13,12 @@ class ExampleData:
 
 
 @dataclass
+class XrefData:
+    xref_type: str  # "see", "cp", "syn", "opp", etc.
+    target_word: str
+
+
+@dataclass
 class SenseData:
     definition: str
     sense_num: int | None = None
@@ -22,6 +28,7 @@ class SenseData:
     variants: str = ""
     definition_zh: str = ""
     examples: list[ExampleData] = field(default_factory=list)
+    xrefs: list[XrefData] = field(default_factory=list)
 
 
 @dataclass
@@ -29,6 +36,7 @@ class SenseGroupData:
     topic_en: str = ""
     topic_zh: str = ""
     senses: list[SenseData] = field(default_factory=list)
+    xrefs: list[XrefData] = field(default_factory=list)
 
 
 @dataclass
@@ -57,12 +65,6 @@ class WordFamilyData:
 class CollocationData:
     category: str
     words: list[str] = field(default_factory=list)
-
-
-@dataclass
-class XrefData:
-    xref_type: str  # "see" or "cp"
-    target_word: str
 
 
 @dataclass

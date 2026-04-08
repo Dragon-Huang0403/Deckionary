@@ -50,6 +50,25 @@ def _load_entry(db: sqlite3.Connection, row: sqlite3.Row) -> EntryData:
         for r in vf_rows
     ]
 
+    # Load all xrefs for this entry at once, partition by level
+    all_xref_rows = db.execute(
+        """SELECT sense_group_id, sense_id, xref_type, target_word
+           FROM xrefs WHERE entry_id = ? ORDER BY sort_order""",
+        (entry_id,),
+    ).fetchall()
+    # Group by sense_id and sense_group_id
+    sense_xrefs: dict[int, list[XrefData]] = {}
+    group_xrefs: dict[int, list[XrefData]] = {}
+    entry_xrefs: list[XrefData] = []
+    for xr in all_xref_rows:
+        xd = XrefData(xref_type=xr["xref_type"], target_word=xr["target_word"])
+        if xr["sense_id"] is not None:
+            sense_xrefs.setdefault(xr["sense_id"], []).append(xd)
+        elif xr["sense_group_id"] is not None:
+            group_xrefs.setdefault(xr["sense_group_id"], []).append(xd)
+        else:
+            entry_xrefs.append(xd)
+
     # Sense groups -> senses -> examples
     groups = []
     sg_rows = db.execute(
@@ -84,9 +103,11 @@ def _load_entry(db: sqlite3.Connection, row: sqlite3.Row) -> EntryData:
                 grammar=s["grammar"], labels=s["labels"], variants=s["variants"],
                 definition=s["definition"], definition_zh=s["definition_zh"],
                 examples=examples,
+                xrefs=sense_xrefs.get(s["id"], []),
             ))
         groups.append(SenseGroupData(
             topic_en=sg["topic_en"], topic_zh=sg["topic_zh"], senses=senses,
+            xrefs=group_xrefs.get(sg["id"], []),
         ))
 
     # Synonyms
@@ -117,13 +138,6 @@ def _load_entry(db: sqlite3.Connection, row: sqlite3.Row) -> EntryData:
         (entry_id,),
     ).fetchall()
     collocations = [CollocationData(category=r["category"], words=r["words"].split(", ")) for r in coll_rows]
-
-    # Cross-references
-    xref_rows = db.execute(
-        "SELECT xref_type, target_word FROM xrefs WHERE entry_id = ? ORDER BY sort_order",
-        (entry_id,),
-    ).fetchall()
-    xrefs = [XrefData(xref_type=r["xref_type"], target_word=r["target_word"]) for r in xref_rows]
 
     # Phrasal verbs
     pv_rows = db.execute(
@@ -158,7 +172,7 @@ def _load_entry(db: sqlite3.Connection, row: sqlite3.Row) -> EntryData:
         word_origin_html=word_origin_html,
         word_family=word_family,
         collocations=collocations,
-        xrefs=xrefs,
+        xrefs=entry_xrefs,
         phrasal_verbs=phrasal_verbs,
         extra_examples=extra_examples,
     )

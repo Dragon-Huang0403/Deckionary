@@ -190,6 +190,23 @@ async function doSearch() {
   } catch (err) { resultsDiv.innerHTML = `<div class="no-results">Error: ${esc(err.message)}</div>`; }
 }
 
+const XREF_LABELS = {
+  see: 'see also', cp: 'compare', syn: 'synonym', nsyn: 'near synonym', opp: 'opposite',
+  wordfinder: 'wordfinder', pv: 'phrasal verb', eq: 'equivalent',
+};
+
+function renderXrefs(xrefs) {
+  if (!xrefs || !xrefs.length) return '';
+  const byType = {};
+  xrefs.forEach(x => { (byType[x.xref_type] = byType[x.xref_type] || []).push(x); });
+  const parts = Object.entries(byType).map(([type, items]) => {
+    const label = XREF_LABELS[type] || type.replace(/of$/, ' of');
+    const words = items.map(x => `<span class="xref-word" onclick="searchWord('${esc(x.target_word)}')">${esc(x.target_word)}</span>`).join(', ');
+    return `<span class="xref-label">${esc(label)} </span>${words}`;
+  });
+  return `<div class="xref-section">${parts.join(' &nbsp; ')}</div>`;
+}
+
 function renderEntry(entry) {
   const badges = [];
   if (entry.cefr_level) badges.push(`<span class="badge badge-cefr badge-cefr-${entry.cefr_level}">${entry.cefr_level.toUpperCase()}</span>`);
@@ -238,16 +255,7 @@ function renderEntry(entry) {
     collocations = `<details class="info-box"><summary>Collocations</summary><div class="info-box-content">${groups}</div></details>`;
   }
 
-  // Cross-references
-  let xrefs = '';
-  if (entry.xrefs && entry.xrefs.length) {
-    const seeAlso = entry.xrefs.filter(x => x.xref_type === 'see');
-    const compare = entry.xrefs.filter(x => x.xref_type === 'cp');
-    let parts = [];
-    if (seeAlso.length) parts.push(`<span class="xref-label">see also </span>${seeAlso.map(x => `<span class="xref-word" onclick="searchWord('${esc(x.target_word)}')">${esc(x.target_word)}</span>`).join(', ')}`);
-    if (compare.length) parts.push(`<span class="xref-label">compare </span>${compare.map(x => `<span class="xref-word" onclick="searchWord('${esc(x.target_word)}')">${esc(x.target_word)}</span>`).join(', ')}`);
-    if (parts.length) xrefs = `<div class="xref-section">${parts.join(' &nbsp; ')}</div>`;
-  }
+  const xrefs = renderXrefs(entry.xrefs);
 
   // Phrasal Verbs
   let phrasalVerbs = '';
@@ -300,7 +308,7 @@ function renderGroup(group) {
   if (group.topic_en || group.topic_zh) {
     header = `<div class="topic-header"><span class="topic-en">${esc(group.topic_en)}</span>${group.topic_zh ? `<span class="topic-zh">${esc(group.topic_zh)}</span>` : ''}</div>`;
   }
-  return header + group.senses.map(renderSense).join('');
+  return header + group.senses.map(renderSense).join('') + renderXrefs(group.xrefs);
 }
 
 function renderSense(sense) {
@@ -328,7 +336,8 @@ function renderSense(sense) {
     examplesHtml = `<ul class="examples">${items}</ul>`;
   }
 
-  return `<div class="sense"><div class="sense-head">${num} ${cefr} ${variants} ${grammar} ${labels} <span class="def">${esc(sense.definition)}</span> ${defZh}</div>${examplesHtml}</div>`;
+  const senseXrefs = renderXrefs(sense.xrefs);
+  return `<div class="sense"><div class="sense-head">${num} ${cefr} ${variants} ${grammar} ${labels} <span class="def">${esc(sense.definition)}</span> ${defZh}</div>${examplesHtml}${senseXrefs}</div>`;
 }
 
 function audioBtn(filename, small = false) {

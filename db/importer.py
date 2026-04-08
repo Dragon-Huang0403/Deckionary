@@ -158,6 +158,24 @@ def _insert_entry(db: sqlite3.Connection, source_id: int, entry: EntryData, entr
                      ex.audio_gb, ex.audio_us, ei),
                 )
 
+            # Sense-level cross-references
+            for xi, xref in enumerate(sense.xrefs):
+                db.execute(
+                    """INSERT INTO xrefs
+                       (entry_id, sense_group_id, sense_id, xref_type, target_word, sort_order)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (entry_id, group_id, sense_id, xref.xref_type, xref.target_word, xi),
+                )
+
+        # Group-level cross-references
+        for xi, xref in enumerate(group.xrefs):
+            db.execute(
+                """INSERT INTO xrefs
+                   (entry_id, sense_group_id, xref_type, target_word, sort_order)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (entry_id, group_id, xref.xref_type, xref.target_word, xi),
+            )
+
     # Synonyms
     for i, syn in enumerate(entry.synonyms):
         db.execute(
