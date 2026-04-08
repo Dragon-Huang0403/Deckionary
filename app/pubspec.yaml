@@ -1,0 +1,47 @@
+name: oxford_dictionary
+description: "OALD10 Dictionary with FSRS Spaced Repetition"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Database
+  drift: any
+  drift_flutter: any
+  sqlite3_flutter_libs: any
+
+  # State management
+  flutter_riverpod: any
+
+  # Routing
+  go_router: any
+
+  # Audio
+  just_audio: any
+
+  # FSRS spaced repetition
+  fsrs: any
+
+  # Utilities
+  uuid: any
+  connectivity_plus: any
+  path_provider: any
+  collection: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: any
+  build_runner: any
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
