@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/audio/audio_provider.dart';
 import '../../../core/database/database_provider.dart';
@@ -14,15 +15,16 @@ class DictionaryScreen extends ConsumerStatefulWidget {
   ConsumerState<DictionaryScreen> createState() => _DictionaryScreenState();
 }
 
-class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with WidgetsBindingObserver {
+class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollController = ScrollController();
   Timer? _debounce;
   String? _lastAutoPronouncedQuery;
   bool _committed = false;
-  int _selectedSuggestion = -1; // -1 = none selected
+  int _selectedSuggestion = -1;
   List<String> _currentSuggestions = [];
+  final _history = <String>[]; // navigation history stack
 
   // Keys for scrolling to POS entries
   final _entryKeys = <int, GlobalKey>{};
@@ -30,7 +32,22 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _goBack() {
+    if (_history.isEmpty) return;
+    final prev = _history.removeLast();
+    _lastAutoPronouncedQuery = prev; // don't re-pronounce when going back
+    _controller.text = prev;
+    _controller.selection = TextSelection.fromPosition(TextPosition(offset: prev.length));
+    setState(() {
+      _committed = true;
+      _selectedSuggestion = -1;
+      _currentSuggestions = [];
+      _entryKeys.clear();
+    });
+    ref.invalidate(searchResultsProvider);
+    ref.read(searchQueryProvider.notifier).set(prev);
   }
 
   /// Called by TextField onSubmitted (Enter key)
@@ -51,7 +68,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _debounce?.cancel();
     _controller.dispose();
     _focusNode.dispose();
@@ -59,9 +75,12 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _focusNode.requestFocus();
+  void _focusSearchBar() {
+    _focusNode.requestFocus();
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _controller.text.length,
+    );
   }
 
   void _onSearchChanged(String value) {
@@ -76,6 +95,11 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
 
   /// Called when user taps a suggestion or presses Enter - commit the search
   void _commitSearch(String word) {
+    // Push current query to history for back navigation
+    final current = ref.read(searchQueryProvider);
+    if (current.isNotEmpty && current.toLowerCase() != word.toLowerCase()) {
+      _history.add(current);
+    }
     _lastAutoPronouncedQuery = null;
     _controller.text = word;
     _controller.selection = TextSelection.fromPosition(TextPosition(offset: word.length));
@@ -88,7 +112,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
     // Force provider refresh even if same word
     ref.invalidate(searchResultsProvider);
     ref.read(searchQueryProvider.notifier).set(word);
-    _focusNode.requestFocus();
   }
 
   void _autoPronounce(List<DictEntry> entries, String query) async {
@@ -141,11 +164,19 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
 
     results.whenData((entries) => _autoPronounce(entries, query));
 
-    return GestureDetector(
-      onTap: () => _focusNode.requestFocus(),
-      child: Scaffold(
-        body: SafeArea(
-          child: Column(
+    return Shortcuts(
+      shortcuts: {
+        LogicalKeySet(LogicalKeyboardKey.escape): const _FocusSearchIntent(),
+      },
+      child: Actions(
+        actions: {
+          _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
+            onInvoke: (_) { _focusSearchBar(); return null; },
+          ),
+        },
+        child: Scaffold(
+          body: SafeArea(
+            child: Column(
             children: [
               _buildSearchBar(context),
               // Autocomplete suggestions - hide when committed
@@ -161,9 +192,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
               ),
-              // Results
+              // Results (SelectionArea enables text selection)
               Expanded(
-                child: query.isEmpty
+                child: SelectionArea(
+                  child: query.isEmpty
                     ? _buildWelcome()
                     : results.when(
                         data: (entries) {
@@ -199,8 +231,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
                         loading: () => const Center(child: CircularProgressIndicator()),
                         error: (e, _) => Center(child: Text('Error: $e')),
                       ),
+                ),
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -281,6 +315,12 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
+          if (_history.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: _goBack,
+              tooltip: 'Back',
+            ),
           Expanded(child: TextField(
             controller: _controller,
             focusNode: _focusNode,
@@ -308,9 +348,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () async {
-              await Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-              _focusNode.requestFocus();
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
           ),
         ],
@@ -343,4 +382,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> with Widget
       ),
     );
   }
+}
+
+class _FocusSearchIntent extends Intent {
+  const _FocusSearchIntent();
 }

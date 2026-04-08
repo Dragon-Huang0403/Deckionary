@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/audio/audio_provider.dart';
+import '../../../../shared/widgets/tappable_text.dart';
 import '../../providers/search_provider.dart';
 
 class EntryCard extends ConsumerWidget {
@@ -198,7 +199,7 @@ class EntryCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 2),
-          Text(definition),
+          TappableText(text: definition, onWordTap: (w) => onWordTap?.call(w)),
           if (definitionZh.isNotEmpty)
             Text(definitionZh, style: const TextStyle(fontSize: 13, color: Colors.grey)),
           // Examples
@@ -241,7 +242,11 @@ class EntryCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: Text(text, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14)),
+                      child: TappableText(
+                        text: text,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 14),
+                        onWordTap: (w) => onWordTap?.call(w),
+                      ),
                     ),
                     if (hasAudio && ref != null) ...[
                       const SizedBox(width: 4),
