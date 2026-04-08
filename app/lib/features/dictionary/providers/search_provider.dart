@@ -4,7 +4,7 @@ import '../../../core/database/app_database.dart';
 
 /// Cross-reference data
 class XrefInfo {
-  final String xrefType; // "see", "cp", "syn", "opp", etc.
+  final String xrefType;
   final String targetWord;
   XrefInfo({required this.xrefType, required this.targetWord});
 }
@@ -19,7 +19,7 @@ class DictEntry {
   final Map<String, dynamic>? wordOrigin;
   final List<Map<String, dynamic>> wordFamily;
   final List<Map<String, dynamic>> collocations;
-  final List<XrefInfo> xrefs; // entry-level only
+  final List<XrefInfo> xrefs;
   final List<Map<String, dynamic>> phrasalVerbs;
   final List<Map<String, dynamic>> extraExamples;
 
@@ -48,7 +48,7 @@ class DictEntry {
 class SenseGroupWithSenses {
   final Map<String, dynamic> group;
   final List<SenseWithExamples> senses;
-  final List<XrefInfo> xrefs; // group-level xrefs
+  final List<XrefInfo> xrefs;
 
   SenseGroupWithSenses({required this.group, required this.senses, this.xrefs = const []});
 
@@ -59,12 +59,12 @@ class SenseGroupWithSenses {
 class SenseWithExamples {
   final Map<String, dynamic> sense;
   final List<Map<String, dynamic>> examples;
-  final List<XrefInfo> xrefs; // sense-level xrefs
+  final List<XrefInfo> xrefs;
 
   SenseWithExamples({required this.sense, required this.examples, this.xrefs = const []});
 }
 
-/// Load full entry data from dictionary DB, partitioning xrefs by level
+/// Load full entry data from dictionary DB
 Future<DictEntry> loadFullEntry(DictionaryDatabase db, Map<String, dynamic> entry) async {
   final entryId = entry['id'] as int;
 
@@ -137,30 +137,87 @@ Future<DictEntry> loadFullEntry(DictionaryDatabase db, Map<String, dynamic> entr
   );
 }
 
-/// Search query notifier
+/// Search query
 class SearchQueryNotifier extends Notifier<String> {
   @override
   String build() => '';
-
   void set(String query) => state = query;
 }
 
 final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(SearchQueryNotifier.new);
 
+/// Search results: full entries for the query
 final searchResultsProvider = FutureProvider<List<DictEntry>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
 
   final db = ref.read(dictionaryDbProvider);
 
-  var rows = await db.fuzzyLookup(query);
+  // 1. Exact match (includes all POS for a word)
+  var rows = await db.lookupWord(query);
+
+  // 2. Variant spelling
   if (rows.isEmpty) {
-    rows = await db.searchPrefix(query, limit: 20);
+    rows = await db.lookupVariant(query);
   }
 
+  // 3. Fuzzy (suffix stripping)
+  if (rows.isEmpty) {
+    rows = await db.fuzzyLookup(query);
+  }
+
+  // 4. Prefix autocomplete (LIKE)
+  if (rows.isEmpty) {
+    rows = await db.searchPrefix(query, limit: 15);
+    final headwords = <String>{};
+    final expanded = <Map<String, dynamic>>[];
+    for (final r in rows) {
+      final hw = r['headword'] as String;
+      if (headwords.add(hw)) {
+        expanded.addAll(await db.lookupWord(hw));
+      }
+    }
+    rows = expanded;
+  }
+
+  // 5. Fuzzy search (Levenshtein) for typo tolerance
+  if (rows.isEmpty && query.length >= 3) {
+    rows = await db.fuzzySearch(query, limit: 10, maxDistance: 2);
+  }
+
+  // Load full entry data
   final entries = <DictEntry>[];
   for (final row in rows) {
     entries.add(await loadFullEntry(db, row));
   }
   return entries;
+});
+
+/// Autocomplete suggestions (lightweight - just headwords, no full load)
+final autocompleteSuggestionsProvider = FutureProvider<List<String>>((ref) async {
+  final query = ref.watch(searchQueryProvider);
+  if (query.length < 2) return [];
+
+  final db = ref.read(dictionaryDbProvider);
+
+  // Prefix matches first
+  final prefixRows = await db.searchPrefix(query, limit: 8);
+  final seen = <String>{};
+  final results = prefixRows
+      .map((r) => r['headword'] as String)
+      .where((hw) => seen.add(hw))
+      .toList();
+
+  // If few prefix results and query is 3+ chars, add fuzzy matches
+  if (results.length < 3 && query.length >= 3) {
+    final fuzzyRows = await db.fuzzySearch(query, limit: 5, maxDistance: 2);
+    for (final r in fuzzyRows) {
+      final hw = r['headword'] as String;
+      if (seen.add(hw) && results.length < 8) {
+        results.add(hw);
+      }
+    }
+  }
+
+  return results;
 });

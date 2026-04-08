@@ -56,13 +56,114 @@ class DictionaryDatabase {
 
   // ── Search ───────────────────────────────────────────────────────────────
 
+  /// Cached headword list for fuzzy search (loaded once, ~1MB)
+  List<String>? _headwordCache;
+
+  Future<List<String>> get _headwords async {
+    if (_headwordCache != null) return _headwordCache!;
+    final rows = await _db.customSelect(
+      'SELECT DISTINCT headword FROM entries ORDER BY headword',
+    ).get();
+    _headwordCache = rows.map((r) => r.data['headword'] as String).toList();
+    return _headwordCache!;
+  }
+
+  /// Fuzzy search using Levenshtein distance.
+  /// Only runs when prefix search returns no results.
+  Future<List<Map<String, dynamic>>> fuzzySearch(String query, {int limit = 10, int maxDistance = 2}) async {
+    final q = query.toLowerCase().trim();
+    if (q.length < 3) return []; // too short for fuzzy
+
+    final words = await _headwords;
+
+    // Pre-filter: length within ±maxDistance, then compute Levenshtein
+    final candidates = <(String, int)>[];
+    for (final w in words) {
+      if ((w.length - q.length).abs() > maxDistance) continue;
+      final d = _levenshtein(q, w.toLowerCase());
+      if (d <= maxDistance) {
+        candidates.add((w, d));
+      }
+    }
+    candidates.sort((a, b) => a.$2.compareTo(b.$2));
+
+    // Load entries for top matches
+    final results = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final (word, _) in candidates) {
+      if (seen.add(word) && results.length < limit) {
+        final entries = await lookupWord(word);
+        if (entries.isNotEmpty) {
+          results.addAll(entries);
+        }
+      }
+    }
+    return results;
+  }
+
+  static int _levenshtein(String s, String t) {
+    if (s == t) return 0;
+    if (s.isEmpty) return t.length;
+    if (t.isEmpty) return s.length;
+
+    List<int> prev = List.generate(t.length + 1, (i) => i);
+    List<int> curr = List.filled(t.length + 1, 0);
+
+    for (var i = 0; i < s.length; i++) {
+      curr[0] = i + 1;
+      for (var j = 0; j < t.length; j++) {
+        final cost = s.codeUnitAt(i) == t.codeUnitAt(j) ? 0 : 1;
+        curr[j + 1] = [curr[j] + 1, prev[j + 1] + 1, prev[j] + cost].reduce((a, b) => a < b ? a : b);
+      }
+      final tmp = prev;
+      prev = curr;
+      curr = tmp;
+    }
+    return prev[t.length];
+  }
+
+  /// Autocomplete: prefix match on headwords, prioritizing shorter/exact matches.
+  /// Returns deduplicated headwords with their entries.
   Future<List<Map<String, dynamic>>> searchPrefix(String query, {int limit = 20}) async {
+    final q = query.toLowerCase().trim();
+    if (q.isEmpty) return [];
+
+    final results = await _db.customSelect(
+      '''SELECT * FROM entries
+         WHERE headword LIKE ?
+         ORDER BY
+           CASE WHEN headword = ? THEN 0 ELSE 1 END,
+           LENGTH(headword),
+           headword,
+           entry_index
+         LIMIT ?''',
+      variables: [
+        Variable.withString('$q%'),
+        Variable.withString(q),
+        Variable.withInt(limit * 3), // over-fetch to get variety after dedup
+      ],
+    ).get();
+
+    // Deduplicate: keep first entry per headword, up to limit
+    final seen = <String>{};
+    final deduped = <Map<String, dynamic>>[];
+    for (final r in results) {
+      final hw = r.data['headword'] as String;
+      if (seen.add(hw) && deduped.length < limit) {
+        deduped.add(r.data);
+      }
+    }
+    return deduped;
+  }
+
+  /// Search across headwords with FTS (for full-text, not prefix)
+  Future<List<Map<String, dynamic>>> searchFts(String query, {int limit = 20}) async {
     final results = await _db.customSelect(
       '''SELECT e.* FROM entries_fts fts
          JOIN entries e ON e.id = fts.rowid
          WHERE fts.headword MATCH ?
          LIMIT ?''',
-      variables: [Variable.withString('$query*'), Variable.withInt(limit)],
+      variables: [Variable.withString('"$query"'), Variable.withInt(limit)],
     ).get();
     return results.map((r) => r.data).toList();
   }
