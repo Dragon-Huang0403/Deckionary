@@ -1,8 +1,57 @@
-# OALD10 Dictionary Scripts
+# OALD10 Dictionary App & Anki Deck Generator
 
-Python scripts for querying the **Oxford Advanced Learner's Dictionary 10th Edition** macOS dictionary bundle.
+Python toolkit for the **Oxford Advanced Learner's Dictionary 10th Edition**: a self-contained SQLite dictionary database, a web-based dictionary browser, and an Anki flashcard generator.
 
-This repo contains only the scripts. You must supply the dictionary data yourself (see below).
+---
+
+## What's Inside
+
+### Dictionary Database (`oald10.db`)
+
+A single SQLite file containing the complete OALD10 dictionary, built from the macOS dictionary bundle:
+
+| Data | Count |
+|------|-------|
+| Headwords | 62,131 |
+| Entries (multi-POS) | 76,210 |
+| Definitions | 110,600 |
+| Examples | 145,014 |
+| Extra Examples | 62,189 |
+| Audio Files (embedded MP3) | 217,156 |
+| Synonyms | 4,725 |
+| Word Origins | 22,325 |
+| Word Family entries | 1,198 |
+| Collocations | 48,783 |
+| Cross-references | 961 |
+| Phrasal Verb links | 2,523 |
+| Variant spellings | 6,919 |
+
+All Chinese text is **Traditional Chinese** (converted from Simplified via OpenCC at build time).
+
+Raw HTML is preserved (zlib-compressed) for every entry, enabling re-parsing if the parser is improved.
+
+### Web Dictionary (`app.py`)
+
+A Flask-based dictionary browser with:
+
+- Live search with debounce (exact match, fuzzy match, FTS5 prefix search)
+- Full entry display: headword, POS, IPA (GB/US), CEFR badges, Oxford 3000/5000 badges
+- Audio playback for word pronunciation (GB/US) and example sentences
+- Definitions with Traditional Chinese translations
+- Example sentences with HTML highlighting preserved (collocations in bold)
+- Verb conjugation tables with audio
+- **Synonyms** with pill tags and distinguishing definitions
+- **Word Family** (happy/happily/happiness with opposites)
+- **Collocations** grouped by category (verbs, adverbs, prepositions, phrases)
+- **Cross-references** (clickable "see also" and "compare" links)
+- **Phrasal Verbs** (clickable pills that trigger search)
+- **Word Origin / Etymology** with italic foreign language terms
+- **Extra Examples** (collapsible, with count)
+- Dark mode support (follows system preference)
+
+### Anki Deck Generator (`create_deck.py`)
+
+Generates `.apkg` files with audio for import into Anki. Cards show headword + IPA on front, definitions + examples + audio on back.
 
 ---
 
@@ -16,136 +65,111 @@ This repo contains only the scripts. You must supply the dictionary data yoursel
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install genanki
+pip install genanki flask opencc-python-reimplemented
 ```
-
-`genanki` is only required for `create_deck.py`. The other two scripts use only the standard library.
 
 ---
 
-## Directory Structure
+## Quick Start
 
-The scripts expect the dictionary bundle to sit **alongside them** in the same directory:
+### 1. Build the database
 
-```
-OALD10/
-├── oxford.dictionary/          ← dictionary bundle (not in this repo)
-│   └── Contents/
-│       ├── Body.data           ← all entries, zlib-compressed HTML (94 MB)
-│       ├── KeyText.data        ← keyword trie index
-│       ├── KeyText.index
-│       ├── oald10.css          ← entry stylesheet
-│       ├── oald10.js           ← entry interactivity
-│       └── *.mp3               ← ~275 000 audio files (word + sentence)
-├── oxford-5000.csv             ← Oxford 5000 word list (optional, for --5000)
-├── custom-words.csv            ← your own word list (optional, for --custom)
-├── list_words.py
-├── lookup_word.py
-├── create_deck.py
-├── clean_csv.py
-└── README.md
+```bash
+python build_db.py
 ```
 
-> **Where to get the bundle**
-> The `oxford.dictionary` bundle is installed by the macOS Dictionary app.
-> Installed dictionaries are typically found at:
-> ```
-> ~/Library/Dictionaries/
-> ```
-> Copy or symlink the `oxford.dictionary` folder into this directory.
+This reads `oxford.dictionary/Contents/Body.data`, parses all 62,131 entries, embeds 217K audio files, converts Chinese to Traditional, and writes `oald10.db` (~2.1 GB). Takes about 10 minutes.
+
+### 2. Browse the dictionary
+
+```bash
+python app.py --port 8000
+```
+
+Open http://localhost:8000 in your browser.
+
+### 3. Generate Anki decks
+
+```bash
+python create_deck.py run              # single word
+python create_deck.py run abandon set  # multiple words
+python create_deck.py --5000           # Oxford 5000 word list
+python create_deck.py --custom         # custom word list (custom-words.csv)
+python create_deck.py --all            # all 62,137 entries
+```
 
 ---
 
-## Scripts
+## Project Structure
 
-### `list_words.py` — list all headwords
-
-Prints all 62 137 headwords to stdout, one per line.
-
-```bash
-# Print to terminal
-python list_words.py
-
-# Save to file
-python list_words.py words.txt
+```
+.
+├── app.py                  # Flask web dictionary
+├── build_db.py             # CLI to build oald10.db
+├── create_deck.py          # Anki deck generator
+├── lookup_word.py          # Interactive browser-based word lookup
+├── list_words.py           # List all headwords
+├── clean_csv.py            # Remove blank lines from CSV
+├── db/
+│   ├── __init__.py
+│   ├── schema.py           # SQLite schema (15 tables)
+│   ├── models.py           # Dataclasses for all parsed data
+│   ├── parser.py           # HTML parser (regex-based, extracts all fields)
+│   ├── importer.py         # Build pipeline: Body.data → parse → SQLite + OpenCC
+│   └── query.py            # Read API: lookup, fuzzy search, FTS5, audio
+├── templates/
+│   └── index.html          # Single-page dictionary frontend
+├── oxford-5000.csv         # Oxford 5000 word list
+├── custom-words.csv        # User's custom word list
+└── oxford.dictionary/      # Symlink to macOS dictionary bundle (not in repo)
 ```
 
-### `lookup_word.py` — look up a word
+## Database Schema
 
-Finds the entry in `Body.data`, decompresses it, and opens the fully rendered HTML (with styling and working audio) in your default browser.
-
-```bash
-python lookup_word.py run
-python lookup_word.py abandon
-python lookup_word.py "run down"      # multi-word entries
-
-# Print raw HTML instead of opening a browser
-python lookup_word.py run --html
 ```
-
-**First run** builds a word→offset index and saves it as `.oald10_index.json` (~10 seconds). Every subsequent lookup is instant.
-
-### `clean_csv.py` — remove empty lines from custom-words.csv
-
-```bash
-python clean_csv.py
+sources              ─ data provenance (OALD10, future sources)
+entries              ─ headword + POS + IPA + CEFR + raw_html (76K rows)
+  ├── pronunciations ─ GB/US audio files per entry
+  ├── verb_forms     ─ conjugation table with audio
+  ├── sense_groups   ─ topic clusters ("intention", "arrangement", ...)
+  │   └── senses     ─ numbered definitions with CEFR level
+  │       └── examples ─ sentences with HTML highlighting + audio + Chinese
+  ├── synonyms       ─ synonym words with definitions
+  ├── word_origins   ─ etymology (plain + HTML with italic terms)
+  ├── word_family    ─ related forms (happy/happily/happiness)
+  ├── collocations   ─ grouped by category (verbs/adverbs/prepositions)
+  ├── xrefs          ─ cross-references (see also, compare)
+  ├── phrasal_verbs  ─ linked phrasal verb phrases
+  └── extra_examples ─ additional example sentences
+variants             ─ alternate spellings → canonical entries
+audio_files          ─ embedded MP3 binary data (217K files)
+entries_fts          ─ FTS5 full-text search index
+meta                 ─ schema version tracking
 ```
-
-### `create_deck.py` — generate an Anki deck
-
-Creates an `.apkg` file importable into Anki. Each card shows the headword on the front and IPA, part of speech, definitions, and examples (with audio) on the back.
-
-```bash
-python create_deck.py run                  # single word
-python create_deck.py run abandon set      # multiple words
-python create_deck.py --5000               # Oxford 5000 word list
-python create_deck.py --custom             # custom word list
-python create_deck.py --all                # all 62 137 entries
-```
-
-- `--5000` outputs `oald10.apkg`
-- `--custom` outputs `oald10-custom.apkg`
-
-Import in Anki via **File → Import**. The deck bundles all referenced audio files directly into the `.apkg`, so pronunciation and sentence audio work immediately after import.
-
-#### Oxford 5000 word list
-
-`--5000` reads `oxford-5000.csv` and deduplicates by headword before lookup. The CSV is sourced from [Berehulia/Oxford-3000-5000](https://github.com/Berehulia/Oxford-3000-5000).
-
-#### Custom word list
-
-`--custom` reads `custom-words.csv` — a simple CSV with a `word` column, one word per line. The deck is created under `Oxford Advanced Learner's Dictionary::Custom` with separate deck IDs so it won't conflict with the Oxford 5000 deck.
-
-#### Word resolution
-
-When a word isn't found directly in the dictionary, the script tries two fallbacks:
-
-1. **Variant lookup** — resolves alternative spellings (e.g. `normalcy` → `normality`). Built from `(also ...)` references in the dictionary. Cached in `.oald10_variants.json`.
-2. **Fuzzy matching** — strips common suffixes like plurals (`petrochemicals` → `petrochemical`) and ignores trademark symbols (`cellophane` → `cellophane™`).
-
----
 
 ## How It Works
 
-`Body.data` stores all dictionary entries as sequential **zlib-compressed HTML blocks**. Each block has a 12-byte header:
+### Data Source
+
+`Body.data` in the macOS dictionary bundle stores entries as sequential zlib-compressed HTML blocks. Each block has a 12-byte header:
 
 ```
-[sz1: 4 bytes][sz2: 4 bytes][decompressed_size: 4 bytes][zlib data: sz2-4 bytes]
+[sz1: 4B][sz2: 4B][decompressed_size: 4B][zlib data: sz2-4 bytes]
 ```
 
-The first block starts at offset `0x60`. The index maps each lowercased headword to its block's byte offset so lookups can seek directly without scanning the file.
+First block at offset `0x60`. Each decompressed block is Apple Dictionary Services XML with rich HTML content including definitions, examples, pronunciation, collocations, etymology, and more.
 
-Each decompressed block is an Apple Dictionary Services XML fragment:
+### Build Pipeline
 
-```xml
-<d:entry d:title="run">
-  <div class="entry" id="run_1">…</div>
-</d:entry>
-```
+1. **Index**: Scan `Body.data` to map 62,131 headwords to byte offsets
+2. **Parse**: Decompress each entry and extract structured data via regex
+3. **Convert**: Apply OpenCC `s2t` to all Chinese text fields
+4. **Store**: Insert into SQLite with batch transactions
+5. **Variants**: Build alternate spelling index
+6. **Audio**: Read and embed all referenced MP3 files as BLOBs
+7. **Optimize**: Run PRAGMA optimize
 
-`lookup_word.py` strips the `<d:entry>` wrapper, rewrites relative `.mp3` paths to absolute `file://` URIs, injects `oald10.css` and `oald10.js`, and writes a self-contained HTML file to a temp directory.
-
-### Audio file naming
+### Audio File Naming
 
 | Type | Pattern | Example |
 |------|---------|---------|
@@ -153,5 +177,10 @@ Each decompressed block is an Apple Dictionary Services XML fragment:
 | Phrase pronunciation | `{phrase}_{sense}_{dialect}_{n}.mp3` | `run_down_1_gb_1.mp3` |
 | Sentence example | `_{word}__{code}_{n}.mp3` | `_run__gbs_1.mp3` |
 
-Dialect codes: `gb` / `us` for words; `gbs` / `uss` / `brs` / `ams` for sentences.
-All files live flat in `oxford.dictionary/Contents/`.
+Dialect codes: `gb`/`us` for words; `gbs`/`uss`/`brs`/`ams` for sentences.
+
+---
+
+## Dictionary Data Note
+
+This repo contains only code. You must supply the OALD10 dictionary bundle yourself. Installed macOS dictionaries are typically at `~/Library/Dictionaries/`. Symlink or copy the `.dictionary` folder as `oxford.dictionary` in the project root.

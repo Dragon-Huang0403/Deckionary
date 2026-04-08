@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OALD10 Dictionary</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f8f9fa; --card-bg: #ffffff; --text: #1a1a1a; --text-soft: #555;
+  --text-muted: #888; --accent: #0057a8; --accent-hover: #003d75;
+  --topic: #b85c00; --chinese: #999; --border: #e0e0e0;
+  --cefr-a1: #4caf50; --cefr-a2: #8bc34a; --cefr-b1: #ff9800;
+  --cefr-b2: #ff5722; --cefr-c1: #9c27b0; --cefr-c2: #673ab7;
+  --radius: 10px; --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --info-bg: #f0f4f8; --info-border: #d0d8e0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212; --card-bg: #1e1e1e; --text: #e0e0e0; --text-soft: #aaa;
+    --text-muted: #777; --accent: #6ab0f5; --accent-hover: #89c4ff;
+    --topic: #e8935a; --chinese: #666; --border: #333;
+    --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    --info-bg: #252525; --info-border: #3a3a3a;
+  }
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+/* Search */
+.search-container { position: sticky; top: 0; z-index: 100; background: var(--bg); padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+.search-box { max-width: 720px; margin: 0 auto; }
+.search-box input { width: 100%; padding: 14px 20px; font-size: 18px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--card-bg); color: var(--text); outline: none; transition: border-color 0.2s; }
+.search-box input:focus { border-color: var(--accent); }
+.search-box input::placeholder { color: var(--text-muted); }
+.search-hint { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: 6px; }
+
+/* Results */
+.results { max-width: 720px; margin: 0 auto; padding: 16px 20px 60px; }
+.loading { text-align: center; padding: 40px; color: var(--text-muted); }
+.no-results { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+/* Entry */
+.entry { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 16px; }
+.entry-header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.headword { font-size: 2em; font-weight: 700; color: var(--accent); }
+.pos { font-size: 0.9em; color: var(--text-muted); font-style: italic; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.badge { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.badge-cefr { color: #fff; }
+.badge-cefr-a1 { background: var(--cefr-a1); } .badge-cefr-a2 { background: var(--cefr-a2); }
+.badge-cefr-b1 { background: var(--cefr-b1); } .badge-cefr-b2 { background: var(--cefr-b2); }
+.badge-cefr-c1 { background: var(--cefr-c1); } .badge-cefr-c2 { background: var(--cefr-c2); }
+.badge-ox { background: var(--accent); color: #fff; }
+
+/* Phonetics */
+.phonetics { display: flex; gap: 20px; align-items: center; margin: 8px 0 16px; flex-wrap: wrap; }
+.phon-group { display: flex; align-items: center; gap: 6px; }
+.dialect { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+.ipa { font-family: "Lucida Sans Unicode", "DejaVu Sans", monospace; color: var(--text-soft); }
+
+/* Audio */
+.audio-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--accent); color: #fff; cursor: pointer; font-size: 12px; transition: background 0.15s, transform 0.1s; flex-shrink: 0; }
+.audio-btn:hover { background: var(--accent-hover); }
+.audio-btn:active { transform: scale(0.92); }
+.audio-btn.playing { background: var(--cefr-b1); }
+.audio-btn-sm { width: 22px; height: 22px; font-size: 10px; }
+
+/* Info boxes (shared style for collapsible sections) */
+.info-box { margin: 10px 0; border: 1px solid var(--info-border); border-radius: 8px; overflow: hidden; font-size: 14px; }
+.info-box summary { padding: 8px 14px; cursor: pointer; font-size: 13px; color: var(--text-soft); font-weight: 600; user-select: none; background: var(--info-bg); }
+.info-box summary:hover { color: var(--accent); }
+.info-box-content { padding: 10px 14px; }
+
+/* Verb Forms */
+.verb-forms-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.verb-forms-table td { padding: 6px 14px; border-top: 1px solid var(--border); }
+.verb-forms-table td:last-child { text-align: right; width: 70px; }
+
+/* Word Family */
+.word-family-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.wf-item { display: inline-flex; align-items: baseline; gap: 4px; background: var(--info-bg); padding: 4px 10px; border-radius: 6px; }
+.wf-word { font-weight: 600; color: var(--accent); }
+.wf-pos { font-size: 12px; color: var(--text-muted); font-style: italic; }
+.wf-opp { font-size: 12px; color: var(--cefr-b2); }
+
+/* Synonyms */
+.syn-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.syn-pill { background: var(--info-bg); border: 1px solid var(--info-border); padding: 3px 10px; border-radius: 14px; font-size: 13px; color: var(--accent); cursor: default; }
+.syn-defs { font-size: 13px; color: var(--text-soft); }
+.syn-def-item { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--info-border); }
+.syn-def-word { font-weight: 600; color: var(--text); }
+
+/* Collocations */
+.colloc-group { margin: 6px 0; }
+.colloc-cat { font-weight: 600; color: var(--topic); font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+.colloc-words { color: var(--text-soft); font-size: 13px; }
+
+/* Cross-references */
+.xref-section { margin: 8px 0; font-size: 13px; }
+.xref-label { color: var(--text-muted); font-style: italic; }
+.xref-word { color: var(--accent); cursor: pointer; }
+.xref-word:hover { text-decoration: underline; }
+
+/* Phrasal Verbs */
+.pv-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-item { background: var(--info-bg); border: 1px solid var(--info-border); padding: 3px 10px; border-radius: 14px; font-size: 13px; color: var(--accent); cursor: pointer; }
+.pv-item:hover { background: var(--accent); color: #fff; }
+
+/* Word Origin */
+.word-origin-text { font-size: 13px; color: var(--text-soft); line-height: 1.5; }
+.word-origin-text .ei { font-style: italic; color: var(--topic); }
+.word-origin-text .eb { font-weight: 600; color: var(--accent); }
+
+/* Topics & Senses */
+.topic-header { margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.topic-en { font-weight: 600; color: var(--topic); font-style: italic; }
+.topic-zh { color: var(--chinese); font-size: 0.85em; margin-left: 8px; }
+.sense { margin: 12px 0; padding-left: 4px; }
+.sense-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.sense-num { font-weight: 700; color: var(--accent); min-width: 20px; }
+.sense-cefr { font-size: 10px; padding: 1px 5px; border-radius: 3px; color: #fff; font-weight: 600; }
+.grammar { color: var(--text-soft); font-size: 0.85em; }
+.labels { color: var(--text-muted); font-size: 0.85em; font-style: italic; }
+.variants { color: var(--accent); font-size: 0.85em; font-weight: 600; }
+.def { color: var(--text); }
+.def-zh { color: var(--chinese); font-size: 0.85em; }
+
+/* Examples */
+.examples { margin: 6px 0 0 24px; list-style: none; }
+.example { margin: 6px 0; position: relative; padding-left: 14px; }
+.example::before { content: ""; position: absolute; left: 0; top: 10px; width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+.ex-text { color: var(--text-soft); font-size: 0.95em; }
+.ex-text .cl, .ex-text .eb { font-weight: 600; color: var(--text); }
+.ex-zh { color: var(--chinese); font-size: 0.82em; display: block; margin-top: 1px; }
+.ex-audio { display: inline-flex; gap: 4px; margin-left: 4px; vertical-align: middle; }
+
+/* Welcome */
+.welcome { text-align: center; padding: 80px 20px; }
+.welcome h2 { font-size: 1.8em; color: var(--accent); margin-bottom: 8px; }
+.welcome p { color: var(--text-muted); font-size: 15px; }
+.welcome .stats { margin-top: 20px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+.welcome .stat { text-align: center; }
+.welcome .stat-num { font-size: 1.6em; font-weight: 700; color: var(--accent); }
+.welcome .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+
+<div class="search-container">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search for a word..." autofocus autocomplete="off" spellcheck="false">
+    <div class="search-hint">Type a word to look it up. Try: plan, run, happy, go, water</div>
+  </div>
+</div>
+
+<div class="results" id="results">
+  <div class="welcome">
+    <h2>OALD10 Dictionary</h2>
+    <p>Oxford Advanced Learner's Dictionary, 10th Edition</p>
+    <div class="stats">
+      <div class="stat"><div class="stat-num">62,131</div><div class="stat-label">Headwords</div></div>
+      <div class="stat"><div class="stat-num">110,600</div><div class="stat-label">Definitions</div></div>
+      <div class="stat"><div class="stat-num">145,014</div><div class="stat-label">Examples</div></div>
+      <div class="stat"><div class="stat-num">217,000+</div><div class="stat-label">Audio</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const searchInput = document.getElementById('searchInput');
+const resultsDiv = document.getElementById('results');
+let debounceTimer = null;
+let currentAudio = null;
+
+searchInput.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(doSearch, 250); });
+searchInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') { searchInput.value = ''; showWelcome(); } });
+
+async function doSearch() {
+  const q = searchInput.value.trim();
+  if (!q) { showWelcome(); return; }
+  resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const entries = await res.json();
+    if (!entries.length) { resultsDiv.innerHTML = `<div class="no-results">No results for "<strong>${esc(q)}</strong>"</div>`; return; }
+    resultsDiv.innerHTML = entries.map(renderEntry).join('');
+  } catch (err) { resultsDiv.innerHTML = `<div class="no-results">Error: ${esc(err.message)}</div>`; }
+}
+
+function renderEntry(entry) {
+  const badges = [];
+  if (entry.cefr_level) badges.push(`<span class="badge badge-cefr badge-cefr-${entry.cefr_level}">${entry.cefr_level.toUpperCase()}</span>`);
+  if (entry.ox3000) badges.push('<span class="badge badge-ox">Oxford 3000</span>');
+  else if (entry.ox5000) badges.push('<span class="badge badge-ox">Oxford 5000</span>');
+
+  let phonetics = '';
+  if (entry.ipa_gb || entry.ipa_us) {
+    phonetics = '<div class="phonetics">';
+    if (entry.ipa_gb) phonetics += `<div class="phon-group"><span class="dialect">GB</span> <span class="ipa">${esc(entry.ipa_gb)}</span> ${audioBtn(entry.audio_gb)}</div>`;
+    if (entry.ipa_us) phonetics += `<div class="phon-group"><span class="dialect">US</span> <span class="ipa">${esc(entry.ipa_us)}</span> ${audioBtn(entry.audio_us)}</div>`;
+    phonetics += '</div>';
+  }
+
+  let verbForms = '';
+  if (entry.verb_forms && entry.verb_forms.length) {
+    const rows = entry.verb_forms.map(vf => `<tr><td>${esc(vf.form_text)}</td><td>${audioBtn(vf.audio_gb, true)} ${audioBtn(vf.audio_us, true)}</td></tr>`).join('');
+    verbForms = `<details class="info-box"><summary>Verb Forms</summary><table class="verb-forms-table">${rows}</table></details>`;
+  }
+
+  // Word Family
+  let wordFamily = '';
+  if (entry.word_family && entry.word_family.length) {
+    const items = entry.word_family.map(wf =>
+      `<span class="wf-item"><span class="wf-word">${esc(wf.word)}</span> <span class="wf-pos">${esc(wf.pos)}</span>${wf.opposite ? ` <span class="wf-opp">${esc(wf.opposite)}</span>` : ''}</span>`
+    ).join('');
+    wordFamily = `<details class="info-box" open><summary>Word Family</summary><div class="info-box-content"><div class="word-family-list">${items}</div></div></details>`;
+  }
+
+  // Synonyms
+  let synonyms = '';
+  if (entry.synonyms && entry.synonyms.length) {
+    const pills = [...new Set(entry.synonyms.map(s => s.word))].map(w => `<span class="syn-pill">${esc(w)}</span>`).join('');
+    const defs = entry.synonyms.filter(s => s.definition).map(s =>
+      `<div class="syn-def-item"><span class="syn-def-word">${esc(s.word)}</span> ${esc(s.definition)}</div>`
+    ).join('');
+    synonyms = `<details class="info-box"><summary>Synonyms</summary><div class="info-box-content"><div class="syn-pills">${pills}</div>${defs ? `<div class="syn-defs">${defs}</div>` : ''}</div></details>`;
+  }
+
+  // Collocations
+  let collocations = '';
+  if (entry.collocations && entry.collocations.length) {
+    const groups = entry.collocations.map(c =>
+      `<div class="colloc-group"><div class="colloc-cat">${esc(c.category)}</div><div class="colloc-words">${esc(c.words.join(', '))}</div></div>`
+    ).join('');
+    collocations = `<details class="info-box"><summary>Collocations</summary><div class="info-box-content">${groups}</div></details>`;
+  }
+
+  // Cross-references
+  let xrefs = '';
+  if (entry.xrefs && entry.xrefs.length) {
+    const seeAlso = entry.xrefs.filter(x => x.xref_type === 'see');
+    const compare = entry.xrefs.filter(x => x.xref_type === 'cp');
+    let parts = [];
+    if (seeAlso.length) parts.push(`<span class="xref-label">see also </span>${seeAlso.map(x => `<span class="xref-word" onclick="searchWord('${esc(x.target_word)}')">${esc(x.target_word)}</span>`).join(', ')}`);
+    if (compare.length) parts.push(`<span class="xref-label">compare </span>${compare.map(x => `<span class="xref-word" onclick="searchWord('${esc(x.target_word)}')">${esc(x.target_word)}</span>`).join(', ')}`);
+    if (parts.length) xrefs = `<div class="xref-section">${parts.join(' &nbsp; ')}</div>`;
+  }
+
+  // Phrasal Verbs
+  let phrasalVerbs = '';
+  if (entry.phrasal_verbs && entry.phrasal_verbs.length) {
+    const items = entry.phrasal_verbs.map(pv => `<span class="pv-item" onclick="searchWord('${esc(pv)}')">${esc(pv)}</span>`).join('');
+    phrasalVerbs = `<details class="info-box"><summary>Phrasal Verbs</summary><div class="info-box-content"><div class="pv-list">${items}</div></div></details>`;
+  }
+
+  // Word Origin
+  let wordOrigin = '';
+  if (entry.word_origin) {
+    const html = entry.word_origin_html || esc(entry.word_origin);
+    wordOrigin = `<details class="info-box"><summary>Word Origin</summary><div class="info-box-content"><div class="word-origin-text">${html}</div></div></details>`;
+  }
+
+  // Extra Examples
+  let extraExamples = '';
+  if (entry.extra_examples && entry.extra_examples.length) {
+    const items = entry.extra_examples.map(ex => {
+      const text = ex.text_html || esc(ex.text_plain);
+      const zh = ex.text_zh ? `<span class="ex-zh">${esc(ex.text_zh)}</span>` : '';
+      return `<li class="example"><span class="ex-text">${text}</span>${zh}</li>`;
+    }).join('');
+    extraExamples = `<details class="info-box"><summary>Extra Examples (${entry.extra_examples.length})</summary><div class="info-box-content"><ul class="examples">${items}</ul></div></details>`;
+  }
+
+  const groups = entry.groups.map(renderGroup).join('');
+
+  return `<div class="entry">
+    <div class="entry-header">
+      <span class="headword">${esc(entry.headword)}</span>
+      <span class="pos">${esc(entry.pos)}</span>
+      <div class="badges">${badges.join('')}</div>
+    </div>
+    ${phonetics}
+    ${wordFamily}
+    ${verbForms}
+    ${xrefs}
+    ${groups}
+    ${synonyms}
+    ${collocations}
+    ${phrasalVerbs}
+    ${extraExamples}
+    ${wordOrigin}
+  </div>`;
+}
+
+function renderGroup(group) {
+  let header = '';
+  if (group.topic_en || group.topic_zh) {
+    header = `<div class="topic-header"><span class="topic-en">${esc(group.topic_en)}</span>${group.topic_zh ? `<span class="topic-zh">${esc(group.topic_zh)}</span>` : ''}</div>`;
+  }
+  return header + group.senses.map(renderSense).join('');
+}
+
+function renderSense(sense) {
+  const num = sense.sense_num ? `<span class="sense-num">${sense.sense_num}.</span>` : '';
+  const cefr = sense.cefr_level ? `<span class="sense-cefr badge-cefr-${sense.cefr_level}">${sense.cefr_level.toUpperCase()}</span>` : '';
+  const grammar = sense.grammar ? `<span class="grammar">${esc(sense.grammar)}</span>` : '';
+  const labels = sense.labels ? `<span class="labels">${esc(sense.labels)}</span>` : '';
+  const variants = sense.variants ? `<span class="variants">${esc(sense.variants)}</span>` : '';
+  const defZh = sense.definition_zh ? `<span class="def-zh">${esc(sense.definition_zh)}</span>` : '';
+
+  let examplesHtml = '';
+  if (sense.examples.length) {
+    const items = sense.examples.map(ex => {
+      const exText = ex.text_html || esc(ex.text_plain);
+      const exZh = ex.text_zh ? `<span class="ex-zh">${esc(ex.text_zh)}</span>` : '';
+      let exAudio = '';
+      if (ex.audio_gb || ex.audio_us) {
+        exAudio = '<span class="ex-audio">';
+        if (ex.audio_gb) exAudio += audioBtn(ex.audio_gb, true);
+        if (ex.audio_us) exAudio += audioBtn(ex.audio_us, true);
+        exAudio += '</span>';
+      }
+      return `<li class="example"><span class="ex-text">${exText}</span> ${exAudio}${exZh}</li>`;
+    }).join('');
+    examplesHtml = `<ul class="examples">${items}</ul>`;
+  }
+
+  return `<div class="sense"><div class="sense-head">${num} ${cefr} ${variants} ${grammar} ${labels} <span class="def">${esc(sense.definition)}</span> ${defZh}</div>${examplesHtml}</div>`;
+}
+
+function audioBtn(filename, small = false) {
+  if (!filename) return '';
+  const cls = small ? 'audio-btn audio-btn-sm' : 'audio-btn';
+  return `<button class="${cls}" onclick="playAudio(this, '${esc(filename)}')" title="Play">&#9654;</button>`;
+}
+
+function playAudio(btn, filename) {
+  if (currentAudio) { currentAudio.pause(); document.querySelectorAll('.audio-btn.playing').forEach(b => b.classList.remove('playing')); }
+  btn.classList.add('playing');
+  currentAudio = new Audio(`/api/audio/${encodeURIComponent(filename)}`);
+  currentAudio.play();
+  currentAudio.onended = () => btn.classList.remove('playing');
+  currentAudio.onerror = () => btn.classList.remove('playing');
+}
+
+function searchWord(word) {
+  searchInput.value = word;
+  doSearch();
+  window.scrollTo(0, 0);
+}
+
+function esc(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+function showWelcome() {
+  resultsDiv.innerHTML = `<div class="welcome"><h2>OALD10 Dictionary</h2><p>Oxford Advanced Learner's Dictionary, 10th Edition</p>
+    <div class="stats"><div class="stat"><div class="stat-num">62,131</div><div class="stat-label">Headwords</div></div>
+    <div class="stat"><div class="stat-num">110,600</div><div class="stat-label">Definitions</div></div>
+    <div class="stat"><div class="stat-num">145,014</div><div class="stat-label">Examples</div></div>
+    <div class="stat"><div class="stat-num">217,000+</div><div class="stat-label">Audio</div></div></div></div>`;
+}
+</script>
+</body>
+</html>
