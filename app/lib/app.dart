@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'core/database/database_provider.dart';
 import 'core/sync/sync_provider.dart';
@@ -157,20 +156,19 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   }
 
   Future<void> _setupTrayIcon() async {
-    final bytes = await rootBundle.load('assets/tray_icon.png');
-    final tempDir = await getTemporaryDirectory();
-    final iconFile = File('${tempDir.path}/tray_icon.png');
-    await iconFile.writeAsBytes(bytes.buffer.asUint8List());
+    try {
+      await trayManager.setIcon('assets/tray_icon.png', isTemplate: true);
+      await trayManager.setToolTip('Deckionary');
 
-    await trayManager.setIcon(iconFile.path);
-    await trayManager.setToolTip('Deckionary');
-
-    final menu = Menu(items: [
-      MenuItem(label: 'Show/Hide Deckionary'),
-      MenuItem.separator(),
-      MenuItem(label: 'Quit'),
-    ]);
-    await trayManager.setContextMenu(menu);
+      final menu = Menu(items: [
+        MenuItem(label: 'Show/Hide Deckionary'),
+        MenuItem.separator(),
+        MenuItem(label: 'Quit'),
+      ]);
+      await trayManager.setContextMenu(menu);
+    } catch (e) {
+      debugPrint('Failed to setup tray icon: $e');
+    }
   }
 
   Future<void> _removeTrayIcon() async {
@@ -180,12 +178,15 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   Future<void> _toggleWindow() async {
     final isVisible = await windowManager.isVisible();
     if (isVisible) {
+      await windowManager.setAlwaysOnTop(false);
       await windowManager.hide();
     } else {
-      // Position window on the display where the mouse cursor is
-      await _moveToMouseDisplay();
+      // Show first, then move — position only sticks after window is visible
+      await windowManager.setAlwaysOnTop(true);
       await windowManager.show();
       await windowManager.focus();
+      // Position on the display where the mouse cursor is
+      await _moveToMouseDisplay();
       setState(() => _currentTab = 0);
 
       // Check clipboard for a word to auto-search
@@ -225,12 +226,17 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
       }
 
       if (targetDisplay != null && targetDisplay.visiblePosition != null && targetDisplay.visibleSize != null) {
-        final windowSize = await windowManager.getSize();
-        // Center on the target display
-        final x = targetDisplay.visiblePosition!.dx +
-            (targetDisplay.visibleSize!.width - windowSize.width) / 2;
-        final y = targetDisplay.visiblePosition!.dy +
-            (targetDisplay.visibleSize!.height - windowSize.height) / 2;
+        final screenW = targetDisplay.visibleSize!.width;
+        final screenH = targetDisplay.visibleSize!.height;
+
+        // Size: 600px wide, 70% of screen height — enough for search + results
+        final winW = 600.0;
+        final winH = (screenH * 0.7).clamp(400.0, 900.0);
+        await windowManager.setSize(Size(winW, winH));
+
+        // Center horizontally, position slightly above center vertically (like Spotlight)
+        final x = targetDisplay.visiblePosition!.dx + (screenW - winW) / 2;
+        final y = targetDisplay.visiblePosition!.dy + (screenH - winH) * 0.35;
         await windowManager.setPosition(Offset(x, y));
       }
     } catch (e) {
@@ -240,6 +246,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   @override
   void onWindowClose() async {
+    await windowManager.setAlwaysOnTop(false);
     await windowManager.hide();
   }
 
