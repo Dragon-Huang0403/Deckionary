@@ -334,7 +334,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          if (_history.isNotEmpty || _selectedEntryIndex != null)
+          if (_history.isNotEmpty || (_selectedEntryIndex != null && !_entryAutoSelected))
             IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: _goBack,

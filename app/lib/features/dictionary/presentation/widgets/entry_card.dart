@@ -12,7 +12,9 @@ class EntryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -45,6 +47,7 @@ class EntryCard extends ConsumerWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
