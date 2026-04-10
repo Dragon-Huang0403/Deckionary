@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:window_manager/window_manager.dart';
 import 'firebase_options.dart';
 import 'core/config.dart';
 import 'core/database/database_provider.dart';
@@ -14,6 +16,10 @@ bool syncEnabled = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isMacOS) {
+    await windowManager.ensureInitialized();
+    await windowManager.setPreventClose(true);
+  }
   await initDatabases();
 
   // Firebase + Supabase init (skip gracefully if not configured)
