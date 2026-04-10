@@ -42,6 +42,11 @@ dependencies:
   path_provider: any
   collection: any
 
+  # macOS quick search (global hotkey + window + tray)
+  hotkey_manager: any
+  window_manager: any
+  tray_manager: any
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
