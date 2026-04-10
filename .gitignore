@@ -6,3 +6,4 @@ oxford.dictionary
 .direnv
 __pycache__/
 *.pyc
+export/
