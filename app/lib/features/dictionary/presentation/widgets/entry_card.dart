@@ -364,12 +364,34 @@ class EntryCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(cat, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange.shade700, letterSpacing: 0.3)),
-              Text(words, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+              Wrap(
+                spacing: 0,
+                children: _buildClickableWords(words, context),
+              ),
             ],
           ),
         );
       }).toList(),
     );
+  }
+
+  List<Widget> _buildClickableWords(String words, BuildContext context) {
+    final parts = words.split(',');
+    final widgets = <Widget>[];
+    for (var i = 0; i < parts.length; i++) {
+      final word = parts[i].trim();
+      if (word.isEmpty) continue;
+      if (widgets.isNotEmpty) {
+        widgets.add(Text(', ', style: const TextStyle(fontSize: 13, color: Colors.grey)));
+      }
+      widgets.add(
+        GestureDetector(
+          onTap: () => onWordTap?.call(word),
+          child: Text(word, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, decoration: TextDecoration.underline, decorationColor: Colors.grey.shade400)),
+        ),
+      );
+    }
+    return widgets;
   }
 
   Widget _buildPhrasalVerbs(BuildContext context) {
