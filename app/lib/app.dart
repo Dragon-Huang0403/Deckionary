@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/database/database_provider.dart';
 import 'core/sync/sync_provider.dart';
 import 'features/dictionary/presentation/dictionary_screen.dart';
+import 'features/review/presentation/review_home_screen.dart';
 
 /// Reactive theme mode provider
 final themeModeProvider = FutureProvider<ThemeMode>((ref) async {
@@ -15,15 +16,17 @@ final themeModeProvider = FutureProvider<ThemeMode>((ref) async {
   };
 });
 
-class OxfordDictionaryApp extends ConsumerStatefulWidget {
-  const OxfordDictionaryApp({super.key});
+class DeckionaryApp extends ConsumerStatefulWidget {
+  const DeckionaryApp({super.key});
 
   @override
-  ConsumerState<OxfordDictionaryApp> createState() => _OxfordDictionaryAppState();
+  ConsumerState<DeckionaryApp> createState() => _DeckionaryAppState();
 }
 
-class _OxfordDictionaryAppState extends ConsumerState<OxfordDictionaryApp>
+class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     with WidgetsBindingObserver {
+  int _currentTab = 0;
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +42,6 @@ class _OxfordDictionaryAppState extends ConsumerState<OxfordDictionaryApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Pull remote changes when app comes to foreground
       ref.read(syncServiceProvider)?.pullSearchHistory();
     }
   }
@@ -70,7 +72,31 @@ class _OxfordDictionaryAppState extends ConsumerState<OxfordDictionaryApp>
         useMaterial3: true,
       ),
       themeMode: themeMode,
-      home: const DictionaryScreen(),
+      home: Scaffold(
+        body: IndexedStack(
+          index: _currentTab,
+          children: const [
+            DictionaryScreen(),
+            ReviewHomeScreen(),
+          ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentTab,
+          onDestinationSelected: (i) => setState(() => _currentTab = i),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.book_outlined),
+              selectedIcon: Icon(Icons.book),
+              label: 'Dictionary',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.school_outlined),
+              selectedIcon: Icon(Icons.school),
+              label: 'Review',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

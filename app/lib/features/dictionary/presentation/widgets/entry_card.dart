@@ -407,7 +407,7 @@ class EntryCard extends ConsumerWidget {
         title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
         dense: true,
         children: [child],
       ),

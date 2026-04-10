@@ -30,7 +30,7 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: OxfordDictionaryApp(),
+      child: DeckionaryApp(),
     ),
   );
 }

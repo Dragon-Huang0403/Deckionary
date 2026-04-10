@@ -5,21 +5,28 @@ import '../../../app.dart';
 import '../../../core/audio/audio_provider.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/database/database_provider.dart';
+import '../../review/providers/review_providers.dart';
 import '../../../core/sync/sync_provider.dart';
 import '../../../main.dart';
 
 /// Settings loaded as a future
 final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
   final dao = ref.read(settingsDaoProvider);
-  final results = await Future.wait([
-    dao.getDialect(),
-    dao.getAutoPronounce(),
-    dao.getThemeMode(),
-  ]);
+  final dialect = await dao.getDialect();
+  final autoPronounce = await dao.getAutoPronounce();
+  final themeMode = await dao.getThemeMode();
+  final newCardsPerDay = await dao.getNewCardsPerDay();
+  final maxReviewsPerDay = await dao.getMaxReviewsPerDay();
+  final reviewAutoPronounce = await dao.getReviewAutoPronounce();
+  final reviewCardOrder = await dao.getReviewCardOrder();
   return _AppSettings(
-    dialect: results[0] as String,
-    autoPronounce: results[1] as bool,
-    themeMode: results[2] as String,
+    dialect: dialect,
+    autoPronounce: autoPronounce,
+    themeMode: themeMode,
+    newCardsPerDay: newCardsPerDay,
+    maxReviewsPerDay: maxReviewsPerDay,
+    reviewAutoPronounce: reviewAutoPronounce,
+    reviewCardOrder: reviewCardOrder,
   );
 });
 
@@ -27,7 +34,19 @@ class _AppSettings {
   final String dialect;
   final bool autoPronounce;
   final String themeMode;
-  _AppSettings({required this.dialect, required this.autoPronounce, required this.themeMode});
+  final int newCardsPerDay;
+  final int maxReviewsPerDay;
+  final bool reviewAutoPronounce;
+  final String reviewCardOrder;
+  _AppSettings({
+    required this.dialect,
+    required this.autoPronounce,
+    required this.themeMode,
+    required this.newCardsPerDay,
+    required this.maxReviewsPerDay,
+    required this.reviewAutoPronounce,
+    required this.reviewCardOrder,
+  });
 }
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -104,6 +123,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Divider(),
             const _SectionHeader('Appearance'),
             _ThemeTile(settings.themeMode, ref),
+            const Divider(),
+            const _SectionHeader('Review'),
+            _ReviewAutoPronounceTile(settings.reviewAutoPronounce, ref),
+            _CardOrderTile(settings.reviewCardOrder, ref),
+            _NewCardsPerDayTile(settings.newCardsPerDay, settings.maxReviewsPerDay, ref),
+            _MaxReviewsPerDayTile(settings.maxReviewsPerDay, ref),
+            const Divider(),
+            _ClearProgressTile(ref),
             // Sign in / Sign out at bottom
             if (syncEnabled) ...[
               const Divider(),
@@ -335,5 +362,186 @@ class _AudioDownloadSection extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+class _CardOrderTile extends StatelessWidget {
+  final String current;
+  final WidgetRef ref;
+  const _CardOrderTile(this.current, this.ref);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('New card order'),
+      subtitle: Text(current == 'random' ? 'Random' : 'Alphabetical'),
+      trailing: SegmentedButton<String>(
+        segments: const [
+          ButtonSegment(value: 'alphabetical', label: Text('A-Z')),
+          ButtonSegment(value: 'random', label: Text('Random')),
+        ],
+        selected: {current},
+        onSelectionChanged: (val) async {
+          await ref.read(settingsDaoProvider).setReviewCardOrder(val.first);
+          ref.invalidate(_settingsProvider);
+          ref.invalidate(reviewSummaryProvider);
+        },
+      ),
+    );
+  }
+}
+
+class _NewCardsPerDayTile extends StatelessWidget {
+  final int current;
+  final int maxReviews;
+  final WidgetRef ref;
+  const _NewCardsPerDayTile(this.current, this.maxReviews, this.ref);
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestedMin = current * 7;
+    final showWarning = maxReviews < suggestedMin;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          title: const Text('New cards per day'),
+          subtitle: Text('$current cards'),
+          trailing: SizedBox(
+            width: 200,
+            child: Slider(
+              value: current.toDouble(),
+              min: 5,
+              max: 100,
+              divisions: 19,
+              label: '$current',
+              onChanged: (val) async {
+                await ref.read(settingsDaoProvider).setNewCardsPerDay(val.round());
+                ref.invalidate(_settingsProvider);
+                ref.invalidate(reviewSummaryProvider);
+              },
+            ),
+          ),
+        ),
+        if (showWarning)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              'Tip: With $current new cards/day, consider setting max reviews to at least $suggestedMin to avoid a backlog.',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ReviewAutoPronounceTile extends StatelessWidget {
+  final bool enabled;
+  final WidgetRef ref;
+  const _ReviewAutoPronounceTile(this.enabled, this.ref);
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      title: const Text('Auto-pronounce in review'),
+      subtitle: const Text('Play pronunciation when a card appears'),
+      value: enabled,
+      onChanged: (val) async {
+        await ref.read(settingsDaoProvider).setReviewAutoPronounce(val);
+        ref.invalidate(_settingsProvider);
+      },
+    );
+  }
+}
+
+class _MaxReviewsPerDayTile extends StatelessWidget {
+  final int current;
+  final WidgetRef ref;
+  const _MaxReviewsPerDayTile(this.current, this.ref);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('Max reviews per day'),
+      subtitle: Text('$current reviews'),
+      trailing: SizedBox(
+        width: 200,
+        child: Slider(
+          value: current.toDouble(),
+          min: 50,
+          max: 500,
+          divisions: 18,
+          label: '$current',
+          onChanged: (val) async {
+            await ref.read(settingsDaoProvider).setMaxReviewsPerDay(val.round());
+            ref.invalidate(_settingsProvider);
+            ref.invalidate(reviewSummaryProvider);
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _ClearProgressTile extends StatelessWidget {
+  final WidgetRef ref;
+  const _ClearProgressTile(this.ref);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(Icons.delete_outline, color: cs.error),
+      title: Text('Clear review progress', style: TextStyle(color: cs.error)),
+      subtitle: const Text('Delete all review cards and history'),
+      onTap: () => _confirm(context),
+    );
+  }
+
+  Future<void> _confirm(BuildContext context) async {
+    final dao = ref.read(reviewDaoProvider);
+    final totalCards = await dao.countTotalCards();
+    if (totalCards == 0) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No review progress to clear')),
+        );
+      }
+      return;
+    }
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear all progress?'),
+        content: Text(
+          'This will delete $totalCards review cards and all review history. '
+          'You will start from scratch. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await dao.clearAllProgress();
+      ref.invalidate(reviewSummaryProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Review progress cleared')),
+        );
+      }
+    }
   }
 }

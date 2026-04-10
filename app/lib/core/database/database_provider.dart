@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_database.dart';
+import 'review_dao.dart';
 import 'search_history_dao.dart';
 import 'settings_dao.dart';
 
@@ -25,6 +26,14 @@ final searchHistoryDaoProvider = Provider<SearchHistoryDao>((ref) {
 /// Settings DAO
 final settingsDaoProvider = Provider<SettingsDao>((ref) {
   return SettingsDao(ref.read(userDbProvider));
+});
+
+/// Review DAO
+final reviewDaoProvider = Provider<ReviewDao>((ref) {
+  return ReviewDao(
+    db: ref.read(userDbProvider),
+    dictDb: ref.read(dictionaryDbProvider),
+  );
 });
 
 /// Initialize databases. Call before runApp.

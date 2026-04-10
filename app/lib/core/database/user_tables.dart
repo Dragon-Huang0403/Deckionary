@@ -15,6 +15,7 @@ class ReviewCards extends Table {
   IntColumn get reps => integer().withDefault(const Constant(0))();
   IntColumn get lapses => integer().withDefault(const Constant(0))();
   IntColumn get state => integer().withDefault(const Constant(0))();
+  IntColumn get step => integer().nullable()();
   TextColumn get lastReview => text().named('last_review').nullable()();
   TextColumn get createdAt => text().named('created_at').withDefault(Constant(DateTime.now().toIso8601String()))();
   TextColumn get updatedAt => text().named('updated_at').withDefault(Constant(DateTime.now().toIso8601String()))();
@@ -36,6 +37,7 @@ class ReviewLogs extends Table {
   RealColumn get difficulty => real()();
   IntColumn get elapsedDays => integer().named('elapsed_days')();
   IntColumn get scheduledDays => integer().named('scheduled_days')();
+  IntColumn get reviewDuration => integer().named('review_duration').nullable()();
   TextColumn get reviewedAt => text().named('reviewed_at').withDefault(Constant(DateTime.now().toIso8601String()))();
 
   @override

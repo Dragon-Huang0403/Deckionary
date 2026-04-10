@@ -137,6 +137,15 @@ class $ReviewCardsTable extends ReviewCards
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _stepMeta = const VerificationMeta('step');
+  @override
+  late final GeneratedColumn<int> step = GeneratedColumn<int>(
+    'step',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _lastReviewMeta = const VerificationMeta(
     'lastReview',
   );
@@ -186,6 +195,7 @@ class $ReviewCardsTable extends ReviewCards
     reps,
     lapses,
     state,
+    step,
     lastReview,
     createdAt,
     updatedAt,
@@ -285,6 +295,12 @@ class $ReviewCardsTable extends ReviewCards
         state.isAcceptableOrUnknown(data['state']!, _stateMeta),
       );
     }
+    if (data.containsKey('step')) {
+      context.handle(
+        _stepMeta,
+        step.isAcceptableOrUnknown(data['step']!, _stepMeta),
+      );
+    }
     if (data.containsKey('last_review')) {
       context.handle(
         _lastReviewMeta,
@@ -360,6 +376,10 @@ class $ReviewCardsTable extends ReviewCards
         DriftSqlType.int,
         data['${effectivePrefix}state'],
       )!,
+      step: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}step'],
+      ),
       lastReview: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}last_review'],
@@ -394,6 +414,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
   final int reps;
   final int lapses;
   final int state;
+  final int? step;
   final String? lastReview;
   final String createdAt;
   final String updatedAt;
@@ -410,6 +431,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     required this.reps,
     required this.lapses,
     required this.state,
+    this.step,
     this.lastReview,
     required this.createdAt,
     required this.updatedAt,
@@ -429,6 +451,9 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     map['reps'] = Variable<int>(reps);
     map['lapses'] = Variable<int>(lapses);
     map['state'] = Variable<int>(state);
+    if (!nullToAbsent || step != null) {
+      map['step'] = Variable<int>(step);
+    }
     if (!nullToAbsent || lastReview != null) {
       map['last_review'] = Variable<String>(lastReview);
     }
@@ -451,6 +476,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       reps: Value(reps),
       lapses: Value(lapses),
       state: Value(state),
+      step: step == null && nullToAbsent ? const Value.absent() : Value(step),
       lastReview: lastReview == null && nullToAbsent
           ? const Value.absent()
           : Value(lastReview),
@@ -477,6 +503,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       reps: serializer.fromJson<int>(json['reps']),
       lapses: serializer.fromJson<int>(json['lapses']),
       state: serializer.fromJson<int>(json['state']),
+      step: serializer.fromJson<int?>(json['step']),
       lastReview: serializer.fromJson<String?>(json['lastReview']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
@@ -498,6 +525,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       'reps': serializer.toJson<int>(reps),
       'lapses': serializer.toJson<int>(lapses),
       'state': serializer.toJson<int>(state),
+      'step': serializer.toJson<int?>(step),
       'lastReview': serializer.toJson<String?>(lastReview),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
@@ -517,6 +545,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     int? reps,
     int? lapses,
     int? state,
+    Value<int?> step = const Value.absent(),
     Value<String?> lastReview = const Value.absent(),
     String? createdAt,
     String? updatedAt,
@@ -533,6 +562,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     reps: reps ?? this.reps,
     lapses: lapses ?? this.lapses,
     state: state ?? this.state,
+    step: step.present ? step.value : this.step,
     lastReview: lastReview.present ? lastReview.value : this.lastReview,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -557,6 +587,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
       reps: data.reps.present ? data.reps.value : this.reps,
       lapses: data.lapses.present ? data.lapses.value : this.lapses,
       state: data.state.present ? data.state.value : this.state,
+      step: data.step.present ? data.step.value : this.step,
       lastReview: data.lastReview.present
           ? data.lastReview.value
           : this.lastReview,
@@ -580,6 +611,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           ..write('reps: $reps, ')
           ..write('lapses: $lapses, ')
           ..write('state: $state, ')
+          ..write('step: $step, ')
           ..write('lastReview: $lastReview, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -601,6 +633,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
     reps,
     lapses,
     state,
+    step,
     lastReview,
     createdAt,
     updatedAt,
@@ -621,6 +654,7 @@ class ReviewCard extends DataClass implements Insertable<ReviewCard> {
           other.reps == this.reps &&
           other.lapses == this.lapses &&
           other.state == this.state &&
+          other.step == this.step &&
           other.lastReview == this.lastReview &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -639,6 +673,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
   final Value<int> reps;
   final Value<int> lapses;
   final Value<int> state;
+  final Value<int?> step;
   final Value<String?> lastReview;
   final Value<String> createdAt;
   final Value<String> updatedAt;
@@ -656,6 +691,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     this.reps = const Value.absent(),
     this.lapses = const Value.absent(),
     this.state = const Value.absent(),
+    this.step = const Value.absent(),
     this.lastReview = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -674,6 +710,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     this.reps = const Value.absent(),
     this.lapses = const Value.absent(),
     this.state = const Value.absent(),
+    this.step = const Value.absent(),
     this.lastReview = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -695,6 +732,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     Expression<int>? reps,
     Expression<int>? lapses,
     Expression<int>? state,
+    Expression<int>? step,
     Expression<String>? lastReview,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
@@ -713,6 +751,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       if (reps != null) 'reps': reps,
       if (lapses != null) 'lapses': lapses,
       if (state != null) 'state': state,
+      if (step != null) 'step': step,
       if (lastReview != null) 'last_review': lastReview,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -733,6 +772,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     Value<int>? reps,
     Value<int>? lapses,
     Value<int>? state,
+    Value<int?>? step,
     Value<String?>? lastReview,
     Value<String>? createdAt,
     Value<String>? updatedAt,
@@ -751,6 +791,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
       reps: reps ?? this.reps,
       lapses: lapses ?? this.lapses,
       state: state ?? this.state,
+      step: step ?? this.step,
       lastReview: lastReview ?? this.lastReview,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -797,6 +838,9 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
     if (state.present) {
       map['state'] = Variable<int>(state.value);
     }
+    if (step.present) {
+      map['step'] = Variable<int>(step.value);
+    }
     if (lastReview.present) {
       map['last_review'] = Variable<String>(lastReview.value);
     }
@@ -827,6 +871,7 @@ class ReviewCardsCompanion extends UpdateCompanion<ReviewCard> {
           ..write('reps: $reps, ')
           ..write('lapses: $lapses, ')
           ..write('state: $state, ')
+          ..write('step: $step, ')
           ..write('lastReview: $lastReview, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -931,6 +976,17 @@ class $ReviewLogsTable extends ReviewLogs
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _reviewDurationMeta = const VerificationMeta(
+    'reviewDuration',
+  );
+  @override
+  late final GeneratedColumn<int> reviewDuration = GeneratedColumn<int>(
+    'review_duration',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _reviewedAtMeta = const VerificationMeta(
     'reviewedAt',
   );
@@ -954,6 +1010,7 @@ class $ReviewLogsTable extends ReviewLogs
     difficulty,
     elapsedDays,
     scheduledDays,
+    reviewDuration,
     reviewedAt,
   ];
   @override
@@ -1043,6 +1100,15 @@ class $ReviewLogsTable extends ReviewLogs
     } else if (isInserting) {
       context.missing(_scheduledDaysMeta);
     }
+    if (data.containsKey('review_duration')) {
+      context.handle(
+        _reviewDurationMeta,
+        reviewDuration.isAcceptableOrUnknown(
+          data['review_duration']!,
+          _reviewDurationMeta,
+        ),
+      );
+    }
     if (data.containsKey('reviewed_at')) {
       context.handle(
         _reviewedAtMeta,
@@ -1094,6 +1160,10 @@ class $ReviewLogsTable extends ReviewLogs
         DriftSqlType.int,
         data['${effectivePrefix}scheduled_days'],
       )!,
+      reviewDuration: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}review_duration'],
+      ),
       reviewedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reviewed_at'],
@@ -1117,6 +1187,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
   final double difficulty;
   final int elapsedDays;
   final int scheduledDays;
+  final int? reviewDuration;
   final String reviewedAt;
   const ReviewLog({
     required this.id,
@@ -1128,6 +1199,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
     required this.difficulty,
     required this.elapsedDays,
     required this.scheduledDays,
+    this.reviewDuration,
     required this.reviewedAt,
   });
   @override
@@ -1142,6 +1214,9 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
     map['difficulty'] = Variable<double>(difficulty);
     map['elapsed_days'] = Variable<int>(elapsedDays);
     map['scheduled_days'] = Variable<int>(scheduledDays);
+    if (!nullToAbsent || reviewDuration != null) {
+      map['review_duration'] = Variable<int>(reviewDuration);
+    }
     map['reviewed_at'] = Variable<String>(reviewedAt);
     return map;
   }
@@ -1157,6 +1232,9 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
       difficulty: Value(difficulty),
       elapsedDays: Value(elapsedDays),
       scheduledDays: Value(scheduledDays),
+      reviewDuration: reviewDuration == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reviewDuration),
       reviewedAt: Value(reviewedAt),
     );
   }
@@ -1176,6 +1254,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
       difficulty: serializer.fromJson<double>(json['difficulty']),
       elapsedDays: serializer.fromJson<int>(json['elapsedDays']),
       scheduledDays: serializer.fromJson<int>(json['scheduledDays']),
+      reviewDuration: serializer.fromJson<int?>(json['reviewDuration']),
       reviewedAt: serializer.fromJson<String>(json['reviewedAt']),
     );
   }
@@ -1192,6 +1271,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
       'difficulty': serializer.toJson<double>(difficulty),
       'elapsedDays': serializer.toJson<int>(elapsedDays),
       'scheduledDays': serializer.toJson<int>(scheduledDays),
+      'reviewDuration': serializer.toJson<int?>(reviewDuration),
       'reviewedAt': serializer.toJson<String>(reviewedAt),
     };
   }
@@ -1206,6 +1286,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
     double? difficulty,
     int? elapsedDays,
     int? scheduledDays,
+    Value<int?> reviewDuration = const Value.absent(),
     String? reviewedAt,
   }) => ReviewLog(
     id: id ?? this.id,
@@ -1217,6 +1298,9 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
     difficulty: difficulty ?? this.difficulty,
     elapsedDays: elapsedDays ?? this.elapsedDays,
     scheduledDays: scheduledDays ?? this.scheduledDays,
+    reviewDuration: reviewDuration.present
+        ? reviewDuration.value
+        : this.reviewDuration,
     reviewedAt: reviewedAt ?? this.reviewedAt,
   );
   ReviewLog copyWithCompanion(ReviewLogsCompanion data) {
@@ -1236,6 +1320,9 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
       scheduledDays: data.scheduledDays.present
           ? data.scheduledDays.value
           : this.scheduledDays,
+      reviewDuration: data.reviewDuration.present
+          ? data.reviewDuration.value
+          : this.reviewDuration,
       reviewedAt: data.reviewedAt.present
           ? data.reviewedAt.value
           : this.reviewedAt,
@@ -1254,6 +1341,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
           ..write('difficulty: $difficulty, ')
           ..write('elapsedDays: $elapsedDays, ')
           ..write('scheduledDays: $scheduledDays, ')
+          ..write('reviewDuration: $reviewDuration, ')
           ..write('reviewedAt: $reviewedAt')
           ..write(')'))
         .toString();
@@ -1270,6 +1358,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
     difficulty,
     elapsedDays,
     scheduledDays,
+    reviewDuration,
     reviewedAt,
   );
   @override
@@ -1285,6 +1374,7 @@ class ReviewLog extends DataClass implements Insertable<ReviewLog> {
           other.difficulty == this.difficulty &&
           other.elapsedDays == this.elapsedDays &&
           other.scheduledDays == this.scheduledDays &&
+          other.reviewDuration == this.reviewDuration &&
           other.reviewedAt == this.reviewedAt);
 }
 
@@ -1298,6 +1388,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
   final Value<double> difficulty;
   final Value<int> elapsedDays;
   final Value<int> scheduledDays;
+  final Value<int?> reviewDuration;
   final Value<String> reviewedAt;
   final Value<int> rowid;
   const ReviewLogsCompanion({
@@ -1310,6 +1401,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
     this.difficulty = const Value.absent(),
     this.elapsedDays = const Value.absent(),
     this.scheduledDays = const Value.absent(),
+    this.reviewDuration = const Value.absent(),
     this.reviewedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1323,6 +1415,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
     required double difficulty,
     required int elapsedDays,
     required int scheduledDays,
+    this.reviewDuration = const Value.absent(),
     this.reviewedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1344,6 +1437,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
     Expression<double>? difficulty,
     Expression<int>? elapsedDays,
     Expression<int>? scheduledDays,
+    Expression<int>? reviewDuration,
     Expression<String>? reviewedAt,
     Expression<int>? rowid,
   }) {
@@ -1357,6 +1451,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
       if (difficulty != null) 'difficulty': difficulty,
       if (elapsedDays != null) 'elapsed_days': elapsedDays,
       if (scheduledDays != null) 'scheduled_days': scheduledDays,
+      if (reviewDuration != null) 'review_duration': reviewDuration,
       if (reviewedAt != null) 'reviewed_at': reviewedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1372,6 +1467,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
     Value<double>? difficulty,
     Value<int>? elapsedDays,
     Value<int>? scheduledDays,
+    Value<int?>? reviewDuration,
     Value<String>? reviewedAt,
     Value<int>? rowid,
   }) {
@@ -1385,6 +1481,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
       difficulty: difficulty ?? this.difficulty,
       elapsedDays: elapsedDays ?? this.elapsedDays,
       scheduledDays: scheduledDays ?? this.scheduledDays,
+      reviewDuration: reviewDuration ?? this.reviewDuration,
       reviewedAt: reviewedAt ?? this.reviewedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -1420,6 +1517,9 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
     if (scheduledDays.present) {
       map['scheduled_days'] = Variable<int>(scheduledDays.value);
     }
+    if (reviewDuration.present) {
+      map['review_duration'] = Variable<int>(reviewDuration.value);
+    }
     if (reviewedAt.present) {
       map['reviewed_at'] = Variable<String>(reviewedAt.value);
     }
@@ -1441,6 +1541,7 @@ class ReviewLogsCompanion extends UpdateCompanion<ReviewLog> {
           ..write('difficulty: $difficulty, ')
           ..write('elapsedDays: $elapsedDays, ')
           ..write('scheduledDays: $scheduledDays, ')
+          ..write('reviewDuration: $reviewDuration, ')
           ..write('reviewedAt: $reviewedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -3939,6 +4040,7 @@ typedef $$ReviewCardsTableCreateCompanionBuilder =
       Value<int> reps,
       Value<int> lapses,
       Value<int> state,
+      Value<int?> step,
       Value<String?> lastReview,
       Value<String> createdAt,
       Value<String> updatedAt,
@@ -3958,6 +4060,7 @@ typedef $$ReviewCardsTableUpdateCompanionBuilder =
       Value<int> reps,
       Value<int> lapses,
       Value<int> state,
+      Value<int?> step,
       Value<String?> lastReview,
       Value<String> createdAt,
       Value<String> updatedAt,
@@ -4030,6 +4133,11 @@ class $$ReviewCardsTableFilterComposer
 
   ColumnFilters<int> get state => $composableBuilder(
     column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get step => $composableBuilder(
+    column: $table.step,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4118,6 +4226,11 @@ class $$ReviewCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get step => $composableBuilder(
+    column: $table.step,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get lastReview => $composableBuilder(
     column: $table.lastReview,
     builder: (column) => ColumnOrderings(column),
@@ -4185,6 +4298,9 @@ class $$ReviewCardsTableAnnotationComposer
   GeneratedColumn<int> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
 
+  GeneratedColumn<int> get step =>
+      $composableBuilder(column: $table.step, builder: (column) => column);
+
   GeneratedColumn<String> get lastReview => $composableBuilder(
     column: $table.lastReview,
     builder: (column) => column,
@@ -4240,6 +4356,7 @@ class $$ReviewCardsTableTableManager
                 Value<int> reps = const Value.absent(),
                 Value<int> lapses = const Value.absent(),
                 Value<int> state = const Value.absent(),
+                Value<int?> step = const Value.absent(),
                 Value<String?> lastReview = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
@@ -4257,6 +4374,7 @@ class $$ReviewCardsTableTableManager
                 reps: reps,
                 lapses: lapses,
                 state: state,
+                step: step,
                 lastReview: lastReview,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4276,6 +4394,7 @@ class $$ReviewCardsTableTableManager
                 Value<int> reps = const Value.absent(),
                 Value<int> lapses = const Value.absent(),
                 Value<int> state = const Value.absent(),
+                Value<int?> step = const Value.absent(),
                 Value<String?> lastReview = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
@@ -4293,6 +4412,7 @@ class $$ReviewCardsTableTableManager
                 reps: reps,
                 lapses: lapses,
                 state: state,
+                step: step,
                 lastReview: lastReview,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4334,6 +4454,7 @@ typedef $$ReviewLogsTableCreateCompanionBuilder =
       required double difficulty,
       required int elapsedDays,
       required int scheduledDays,
+      Value<int?> reviewDuration,
       Value<String> reviewedAt,
       Value<int> rowid,
     });
@@ -4348,6 +4469,7 @@ typedef $$ReviewLogsTableUpdateCompanionBuilder =
       Value<double> difficulty,
       Value<int> elapsedDays,
       Value<int> scheduledDays,
+      Value<int?> reviewDuration,
       Value<String> reviewedAt,
       Value<int> rowid,
     });
@@ -4403,6 +4525,11 @@ class $$ReviewLogsTableFilterComposer
 
   ColumnFilters<int> get scheduledDays => $composableBuilder(
     column: $table.scheduledDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reviewDuration => $composableBuilder(
+    column: $table.reviewDuration,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4466,6 +4593,11 @@ class $$ReviewLogsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get reviewDuration => $composableBuilder(
+    column: $table.reviewDuration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get reviewedAt => $composableBuilder(
     column: $table.reviewedAt,
     builder: (column) => ColumnOrderings(column),
@@ -4511,6 +4643,11 @@ class $$ReviewLogsTableAnnotationComposer
 
   GeneratedColumn<int> get scheduledDays => $composableBuilder(
     column: $table.scheduledDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reviewDuration => $composableBuilder(
+    column: $table.reviewDuration,
     builder: (column) => column,
   );
 
@@ -4560,6 +4697,7 @@ class $$ReviewLogsTableTableManager
                 Value<double> difficulty = const Value.absent(),
                 Value<int> elapsedDays = const Value.absent(),
                 Value<int> scheduledDays = const Value.absent(),
+                Value<int?> reviewDuration = const Value.absent(),
                 Value<String> reviewedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReviewLogsCompanion(
@@ -4572,6 +4710,7 @@ class $$ReviewLogsTableTableManager
                 difficulty: difficulty,
                 elapsedDays: elapsedDays,
                 scheduledDays: scheduledDays,
+                reviewDuration: reviewDuration,
                 reviewedAt: reviewedAt,
                 rowid: rowid,
               ),
@@ -4586,6 +4725,7 @@ class $$ReviewLogsTableTableManager
                 required double difficulty,
                 required int elapsedDays,
                 required int scheduledDays,
+                Value<int?> reviewDuration = const Value.absent(),
                 Value<String> reviewedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReviewLogsCompanion.insert(
@@ -4598,6 +4738,7 @@ class $$ReviewLogsTableTableManager
                 difficulty: difficulty,
                 elapsedDays: elapsedDays,
                 scheduledDays: scheduledDays,
+                reviewDuration: reviewDuration,
                 reviewedAt: reviewedAt,
                 rowid: rowid,
               ),

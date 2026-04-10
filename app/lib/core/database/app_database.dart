@@ -27,7 +27,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -36,6 +36,10 @@ class UserDatabase extends _$UserDatabase {
       if (from < 2) {
         await m.addColumn(searchHistory, searchHistory.uuid);
         await m.addColumn(searchHistory, searchHistory.synced);
+      }
+      if (from < 3) {
+        await m.addColumn(reviewCards, reviewCards.step);
+        await m.addColumn(reviewLogs, reviewLogs.reviewDuration);
       }
     },
   );
@@ -384,6 +388,67 @@ class DictionaryDatabase {
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
     final result = await _db.customSelect(
       'SELECT COUNT(*) as cnt FROM entries $where',
+      variables: vars,
+    ).getSingle();
+    return result.data['cnt'] as int;
+  }
+
+  /// Look up full entry rows by a list of IDs.
+  Future<List<Map<String, dynamic>>> getEntriesByIds(List<int> ids) async {
+    if (ids.isEmpty) return [];
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final results = await _db.customSelect(
+      'SELECT * FROM entries WHERE id IN ($placeholders)',
+      variables: ids.map((id) => Variable.withInt(id)).toList(),
+    ).get();
+    return results.map((r) => r.data).toList();
+  }
+
+  /// Get entry IDs matching a CEFR/Oxford filter (for review card creation).
+  /// [cefrLevels] e.g. ['a1', 'b2'], [ox3000]/[ox5000] booleans.
+  /// Returns list of entry IDs matching any of the criteria (OR).
+  Future<List<int>> getFilteredEntryIds({
+    List<String> cefrLevels = const [],
+    bool ox3000 = false,
+    bool ox5000 = false,
+    int limit = 1000,
+    int offset = 0,
+  }) async {
+    final conditions = <String>[];
+    final vars = <Variable>[];
+    for (final level in cefrLevels) {
+      conditions.add('cefr_level = ?');
+      vars.add(Variable.withString(level));
+    }
+    if (ox3000) conditions.add('ox3000 = 1');
+    if (ox5000) conditions.add('ox5000 = 1');
+    if (conditions.isEmpty) return [];
+    final where = conditions.join(' OR ');
+    final results = await _db.customSelect(
+      'SELECT id FROM entries WHERE $where ORDER BY headword LIMIT ? OFFSET ?',
+      variables: [...vars, Variable.withInt(limit), Variable.withInt(offset)],
+    ).get();
+    return results.map((r) => r.data['id'] as int).toList();
+  }
+
+  /// Count entries matching a CEFR/Oxford filter.
+  Future<int> countFilteredEntries({
+    List<String> cefrLevels = const [],
+    bool ox3000 = false,
+    bool ox5000 = false,
+  }) async {
+    final conditions = <String>[];
+    final vars = <Variable>[];
+    for (final level in cefrLevels) {
+      conditions.add('cefr_level = ?');
+      vars.add(Variable.withString(level));
+    }
+    if (ox3000) conditions.add('ox3000 = 1');
+    if (ox5000) conditions.add('ox5000 = 1');
+    if (conditions.isEmpty) return 0;
+    final where = conditions.join(' OR ');
+    final result = await _db.customSelect(
+      'SELECT COUNT(*) as cnt FROM entries WHERE $where',
       variables: vars,
     ).getSingle();
     return result.data['cnt'] as int;
