@@ -32,6 +32,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   // Two-step search: null = show options list, int = show that entry
   int? _selectedEntryIndex;
+  // true when entry was auto-selected (single result or pendingPos), not manually picked from options list
+  bool _entryAutoSelected = false;
   // When navigating from history with POS, auto-select matching entry
   String? _pendingPos;
 
@@ -41,8 +43,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   }
 
   void _goBack() {
-    // If viewing a selected entry from multi-POS, go back to options list
-    if (_selectedEntryIndex != null) {
+    // If user manually picked from multi-POS options list, go back to that list
+    if (_selectedEntryIndex != null && !_entryAutoSelected) {
       setState(() => _selectedEntryIndex = null);
       return;
     }
@@ -53,8 +55,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     _controller.selection = TextSelection.fromPosition(TextPosition(offset: prev.length));
     setState(() {
       _committed = true;
-
       _selectedEntryIndex = null;
+      _entryAutoSelected = false;
       _pendingPos = null;
     });
     ref.invalidate(searchResultsProvider);
@@ -89,6 +91,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _onSearchChanged(String value) {
     _committed = false;
     _selectedEntryIndex = null;
+    _entryAutoSelected = false;
     _pendingPos = null;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -109,8 +112,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     _controller.selection = TextSelection.fromPosition(TextPosition(offset: word.length));
     setState(() {
       _committed = true;
-
       _selectedEntryIndex = null;
+      _entryAutoSelected = false;
       _pendingPos = pos;
     });
     // Force provider refresh even if same word
@@ -122,6 +125,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _selectEntry(int index, DictEntry entry) {
     setState(() {
       _selectedEntryIndex = index;
+      _entryAutoSelected = false;
     });
     // Save to history with POS
     _lastSavedHeadword = '${entry.headword}:${entry.pos}';
@@ -187,13 +191,25 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
         // Auto-select if single entry or pending POS from history tap
         if (entries.length == 1) {
           if (_selectedEntryIndex == null) {
-            setState(() => _selectedEntryIndex = 0);
+            setState(() {
+              _selectedEntryIndex = 0;
+              _entryAutoSelected = true;
+            });
           }
           _autoPronounce(entries, q);
         } else if (_pendingPos != null && entries.length > 1) {
           final idx = entries.indexWhere((e) => e.pos == _pendingPos);
           if (idx >= 0) {
-            _selectEntry(idx, entries[idx]);
+            setState(() {
+              _selectedEntryIndex = idx;
+              _entryAutoSelected = true;
+            });
+            // Save to history and auto-pronounce
+            _lastSavedHeadword = '${entries[idx].headword}:${entries[idx].pos}';
+            ref.read(searchHistoryDaoProvider)
+                .addSearch(entries[idx].headword, entryId: entries[idx].id, headword: entries[idx].headword, pos: entries[idx].pos)
+                .then((_) => ref.read(syncServiceProvider)?.pushLatestSearch());
+            _autoPronounceEntry(entries[idx]);
           }
           _pendingPos = null;
         }
