@@ -621,7 +621,7 @@ def main():
     if args == ["--all"]:
         words = list(index.keys())
     elif args == ["--5000"]:
-        csv_path = Path("oxford-5000.csv")
+        csv_path = Path(__file__).parent / "oxford-5000.csv"
         if not csv_path.exists():
             print("oxford-5000.csv not found.", file=sys.stderr)
             sys.exit(1)
@@ -629,7 +629,7 @@ def main():
             words = list(dict.fromkeys(row["word"].strip().lower() for row in csv.DictReader(f)))
     elif args == ["--custom"]:
         custom_mode = True
-        csv_path = Path("custom-words.csv")
+        csv_path = Path(__file__).parent / "custom-words.csv"
         if not csv_path.exists():
             print("custom-words.csv not found.", file=sys.stderr)
             sys.exit(1)
