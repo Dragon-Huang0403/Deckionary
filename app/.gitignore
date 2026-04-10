@@ -46,3 +46,8 @@ app.*.map.json
 
 # Dictionary database (downloaded from R2 in CI)
 assets/oald10.db
+
+# Firebase config (regenerate via flutterfire configure)
+lib/firebase_options.dart
+**/google-services.json
+**/GoogleService-Info.plist

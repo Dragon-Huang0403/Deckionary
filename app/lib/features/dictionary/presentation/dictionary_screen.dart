@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/audio/audio_provider.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../providers/search_provider.dart';
+import '../providers/search_history_provider.dart';
 import '../../settings/presentation/settings_screen.dart';
 import 'widgets/entry_card.dart';
 
@@ -22,8 +24,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   Timer? _debounce;
   String? _lastAutoPronouncedQuery;
   bool _committed = false;
-  int _selectedSuggestion = -1;
-  List<String> _currentSuggestions = [];
   final _history = <String>[]; // navigation history stack
 
   // Keys for scrolling to POS entries
@@ -42,8 +42,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     _controller.selection = TextSelection.fromPosition(TextPosition(offset: prev.length));
     setState(() {
       _committed = true;
-      _selectedSuggestion = -1;
-      _currentSuggestions = [];
       _entryKeys.clear();
     });
     ref.invalidate(searchResultsProvider);
@@ -54,15 +52,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _onSubmitted(String value) {
     final text = value.trim();
     if (text.isEmpty) return;
-
-    if (!_committed && _currentSuggestions.isNotEmpty) {
-      // Select first suggestion (or highlighted one)
-      final idx = _selectedSuggestion >= 0 ? _selectedSuggestion : 0;
-      _commitSearch(_currentSuggestions[idx]);
-    } else {
-      _commitSearch(text);
-    }
-    // Keep focus on search bar
+    _commitSearch(text);
     _focusNode.requestFocus();
   }
 
@@ -85,7 +75,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   void _onSearchChanged(String value) {
     _committed = false;
-    _selectedSuggestion = -1;
     _entryKeys.clear();
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -106,10 +95,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     _controller.selection = TextSelection.fromPosition(TextPosition(offset: word.length));
     setState(() {
       _committed = true;
-      _selectedSuggestion = -1;
-      _currentSuggestions = [];
       _entryKeys.clear();
     });
+    // Save to search history on every explicit commit
+    ref.read(searchHistoryDaoProvider).addSearch(word, headword: word);
     // Force provider refresh even if same word
     ref.invalidate(searchResultsProvider);
     ref.read(searchQueryProvider.notifier).set(word);
@@ -121,8 +110,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     if (first.headword.toLowerCase() != query.toLowerCase()) return;
 
     _lastAutoPronouncedQuery = query;
-    final historyDao = ref.read(searchHistoryDaoProvider);
-    historyDao.addSearch(query, entryId: first.id, headword: first.headword);
 
     // Auto-pronounce if: committed (Enter/tap) OR no other suggestions
     if (!_committed) {
@@ -166,17 +153,16 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       next.whenData((entries) => _autoPronounce(entries, ref.read(searchQueryProvider)));
     });
 
-    return Shortcuts(
-      shortcuts: {
-        LogicalKeySet(LogicalKeyboardKey.escape): const _FocusSearchIntent(),
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+          _focusSearchBar();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      child: Actions(
-        actions: {
-          _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
-            onInvoke: (_) { _focusSearchBar(); return null; },
-          ),
-        },
-        child: Scaffold(
+      child: Scaffold(
           body: SafeArea(
             child: Column(
             children: [
@@ -198,7 +184,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
               Expanded(
                 child: SelectionArea(
                   child: query.isEmpty
-                    ? _buildWelcome()
+                    ? _buildHomeScreen()
                     : results.when(
                         data: (entries) {
                           if (entries.isEmpty) {
@@ -239,8 +225,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
           ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   /// POS tab bar: shows when multiple entries exist (noun, verb, idiom, etc.)
@@ -275,7 +260,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   /// Autocomplete dropdown
   Widget _buildSuggestions(List<String> words) {
-    _currentSuggestions = words;
     final cs = Theme.of(context).colorScheme;
 
     return Container(
@@ -291,19 +275,13 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
         padding: EdgeInsets.zero,
         itemCount: words.length,
         itemBuilder: (context, index) {
-          final isSelected = index == _selectedSuggestion;
           return InkWell(
             onTap: () => _commitSearch(words[index]),
             child: Container(
-              color: isSelected ? cs.primaryContainer : null,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Text(
                 words[index],
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? cs.onPrimaryContainer : null,
-                ),
+                style: const TextStyle(fontSize: 15),
               ),
             ),
           );
@@ -359,6 +337,15 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     );
   }
 
+  Widget _buildHomeScreen() {
+    final historyAsync = ref.watch(searchHistoryProvider);
+    return historyAsync.when(
+      data: (history) => history.isEmpty ? _buildWelcome() : _buildSearchHistory(history),
+      loading: () => _buildWelcome(),
+      error: (_, _) => _buildWelcome(),
+    );
+  }
+
   Widget _buildWelcome() {
     return Center(
       child: Column(
@@ -384,8 +371,85 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       ),
     );
   }
-}
 
-class _FocusSearchIntent extends Intent {
-  const _FocusSearchIntent();
+  Widget _buildSearchHistory(List<SearchHistoryData> history) {
+    final cs = Theme.of(context).colorScheme;
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Text(
+                'Recent',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Clear search history?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    ref.read(searchHistoryDaoProvider).clearAll();
+                  }
+                },
+                child: const Text('Clear all'),
+              ),
+            ],
+          ),
+        ),
+        ...history.map((item) {
+          final word = item.headword ?? item.query;
+          return Dismissible(
+            key: ValueKey(item.id),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 16),
+              color: cs.errorContainer,
+              child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
+            ),
+            onDismissed: (_) {
+              ref.read(searchHistoryDaoProvider).deleteByHeadword(word);
+            },
+            child: ListTile(
+              leading: Icon(Icons.history, color: cs.onSurfaceVariant, size: 20),
+              title: Text(word),
+              trailing: Text(
+                _relativeTime(item.searchedAt),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              onTap: () => _commitSearch(word),
+              contentPadding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  String _relativeTime(String isoString) {
+    final date = DateTime.tryParse(isoString);
+    if (date == null) return '';
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${date.month}/${date.day}';
+  }
 }

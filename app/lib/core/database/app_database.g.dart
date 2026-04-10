@@ -2286,6 +2286,16 @@ class $SearchHistoryTable extends SearchHistory
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _queryMeta = const VerificationMeta('query');
   @override
   late final GeneratedColumn<String> query = GeneratedColumn<String>(
@@ -2329,13 +2339,25 @@ class $SearchHistoryTable extends SearchHistory
     requiredDuringInsert: false,
     defaultValue: Constant(DateTime.now().toIso8601String()),
   );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<int> synced = GeneratedColumn<int>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
+    uuid,
     query,
     entryId,
     headword,
     searchedAt,
+    synced,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2351,6 +2373,12 @@ class $SearchHistoryTable extends SearchHistory
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
     }
     if (data.containsKey('query')) {
       context.handle(
@@ -2378,6 +2406,12 @@ class $SearchHistoryTable extends SearchHistory
         searchedAt.isAcceptableOrUnknown(data['searched_at']!, _searchedAtMeta),
       );
     }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    }
     return context;
   }
 
@@ -2390,6 +2424,10 @@ class $SearchHistoryTable extends SearchHistory
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
+      )!,
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
       )!,
       query: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -2407,6 +2445,10 @@ class $SearchHistoryTable extends SearchHistory
         DriftSqlType.string,
         data['${effectivePrefix}searched_at'],
       )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}synced'],
+      )!,
     );
   }
 
@@ -2419,21 +2461,26 @@ class $SearchHistoryTable extends SearchHistory
 class SearchHistoryData extends DataClass
     implements Insertable<SearchHistoryData> {
   final int id;
+  final String uuid;
   final String query;
   final int? entryId;
   final String? headword;
   final String searchedAt;
+  final int synced;
   const SearchHistoryData({
     required this.id,
+    required this.uuid,
     required this.query,
     this.entryId,
     this.headword,
     required this.searchedAt,
+    required this.synced,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['uuid'] = Variable<String>(uuid);
     map['query'] = Variable<String>(query);
     if (!nullToAbsent || entryId != null) {
       map['entry_id'] = Variable<int>(entryId);
@@ -2442,12 +2489,14 @@ class SearchHistoryData extends DataClass
       map['headword'] = Variable<String>(headword);
     }
     map['searched_at'] = Variable<String>(searchedAt);
+    map['synced'] = Variable<int>(synced);
     return map;
   }
 
   SearchHistoryCompanion toCompanion(bool nullToAbsent) {
     return SearchHistoryCompanion(
       id: Value(id),
+      uuid: Value(uuid),
       query: Value(query),
       entryId: entryId == null && nullToAbsent
           ? const Value.absent()
@@ -2456,6 +2505,7 @@ class SearchHistoryData extends DataClass
           ? const Value.absent()
           : Value(headword),
       searchedAt: Value(searchedAt),
+      synced: Value(synced),
     );
   }
 
@@ -2466,10 +2516,12 @@ class SearchHistoryData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SearchHistoryData(
       id: serializer.fromJson<int>(json['id']),
+      uuid: serializer.fromJson<String>(json['uuid']),
       query: serializer.fromJson<String>(json['query']),
       entryId: serializer.fromJson<int?>(json['entryId']),
       headword: serializer.fromJson<String?>(json['headword']),
       searchedAt: serializer.fromJson<String>(json['searchedAt']),
+      synced: serializer.fromJson<int>(json['synced']),
     );
   }
   @override
@@ -2477,35 +2529,43 @@ class SearchHistoryData extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'uuid': serializer.toJson<String>(uuid),
       'query': serializer.toJson<String>(query),
       'entryId': serializer.toJson<int?>(entryId),
       'headword': serializer.toJson<String?>(headword),
       'searchedAt': serializer.toJson<String>(searchedAt),
+      'synced': serializer.toJson<int>(synced),
     };
   }
 
   SearchHistoryData copyWith({
     int? id,
+    String? uuid,
     String? query,
     Value<int?> entryId = const Value.absent(),
     Value<String?> headword = const Value.absent(),
     String? searchedAt,
+    int? synced,
   }) => SearchHistoryData(
     id: id ?? this.id,
+    uuid: uuid ?? this.uuid,
     query: query ?? this.query,
     entryId: entryId.present ? entryId.value : this.entryId,
     headword: headword.present ? headword.value : this.headword,
     searchedAt: searchedAt ?? this.searchedAt,
+    synced: synced ?? this.synced,
   );
   SearchHistoryData copyWithCompanion(SearchHistoryCompanion data) {
     return SearchHistoryData(
       id: data.id.present ? data.id.value : this.id,
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
       query: data.query.present ? data.query.value : this.query,
       entryId: data.entryId.present ? data.entryId.value : this.entryId,
       headword: data.headword.present ? data.headword.value : this.headword,
       searchedAt: data.searchedAt.present
           ? data.searchedAt.value
           : this.searchedAt,
+      synced: data.synced.present ? data.synced.value : this.synced,
     );
   }
 
@@ -2513,76 +2573,95 @@ class SearchHistoryData extends DataClass
   String toString() {
     return (StringBuffer('SearchHistoryData(')
           ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
           ..write('query: $query, ')
           ..write('entryId: $entryId, ')
           ..write('headword: $headword, ')
-          ..write('searchedAt: $searchedAt')
+          ..write('searchedAt: $searchedAt, ')
+          ..write('synced: $synced')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, query, entryId, headword, searchedAt);
+  int get hashCode =>
+      Object.hash(id, uuid, query, entryId, headword, searchedAt, synced);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SearchHistoryData &&
           other.id == this.id &&
+          other.uuid == this.uuid &&
           other.query == this.query &&
           other.entryId == this.entryId &&
           other.headword == this.headword &&
-          other.searchedAt == this.searchedAt);
+          other.searchedAt == this.searchedAt &&
+          other.synced == this.synced);
 }
 
 class SearchHistoryCompanion extends UpdateCompanion<SearchHistoryData> {
   final Value<int> id;
+  final Value<String> uuid;
   final Value<String> query;
   final Value<int?> entryId;
   final Value<String?> headword;
   final Value<String> searchedAt;
+  final Value<int> synced;
   const SearchHistoryCompanion({
     this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
     this.query = const Value.absent(),
     this.entryId = const Value.absent(),
     this.headword = const Value.absent(),
     this.searchedAt = const Value.absent(),
+    this.synced = const Value.absent(),
   });
   SearchHistoryCompanion.insert({
     this.id = const Value.absent(),
+    this.uuid = const Value.absent(),
     required String query,
     this.entryId = const Value.absent(),
     this.headword = const Value.absent(),
     this.searchedAt = const Value.absent(),
+    this.synced = const Value.absent(),
   }) : query = Value(query);
   static Insertable<SearchHistoryData> custom({
     Expression<int>? id,
+    Expression<String>? uuid,
     Expression<String>? query,
     Expression<int>? entryId,
     Expression<String>? headword,
     Expression<String>? searchedAt,
+    Expression<int>? synced,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
+      if (uuid != null) 'uuid': uuid,
       if (query != null) 'query': query,
       if (entryId != null) 'entry_id': entryId,
       if (headword != null) 'headword': headword,
       if (searchedAt != null) 'searched_at': searchedAt,
+      if (synced != null) 'synced': synced,
     });
   }
 
   SearchHistoryCompanion copyWith({
     Value<int>? id,
+    Value<String>? uuid,
     Value<String>? query,
     Value<int?>? entryId,
     Value<String?>? headword,
     Value<String>? searchedAt,
+    Value<int>? synced,
   }) {
     return SearchHistoryCompanion(
       id: id ?? this.id,
+      uuid: uuid ?? this.uuid,
       query: query ?? this.query,
       entryId: entryId ?? this.entryId,
       headword: headword ?? this.headword,
       searchedAt: searchedAt ?? this.searchedAt,
+      synced: synced ?? this.synced,
     );
   }
 
@@ -2591,6 +2670,9 @@ class SearchHistoryCompanion extends UpdateCompanion<SearchHistoryData> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
+    }
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
     }
     if (query.present) {
       map['query'] = Variable<String>(query.value);
@@ -2604,6 +2686,9 @@ class SearchHistoryCompanion extends UpdateCompanion<SearchHistoryData> {
     if (searchedAt.present) {
       map['searched_at'] = Variable<String>(searchedAt.value);
     }
+    if (synced.present) {
+      map['synced'] = Variable<int>(synced.value);
+    }
     return map;
   }
 
@@ -2611,10 +2696,12 @@ class SearchHistoryCompanion extends UpdateCompanion<SearchHistoryData> {
   String toString() {
     return (StringBuffer('SearchHistoryCompanion(')
           ..write('id: $id, ')
+          ..write('uuid: $uuid, ')
           ..write('query: $query, ')
           ..write('entryId: $entryId, ')
           ..write('headword: $headword, ')
-          ..write('searchedAt: $searchedAt')
+          ..write('searchedAt: $searchedAt, ')
+          ..write('synced: $synced')
           ..write(')'))
         .toString();
   }
@@ -5006,18 +5093,22 @@ typedef $$VocabularyListEntriesTableProcessedTableManager =
 typedef $$SearchHistoryTableCreateCompanionBuilder =
     SearchHistoryCompanion Function({
       Value<int> id,
+      Value<String> uuid,
       required String query,
       Value<int?> entryId,
       Value<String?> headword,
       Value<String> searchedAt,
+      Value<int> synced,
     });
 typedef $$SearchHistoryTableUpdateCompanionBuilder =
     SearchHistoryCompanion Function({
       Value<int> id,
+      Value<String> uuid,
       Value<String> query,
       Value<int?> entryId,
       Value<String?> headword,
       Value<String> searchedAt,
+      Value<int> synced,
     });
 
 class $$SearchHistoryTableFilterComposer
@@ -5031,6 +5122,11 @@ class $$SearchHistoryTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5053,6 +5149,11 @@ class $$SearchHistoryTableFilterComposer
     column: $table.searchedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<int> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$SearchHistoryTableOrderingComposer
@@ -5066,6 +5167,11 @@ class $$SearchHistoryTableOrderingComposer
   });
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5088,6 +5194,11 @@ class $$SearchHistoryTableOrderingComposer
     column: $table.searchedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SearchHistoryTableAnnotationComposer
@@ -5102,6 +5213,9 @@ class $$SearchHistoryTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
   GeneratedColumn<String> get query =>
       $composableBuilder(column: $table.query, builder: (column) => column);
 
@@ -5115,6 +5229,9 @@ class $$SearchHistoryTableAnnotationComposer
     column: $table.searchedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
 }
 
 class $$SearchHistoryTableTableManager
@@ -5153,30 +5270,38 @@ class $$SearchHistoryTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
                 Value<String> query = const Value.absent(),
                 Value<int?> entryId = const Value.absent(),
                 Value<String?> headword = const Value.absent(),
                 Value<String> searchedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
               }) => SearchHistoryCompanion(
                 id: id,
+                uuid: uuid,
                 query: query,
                 entryId: entryId,
                 headword: headword,
                 searchedAt: searchedAt,
+                synced: synced,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<String> uuid = const Value.absent(),
                 required String query,
                 Value<int?> entryId = const Value.absent(),
                 Value<String?> headword = const Value.absent(),
                 Value<String> searchedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
               }) => SearchHistoryCompanion.insert(
                 id: id,
+                uuid: uuid,
                 query: query,
                 entryId: entryId,
                 headword: headword,
                 searchedAt: searchedAt,
+                synced: synced,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

@@ -31,6 +31,12 @@ dependencies:
   # HTTP
   http: any
 
+  # Auth & Sync
+  supabase_flutter: any
+  firebase_core: any
+  firebase_auth: any
+  google_sign_in: any
+
   # Utilities
   uuid: any
   connectivity_plus: any

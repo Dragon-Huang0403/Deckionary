@@ -77,10 +77,12 @@ class VocabularyListEntries extends Table {
 
 class SearchHistory extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().withDefault(const Constant(''))();
   TextColumn get query => text()();
   IntColumn get entryId => integer().named('entry_id').nullable()();
   TextColumn get headword => text().nullable()();
   TextColumn get searchedAt => text().named('searched_at').withDefault(Constant(DateTime.now().toIso8601String()))();
+  IntColumn get synced => integer().withDefault(const Constant(0))();
 
   @override
   String get tableName => 'search_history';

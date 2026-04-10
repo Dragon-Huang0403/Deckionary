@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app.dart';
 import '../../../core/audio/audio_provider.dart';
 import '../../../core/database/database_provider.dart';
+import '../../account/presentation/account_screen.dart';
 
 /// Settings loaded as a future
 final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
@@ -47,6 +48,15 @@ class SettingsScreen extends ConsumerWidget {
             const Divider(),
             const _SectionHeader('Appearance'),
             _ThemeTile(settings.themeMode, ref),
+            const Divider(),
+            const _SectionHeader('Account'),
+            ListTile(
+              leading: const Icon(Icons.cloud_sync_outlined),
+              title: const Text('Account & Sync'),
+              subtitle: const Text('Sign in to sync across devices'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountScreen())),
+            ),
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
