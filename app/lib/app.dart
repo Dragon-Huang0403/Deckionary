@@ -259,7 +259,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
       if (targetDisplay != null) {
         final dpos = targetDisplay.visiblePosition ?? Offset.zero;
         final dsz = targetDisplay.visibleSize ?? targetDisplay.size;
-        final winW = 600.0;
+        final winW = 800.0;
         final winH = (dsz.height * 0.7).clamp(400.0, 900.0);
         final x = dpos.dx + (dsz.width - winW) / 2;
         final y = dpos.dy + (dsz.height - winH) * 0.35;
