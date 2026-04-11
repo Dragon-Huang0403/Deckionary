@@ -106,6 +106,10 @@ jobs:
           name: macos-build
           path: app/macos-build.zip
 
+      - name: Clean up keychain
+        if: always()
+        run: security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
+
   release:
     needs: [build-android, build-macos]
     runs-on: ubuntu-latest
