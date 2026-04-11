@@ -46,6 +46,7 @@ dependencies:
   hotkey_manager: any
   window_manager: any
   tray_manager: any
+  screen_retriever: any
 
 dev_dependencies:
   flutter_test:
