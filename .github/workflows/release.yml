@@ -85,6 +85,13 @@ jobs:
           echo "${{ secrets.FIREBASE_OPTIONS_DART }}" | base64 -d > lib/firebase_options.dart
           echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_MACOS }}" | base64 -d > macos/Runner/GoogleService-Info.plist
 
+      - name: Disable code signing for CI
+        run: |
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' macos/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=macosx\*\]" = "Apple Development"/CODE_SIGN_IDENTITY = "-"/g' macos/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = MDTULLV9BQ/DEVELOPMENT_TEAM = ""/g' macos/Runner.xcodeproj/project.pbxproj
+          sed -i '' '/CODE_SIGN_ENTITLEMENTS/d' macos/Runner.xcodeproj/project.pbxproj
+
       - name: Build macOS
         run: >-
           flutter build macos --release

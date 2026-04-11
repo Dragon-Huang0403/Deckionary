@@ -38,7 +38,7 @@ dependencies:
 
   # Utilities
   uuid: any
-  connectivity_plus: any
+  connectivity_plus: ">=6.0.0 <7.1.0" # 7.1.x requires macOS 26 SDK (Xcode 26+)
   path_provider: any
   collection: any
 
