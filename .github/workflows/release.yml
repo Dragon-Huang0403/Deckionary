@@ -24,12 +24,36 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=${{ github.workspace }}/app/android/app/upload-keystore.jks
+          EOF
+
+      - name: Build AAB
+        run: >-
+          flutter build appbundle --release
+          --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          --dart-define=R2_BASE_URL=${{ secrets.R2_BASE_URL }}
+
       - name: Build APK
         run: >-
           flutter build apk --release
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           --dart-define=R2_BASE_URL=${{ secrets.R2_BASE_URL }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,5 +108,6 @@ jobs:
           gh release create "$TAG" \
             --title "Release $TAG" \
             --generate-notes \
+            artifacts/android-aab/app-release.aab#Deckionary-Android.aab \
             artifacts/android-apk/app-release.apk#Deckionary-Android.apk \
             artifacts/macos-build/macos-build.zip#Deckionary-macOS.zip
