@@ -25,6 +25,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _scrollController = ScrollController();
+  final _historyScrollController = ScrollController();
   Timer? _debounce;
   String? _lastAutoPronouncedQuery;
   bool _committed = false;
@@ -40,6 +41,20 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   @override
   void initState() {
     super.initState();
+    _historyScrollController.addListener(_onHistoryScroll);
+  }
+
+  void _onHistoryScroll() {
+    final pos = _historyScrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      ref.read(historyLimitProvider.notifier).loadMore();
+    }
+  }
+
+  bool _canGoBack() {
+    return _history.isNotEmpty ||
+        _selectedEntryIndex != null ||
+        _controller.text.isNotEmpty;
   }
 
   void _goBack() {
@@ -48,19 +63,44 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       setState(() => _selectedEntryIndex = null);
       return;
     }
-    if (_history.isEmpty) return;
-    final prev = _history.removeLast();
-    _lastAutoPronouncedQuery = prev; // don't re-pronounce when going back
-    _controller.text = prev;
-    _controller.selection = TextSelection.fromPosition(TextPosition(offset: prev.length));
-    setState(() {
-      _committed = true;
-      _selectedEntryIndex = null;
-      _entryAutoSelected = false;
-      _pendingPos = null;
-    });
-    ref.invalidate(searchResultsProvider);
-    ref.read(searchQueryProvider.notifier).set(prev);
+    if (_history.isNotEmpty) {
+      final prev = _history.removeLast();
+      if (prev.isEmpty) {
+        // Came from home screen — return there
+        _controller.clear();
+        setState(() {
+          _committed = false;
+          _selectedEntryIndex = null;
+          _entryAutoSelected = false;
+          _pendingPos = null;
+        });
+        ref.read(searchQueryProvider.notifier).set('');
+        return;
+      }
+      _lastAutoPronouncedQuery = prev; // don't re-pronounce when going back
+      _controller.text = prev;
+      _controller.selection = TextSelection.fromPosition(TextPosition(offset: prev.length));
+      setState(() {
+        _committed = true;
+        _selectedEntryIndex = null;
+        _entryAutoSelected = false;
+        _pendingPos = null;
+      });
+      ref.invalidate(searchResultsProvider);
+      ref.read(searchQueryProvider.notifier).set(prev);
+      return;
+    }
+    // No history but has text — clear search, go home
+    if (_controller.text.isNotEmpty) {
+      _controller.clear();
+      setState(() {
+        _committed = false;
+        _selectedEntryIndex = null;
+        _entryAutoSelected = false;
+        _pendingPos = null;
+      });
+      ref.read(searchQueryProvider.notifier).set('');
+    }
   }
 
   /// Called by TextField onSubmitted (Enter key)
@@ -77,6 +117,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     _controller.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
+    _historyScrollController.removeListener(_onHistoryScroll);
+    _historyScrollController.dispose();
     super.dispose();
   }
 
@@ -101,9 +143,9 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   /// Called when user taps a suggestion or presses Enter - commit the search
   void _commitSearch(String word, {String? pos}) {
-    // Push current query to history for back navigation
+    // Push current query to history for back navigation (empty string = home screen)
     final current = ref.read(searchQueryProvider);
-    if (current.isNotEmpty && current.toLowerCase() != word.toLowerCase()) {
+    if (current.toLowerCase() != word.toLowerCase()) {
       _history.add(current);
       if (_history.length > 50) _history.removeAt(0);
     }
@@ -233,7 +275,12 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
         }
         return KeyEventResult.ignored;
       },
-      child: Scaffold(
+      child: PopScope(
+        canPop: !_canGoBack(),
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _goBack();
+        },
+        child: Scaffold(
           body: SafeArea(
             child: Column(
             children: [
@@ -277,6 +324,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
           ),
           ),
         ),
+      ),
       );
   }
 
@@ -334,7 +382,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          if (_history.isNotEmpty || (_selectedEntryIndex != null && !_entryAutoSelected))
+          if (_canGoBack())
             IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: _goBack,
@@ -413,87 +461,91 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   Widget _buildSearchHistory(List<SearchHistoryData> history) {
     final cs = Theme.of(context).colorScheme;
-    return ListView(
+    // +1 for the header row
+    return ListView.builder(
+      controller: _historyScrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Text(
-                'Recent',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+      itemCount: history.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Text(
+                  'Recent',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Clear search history?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true) {
-                    ref.read(searchHistoryDaoProvider).clearAll();
-                  }
-                },
-                child: const Text('Clear all'),
-              ),
-            ],
-          ),
-        ),
-        ...history.map((item) {
-          final word = item.headword ?? item.query;
-          final pos = item.pos;
-          return Dismissible(
-            key: ValueKey(item.id),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 16),
-              color: cs.errorContainer,
-              child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
-            ),
-            onDismissed: (_) {
-              ref.read(searchHistoryDaoProvider).deleteById(item.id);
-            },
-            child: ListTile(
-              leading: Icon(Icons.history, color: cs.onSurfaceVariant, size: 20),
-              title: Row(
-                children: [
-                  Text(word),
-                  if (pos.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      pos,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.primary,
-                        fontStyle: FontStyle.italic,
+                const Spacer(),
+                TextButton(
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Clear search history?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
+                        ],
                       ),
-                    ),
-                  ],
-                ],
-              ),
-              trailing: Text(
-                _relativeTime(item.searchedAt),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
+                    );
+                    if (confirmed == true) {
+                      ref.read(searchHistoryDaoProvider).clearAll();
+                    }
+                  },
+                  child: const Text('Clear all'),
                 ),
-              ),
-              onTap: () => _commitSearch(word, pos: pos.isNotEmpty ? pos : null),
-              contentPadding: EdgeInsets.zero,
-              visualDensity: VisualDensity.compact,
+              ],
             ),
           );
-        }),
-      ],
+        }
+        final item = history[index - 1];
+        final word = item.headword ?? item.query;
+        final pos = item.pos;
+        return Dismissible(
+          key: ValueKey(item.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 16),
+            color: cs.errorContainer,
+            child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
+          ),
+          onDismissed: (_) {
+            ref.read(searchHistoryDaoProvider).deleteById(item.id);
+          },
+          child: ListTile(
+            leading: Icon(Icons.history, color: cs.onSurfaceVariant, size: 20),
+            title: Row(
+              children: [
+                Text(word),
+                if (pos.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    pos,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: cs.primary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            trailing: Text(
+              _relativeTime(item.searchedAt),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
+            ),
+            onTap: () => _commitSearch(word, pos: pos.isNotEmpty ? pos : null),
+            contentPadding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+          ),
+        );
+      },
     );
   }
 
