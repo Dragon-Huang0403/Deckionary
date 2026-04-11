@@ -64,7 +64,8 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
     final settings = ref.read(settingsDaoProvider);
     if (!await settings.getReviewAutoPronounce()) return;
     if (entry.pronunciations.isEmpty) return;
-    final dialect = await settings.getDialect();
+    final display = await settings.getPronunciationDisplay();
+    final dialect = display == 'both' ? await settings.getDialect() : display;
     ref.read(audioServiceProvider).playPronunciation(
           entry.pronunciations,
           dialect: dialect,
@@ -245,17 +246,20 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
   static const _gbColor = Color(0xFFD84315);
 
   Widget _buildPhonetics(List<Map<String, dynamic>> pronunciations) {
+    final display = ref.watch(pronunciationDisplayProvider).value ?? 'both';
     final us = pronunciations.where((p) => p['dialect'] == 'us').firstOrNull;
     final gb = pronunciations.where((p) => p['dialect'] == 'gb').firstOrNull;
+    final showUs = display != 'gb';
+    final showGb = display != 'us';
     return Wrap(
       spacing: 16,
       runSpacing: 8,
       alignment: WrapAlignment.center,
       children: [
-        if (us != null)
+        if (us != null && showUs)
           _phonGroup('US', us['ipa'] as String? ?? '',
               us['audio_file'] as String? ?? '', _usColor),
-        if (gb != null)
+        if (gb != null && showGb)
           _phonGroup('GB', gb['ipa'] as String? ?? '',
               gb['audio_file'] as String? ?? '', _gbColor),
       ],

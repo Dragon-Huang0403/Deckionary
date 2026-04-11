@@ -15,6 +15,7 @@ import '../../../main.dart';
 final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
   final dao = ref.read(settingsDaoProvider);
   final dialect = await dao.getDialect();
+  final pronunciationDisplay = await dao.getPronunciationDisplay();
   final autoPronounce = await dao.getAutoPronounce();
   final themeMode = await dao.getThemeMode();
   final newCardsPerDay = await dao.getNewCardsPerDay();
@@ -25,6 +26,7 @@ final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
   final showTrayIcon = Platform.isMacOS ? await dao.getShowTrayIcon() : false;
   return _AppSettings(
     dialect: dialect,
+    pronunciationDisplay: pronunciationDisplay,
     autoPronounce: autoPronounce,
     themeMode: themeMode,
     newCardsPerDay: newCardsPerDay,
@@ -38,6 +40,7 @@ final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
 
 class _AppSettings {
   final String dialect;
+  final String pronunciationDisplay;
   final bool autoPronounce;
   final String themeMode;
   final int newCardsPerDay;
@@ -48,6 +51,7 @@ class _AppSettings {
   final bool showTrayIcon;
   _AppSettings({
     required this.dialect,
+    required this.pronunciationDisplay,
     required this.autoPronounce,
     required this.themeMode,
     required this.newCardsPerDay,
@@ -125,7 +129,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(),
             ],
             const _SectionHeader('Audio'),
-            _DialectTile(settings.dialect, ref),
+            _PronunciationDisplayTile(settings.pronunciationDisplay, ref),
+            if (settings.pronunciationDisplay == 'both')
+              _DialectTile(settings.dialect, ref),
             _AutoPronounceTile(settings.autoPronounce, ref),
             const Divider(),
             const _SectionHeader('Offline Audio'),
@@ -221,6 +227,35 @@ class _SectionHeader extends StatelessWidget {
         fontSize: 13, fontWeight: FontWeight.w600,
         color: Theme.of(context).colorScheme.primary,
       )),
+    );
+  }
+}
+
+class _PronunciationDisplayTile extends StatelessWidget {
+  final String current;
+  final WidgetRef ref;
+  const _PronunciationDisplayTile(this.current, this.ref);
+
+  static const _labels = {'both': 'Both', 'us': 'American (US)', 'gb': 'British (GB)'};
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('Show pronunciation'),
+      subtitle: Text(_labels[current] ?? 'Both'),
+      trailing: SegmentedButton<String>(
+        segments: const [
+          ButtonSegment(value: 'both', label: Text('Both')),
+          ButtonSegment(value: 'us', label: Text('US')),
+          ButtonSegment(value: 'gb', label: Text('GB')),
+        ],
+        selected: {current},
+        onSelectionChanged: (val) async {
+          await ref.read(settingsDaoProvider).setPronunciationDisplay(val.first);
+          ref.invalidate(_settingsProvider);
+          ref.invalidate(pronunciationDisplayProvider);
+        },
+      ),
     );
   }
 }

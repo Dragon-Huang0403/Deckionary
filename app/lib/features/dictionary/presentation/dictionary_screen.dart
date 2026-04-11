@@ -181,7 +181,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _autoPronounceEntry(DictEntry entry) async {
     final settings = ref.read(settingsDaoProvider);
     if (!await settings.getAutoPronounce()) return;
-    final dialect = await settings.getDialect();
+    final display = await settings.getPronunciationDisplay();
+    final dialect = display == 'both' ? await settings.getDialect() : display;
     ref.read(audioServiceProvider).playPronunciation(entry.pronunciations, dialect: dialect);
   }
 

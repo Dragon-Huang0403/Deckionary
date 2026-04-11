@@ -34,6 +34,12 @@ final settingsDaoProvider = Provider<SettingsDao>((ref) {
   return dao;
 });
 
+/// Which pronunciation dialects to display: 'both', 'us', or 'gb'.
+/// Watched by EntryCard and review screen to filter pronunciation/audio visibility.
+final pronunciationDisplayProvider = FutureProvider<String>((ref) async {
+  return ref.read(settingsDaoProvider).getPronunciationDisplay();
+});
+
 /// Review DAO
 final reviewDaoProvider = Provider<ReviewDao>((ref) {
   return ReviewDao(

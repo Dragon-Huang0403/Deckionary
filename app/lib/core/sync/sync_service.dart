@@ -531,6 +531,7 @@ class SyncService {
     'review_auto_pronounce',
     'review_filter',
     'audio_dialect',
+    'pronunciation_display',
     'auto_pronounce',
     'theme_mode',
   ];

@@ -27,6 +27,12 @@ class SettingsDao {
   Future<String> getDialect() async => await get('audio_dialect') ?? 'us';
   Future<void> setDialect(String dialect) => set('audio_dialect', dialect);
 
+  /// Which pronunciations to display: 'both' (default), 'us', or 'gb'
+  Future<String> getPronunciationDisplay() async =>
+      await get('pronunciation_display') ?? 'both';
+  Future<void> setPronunciationDisplay(String value) =>
+      set('pronunciation_display', value);
+
   Future<bool> getAutoPronounce() async => (await get('auto_pronounce')) != 'false';
   Future<void> setAutoPronounce(bool enabled) => set('auto_pronounce', enabled.toString());
 

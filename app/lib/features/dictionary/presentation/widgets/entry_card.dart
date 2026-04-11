@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/audio/audio_provider.dart';
+import '../../../../core/database/database_provider.dart';
 import '../../../../shared/widgets/tappable_text.dart';
 import '../../providers/search_provider.dart';
 
@@ -95,15 +96,18 @@ class EntryCard extends ConsumerWidget {
   static const _gbColor = Color(0xFFD84315); // deep orange
 
   Widget _buildPhonetics(BuildContext context, WidgetRef ref) {
+    final display = ref.watch(pronunciationDisplayProvider).value ?? 'both';
     final gb = entry.pronunciations.where((p) => p['dialect'] == 'gb').firstOrNull;
     final us = entry.pronunciations.where((p) => p['dialect'] == 'us').firstOrNull;
+    final showUs = display != 'gb';
+    final showGb = display != 'us';
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 12),
       child: Wrap(
         spacing: 16,
         children: [
-          if (us != null) _phonGroup(ref, 'US', us['ipa'] as String? ?? '', us['audio_file'] as String? ?? '', _usColor),
-          if (gb != null) _phonGroup(ref, 'GB', gb['ipa'] as String? ?? '', gb['audio_file'] as String? ?? '', _gbColor),
+          if (us != null && showUs) _phonGroup(ref, 'US', us['ipa'] as String? ?? '', us['audio_file'] as String? ?? '', _usColor),
+          if (gb != null && showGb) _phonGroup(ref, 'GB', gb['ipa'] as String? ?? '', gb['audio_file'] as String? ?? '', _gbColor),
         ],
       ),
     );
@@ -226,7 +230,12 @@ class EntryCard extends ConsumerWidget {
     final textZh = ex['text_zh'] as String? ?? '';
     final audioGb = ex['audio_gb'] as String? ?? '';
     final audioUs = ex['audio_us'] as String? ?? '';
-    final hasAudio = audioGb.isNotEmpty || audioUs.isNotEmpty;
+    final display = ref != null
+        ? (ref.watch(pronunciationDisplayProvider).value ?? 'both')
+        : 'both';
+    final showUs = display != 'gb' && audioUs.isNotEmpty;
+    final showGb = display != 'us' && audioGb.isNotEmpty;
+    final hasAudio = showUs || showGb;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -253,8 +262,8 @@ class EntryCard extends ConsumerWidget {
                     ),
                     if (hasAudio && ref != null) ...[
                       const SizedBox(width: 4),
-                      if (audioUs.isNotEmpty) _audioButton(ref, audioUs, size: 22, color: _usColor),
-                      if (audioGb.isNotEmpty) ...[
+                      if (showUs) _audioButton(ref, audioUs, size: 22, color: _usColor),
+                      if (showGb) ...[
                         const SizedBox(width: 2),
                         _audioButton(ref, audioGb, size: 22, color: _gbColor),
                       ],
