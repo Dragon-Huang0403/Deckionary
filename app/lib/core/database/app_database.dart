@@ -371,17 +371,6 @@ class DictionaryDatabase {
     return results.map((r) => r.data).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getOxfordEntries({bool ox3000 = false, bool ox5000 = false, int limit = 100, int offset = 0}) async {
-    final conditions = <String>[];
-    if (ox3000) conditions.add('ox3000 = 1');
-    if (ox5000) conditions.add('ox5000 = 1');
-    if (conditions.isEmpty) return [];
-    final results = await _db.customSelect(
-      'SELECT * FROM entries WHERE ${conditions.join(' OR ')} ORDER BY headword LIMIT ? OFFSET ?',
-      variables: [Variable.withInt(limit), Variable.withInt(offset)],
-    ).get();
-    return results.map((r) => r.data).toList();
-  }
 
   Future<int> countEntries({String? cefrLevel, bool? ox3000, bool? ox5000}) async {
     final conditions = <String>[];
