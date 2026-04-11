@@ -34,7 +34,7 @@ jobs:
 
       - name: Set up Android signing
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
           printf 'storeFile=keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
             '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
             '${{ secrets.ANDROID_KEY_ALIAS }}' \

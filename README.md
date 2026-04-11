@@ -1,38 +1,108 @@
+<div align="center">
+
 # Deckionary
 
-A dictionary app powered by the **Oxford Advanced Learner's Dictionary (OALD10)** with FSRS spaced repetition, global quick search, and cross-device sync. Built with Flutter.
+**Your Oxford dictionary, your flashcards, one app.**
+
+A dictionary and vocabulary learning app powered by the Oxford Advanced Learner's Dictionary (OALD10) with spaced repetition, instant search, and cross-device sync.
+
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)](#)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20iOS%20%7C%20Android-blue)](#)
+[![License](https://img.shields.io/badge/License-Private-lightgrey)](#)
+
+[Download](#download) · [Features](#features) · [繁體中文](#繁體中文)
+
+</div>
+
+---
+
+<!-- Replace these placeholders with actual screenshots -->
+
+<p align="center">
+  <img src="docs/screenshots/dictionary.png" width="260" alt="Dictionary search" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/review.png" width="260" alt="Spaced repetition review" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/quick-search.png" width="260" alt="macOS Quick Search" />
+</p>
+
+---
 
 ## Features
 
-**Dictionary**
-- Multi-tier search: exact match, variant spelling, suffix stripping, prefix autocomplete, fuzzy typo tolerance
-- Full entries with pronunciations, verb forms, sense groups, examples, synonyms, word families, collocations, cross-references, phrasal verbs
-- Oxford 3000/5000 and CEFR level indicators
-- Search history with navigation back/forward
+### Full Oxford Dictionary at Your Fingertips
+Look up any word and get complete OALD10 entries — definitions, example sentences, pronunciations (US & GB), verb forms, collocations, synonyms, word families, and more. Oxford 3000/5000 and CEFR level badges help you focus on the words that matter.
 
-**Spaced Repetition (FSRS)**
-- FSRS-4.5 scheduler with 4-level rating
-- Configurable daily limits for new cards and reviews
-- Auto-pronounce during review
+### Learn with Spaced Repetition
+Built-in FSRS flashcard system schedules your reviews at the optimal time. Rate each card (Again / Hard / Good / Easy) and the algorithm adapts to your memory. Set daily limits for new cards and reviews to match your pace.
 
-**Audio**
-- US/GB pronunciation playback from CDN
-- Full offline audio download (~1.7 GB) cached in SQLite
+### Instant Search on macOS
+Press **Cmd+Shift+D** from any app to pop up the dictionary — no need to switch windows. It even reads your clipboard so you can copy a word and look it up in one shortcut. Works across all desktops and displays.
 
-**Quick Search (macOS)**
-- Global hotkey (default Cmd+Shift+D, configurable) to show/hide from any app or desktop
-- Clipboard auto-search: copies a word then press the hotkey
-- Window appears on whichever desktop/display the mouse cursor is on
-- Optional menu bar tray icon
+### Sync Across Devices
+Sign in with Google and your search history, flashcard progress, and settings follow you everywhere. Works offline first — everything syncs when you're back online.
 
-**Sync**
-- Google Sign-in via Firebase + Supabase
-- Search history, review cards, and review logs sync across devices
-- Works offline — syncs when connectivity resumes
+### Listen and Pronounce
+Tap to hear US or British pronunciation for headwords, verb forms, and example sentences. Enable auto-pronounce to hear every word as you search or review.
 
-**Platforms:** macOS, iOS, Android
+## Download
 
-## Prerequisites
+Get the latest release from [GitHub Releases](https://github.com/XuanLongHuang/oxford-5000-to-anki/releases):
+
+- **macOS** — `.zip` (universal binary)
+- **Android** — `.apk`
+- **iOS** — coming soon
+
+---
+
+## 繁體中文
+
+<div align="center">
+
+**你的牛津詞典，你的單字卡，一個 App 搞定。**
+
+以《牛津高階英漢雙解詞典》第十版為基礎，結合間隔重複學習、即時查詢與跨裝置同步的詞典學習 App。
+
+</div>
+
+<!-- 請將以下替換為實際截圖 -->
+
+<p align="center">
+  <img src="docs/screenshots/dictionary.png" width="260" alt="詞典搜尋" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/review.png" width="260" alt="間隔重複複習" />
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/quick-search.png" width="260" alt="macOS 快速搜尋" />
+</p>
+
+### 完整牛津詞典，隨手可查
+查詢任何單字，獲得完整的 OALD10 詞條——定義、例句、發音（美式與英式）、動詞變化、搭配詞、同義詞、詞彙家族等。Oxford 3000/5000 與 CEFR 等級標示幫助你專注在最重要的詞彙上。
+
+### 間隔重複，高效記憶
+內建 FSRS 演算法在最佳時機安排複習。每張卡片以「重來 / 困難 / 良好 / 簡單」評分，系統自動適應你的記憶曲線。可自訂每日新卡與複習數量上限，照自己的步調學習。
+
+### macOS 即時查詢
+在任何應用程式中按下 **Cmd+Shift+D** 即可彈出詞典視窗，無需切換畫面。支援剪貼簿自動搜尋——複製一個單字，按快捷鍵就能查詢。跨桌面、跨螢幕皆可使用。
+
+### 跨裝置同步
+使用 Google 帳號登入，搜尋紀錄、單字卡進度與設定在所有裝置間自動同步。離線優先架構——一切資料在恢復網路後自動同步。
+
+### 聆聽與發音
+點擊即可聽取美式或英式發音，支援詞條、動詞變化與例句音檔。開啟自動發音，搜尋或複習時每個單字都會自動朗讀。
+
+### 下載
+
+前往 [GitHub Releases](https://github.com/XuanLongHuang/oxford-5000-to-anki/releases) 取得最新版本：
+
+- **macOS** — `.zip`（通用二進位）
+- **Android** — `.apk`
+- **iOS** — 即將推出
+
+---
+
+## Development
+
+### Prerequisites
 
 Place `oald10.db` in `app/assets/` before building:
 
@@ -47,7 +117,7 @@ curl -o app/assets/oald10.db \
 
 The file is ~93 MB and not checked into git.
 
-## Build & Run
+### Build & Run
 
 ```bash
 cd app
@@ -57,11 +127,42 @@ flutter run --dart-define-from-file=env.json
 
 Without `env.json`, the app runs in local-only mode (no sync).
 
-## Firebase & Supabase Setup
+### Project Structure
 
-Required only for cross-device sync.
+```
+app/
+  lib/
+    features/
+      dictionary/       # Search, autocomplete, entry display
+      review/           # FSRS spaced repetition
+      settings/         # App configuration
+    core/
+      database/         # Drift ORM, DAOs
+      audio/            # Pronunciation playback & caching
+      sync/             # Supabase sync service
+  macos/                # macOS-specific (hotkey, tray, window)
+  ios/                  # iOS target
+  android/              # Android target
 
-### Firebase
+db/                     # Python: SQLite schema, parser, importer
+anki/                   # Python: Anki deck generator
+scripts/                # R2 export & upload
+docs/                   # Guides
+```
+
+### Architecture
+
+- **State management** — Riverpod
+- **Database** — Drift (SQLite ORM). Two databases: read-only dictionary (`oald10.db`) + read-write user data
+- **Spaced repetition** — FSRS-4.5 via the `fsrs` package
+- **Audio** — just_audio with SQLite-backed offline cache
+- **Sync** — Firebase Auth (Google Sign-in) + Supabase (data storage, RLS)
+- **Routing** — go_router
+
+<details>
+<summary><strong>Firebase & Supabase Setup</strong> (required only for sync)</summary>
+
+#### Firebase
 
 ```bash
 dart pub global activate flutterfire_cli
@@ -71,7 +172,7 @@ flutterfire configure
 
 This generates `lib/firebase_options.dart` (gitignored). Enable **Authentication > Google** in the [Firebase Console](https://console.firebase.google.com).
 
-### Google Sign-In (macOS)
+#### Google Sign-In (macOS)
 
 Create an **iOS OAuth client ID** in [Google Cloud Console > Credentials](https://console.cloud.google.com/apis/credentials) with bundle ID `com.deckionary.deckionary`. Add the client ID to `macos/Runner/Info.plist`:
 
@@ -89,7 +190,7 @@ Create an **iOS OAuth client ID** in [Google Cloud Console > Credentials](https:
 </array>
 ```
 
-### Supabase
+#### Supabase
 
 ```bash
 cp env.example.json env.json
@@ -106,7 +207,7 @@ supabase link --project-ref <your-project-ref>
 supabase db push
 ```
 
-### macOS Signing
+#### macOS Signing
 
 ```bash
 open macos/Runner.xcodeproj
@@ -114,9 +215,10 @@ open macos/Runner.xcodeproj
 
 In Xcode: **Runner target > Signing & Capabilities > Automatically manage signing > select Team**. Same for **RunnerTests**.
 
-## Python Tools
+</details>
 
-The repo also includes Python tools for building the dictionary database, generating Anki decks, and exporting audio to Cloudflare R2.
+<details>
+<summary><strong>Python Tools</strong></summary>
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -129,25 +231,4 @@ python anki/create_deck.py --5000  # Generate Anki deck
 
 See `docs/` for detailed guides on the database schema, R2 export, and Anki generation.
 
-## Project Structure
-
-```
-app/                    # Flutter app
-  lib/
-    features/
-      dictionary/       # Search, autocomplete, entry display
-      review/           # FSRS spaced repetition
-      settings/         # App configuration
-    core/
-      database/         # Drift ORM, DAOs
-      audio/            # Pronunciation playback & caching
-      sync/             # Supabase sync service
-  macos/                # macOS-specific (hotkey, tray, window)
-  ios/                  # iOS target
-  android/              # Android target
-
-db/                     # Python: SQLite schema, parser, importer
-anki/                   # Python: Anki deck generator
-scripts/                # Python: R2 export & upload
-docs/                   # Guides
-```
+</details>
