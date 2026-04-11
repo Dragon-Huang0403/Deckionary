@@ -46,7 +46,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   void _onHistoryScroll() {
     final pos = _historyScrollController.position;
-    if (pos.pixels >= pos.maxScrollExtent - 200) {
+    if (pos.pixels >= pos.maxScrollExtent - 200 &&
+        !ref.read(searchHistoryProvider).isLoading) {
       ref.read(historyLimitProvider.notifier).loadMore();
     }
   }
@@ -501,12 +502,12 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   Widget _buildHomeScreen() {
     final historyAsync = ref.watch(searchHistoryProvider);
-    return historyAsync.when(
-      data: (history) =>
-          history.isEmpty ? _buildWelcome() : _buildSearchHistory(history),
-      loading: () => _buildWelcome(),
-      error: (_, _) => _buildWelcome(),
-    );
+    // Use .hasValue to keep showing previous data while loading more,
+    // preventing the list from jumping to top on pagination.
+    if (historyAsync.hasValue && historyAsync.value!.isNotEmpty) {
+      return _buildSearchHistory(historyAsync.value!);
+    }
+    return _buildWelcome();
   }
 
   Widget _buildWelcome() {
