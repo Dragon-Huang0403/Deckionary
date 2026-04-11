@@ -51,7 +51,9 @@ class _AppLoaderState extends State<AppLoader> {
           options: DefaultFirebaseOptions.currentPlatform);
       if (supabaseAnonKey.isNotEmpty) {
         await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-        await GoogleSignIn.instance.initialize();
+        await GoogleSignIn.instance.initialize(
+          serverClientId: '43742335452-ef9piond4ujid0ulcf3695857s938urc.apps.googleusercontent.com',
+        );
         syncEnabled = true;
       }
     } catch (e) {
