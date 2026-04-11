@@ -73,6 +73,17 @@ class _ClipboardNotifier extends Notifier<String?> {
   void set(String? text) => state = text;
 }
 
+/// True while Google Sign-In is in progress; suppresses window auto-hide.
+final signInInProgressProvider = NotifierProvider<_SignInFlagNotifier, bool>(
+  _SignInFlagNotifier.new,
+);
+
+class _SignInFlagNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void set(bool value) => state = value;
+}
+
 /// Check if clipboard text looks like a word/phrase worth searching.
 bool _looksLikeSearchQuery(String text) {
   if (text.length > 50 || text.contains('\n')) return false;
@@ -410,6 +421,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   @override
   void onWindowBlur() {
+    if (ref.read(signInInProgressProvider)) return;
     _windowChannel.invokeMethod('resetLevel', _showInDock);
     windowManager.hide();
   }

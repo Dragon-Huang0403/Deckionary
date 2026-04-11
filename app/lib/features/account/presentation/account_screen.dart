@@ -22,6 +22,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   Future<void> _signIn() async {
     if (_signingIn) return;
     setState(() => _signingIn = true);
+    ref.read(signInInProgressProvider.notifier).set(true);
     try {
       await ref.read(authServiceProvider)?.signInWithGoogle();
       // Auto-sync on first sign-in: push all existing local history
@@ -33,6 +34,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         ).showSnackBar(SnackBar(content: Text('Sign in failed: $e')));
       }
     } finally {
+      ref.read(signInInProgressProvider.notifier).set(false);
       if (mounted) setState(() => _signingIn = false);
     }
   }
