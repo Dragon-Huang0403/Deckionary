@@ -9,6 +9,7 @@ import '../../../app.dart'
         hotKeyDisplayString,
         hotKeyChangeTrigger,
         showTrayIconProvider,
+        showInDockProvider,
         themeModeProvider;
 import '../../../core/audio/audio_provider.dart';
 import '../../../core/auth/auth_provider.dart';
@@ -32,6 +33,7 @@ final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
       ? await dao.getQuickSearchHotKey()
       : '';
   final showTrayIcon = Platform.isMacOS ? await dao.getShowTrayIcon() : false;
+  final showInDock = Platform.isMacOS ? await dao.getShowInDock() : true;
   return _AppSettings(
     dialect: dialect,
     pronunciationDisplay: pronunciationDisplay,
@@ -43,6 +45,7 @@ final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
     reviewCardOrder: reviewCardOrder,
     quickSearchHotKey: quickSearchHotKey,
     showTrayIcon: showTrayIcon,
+    showInDock: showInDock,
   );
 });
 
@@ -57,6 +60,7 @@ class _AppSettings {
   final String reviewCardOrder;
   final String quickSearchHotKey;
   final bool showTrayIcon;
+  final bool showInDock;
   _AppSettings({
     required this.dialect,
     required this.pronunciationDisplay,
@@ -68,6 +72,7 @@ class _AppSettings {
     required this.reviewCardOrder,
     required this.quickSearchHotKey,
     required this.showTrayIcon,
+    required this.showInDock,
   });
 }
 
@@ -157,6 +162,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const _SectionHeader('Quick Search'),
               _HotKeyTile(settings.quickSearchHotKey, ref),
               _TrayIconTile(settings.showTrayIcon, ref),
+              _DockTile(settings.showInDock, ref),
             ],
             const Divider(),
             const _SectionHeader('Review'),
@@ -672,6 +678,26 @@ class _TrayIconTile extends StatelessWidget {
         await ref.read(settingsDaoProvider).setShowTrayIcon(val);
         ref.invalidate(_settingsProvider);
         ref.invalidate(showTrayIconProvider);
+      },
+    );
+  }
+}
+
+class _DockTile extends StatelessWidget {
+  final bool enabled;
+  final WidgetRef ref;
+  const _DockTile(this.enabled, this.ref);
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      title: const Text('Show in Dock'),
+      subtitle: const Text('Keep Dock icon visible when window is hidden'),
+      value: enabled,
+      onChanged: (val) async {
+        await ref.read(settingsDaoProvider).setShowInDock(val);
+        ref.invalidate(_settingsProvider);
+        ref.invalidate(showInDockProvider);
       },
     );
   }

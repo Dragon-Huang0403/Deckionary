@@ -32,6 +32,14 @@ jobs:
       - name: Download dictionary database
         run: curl -fSL -o assets/oald10.db "${{ secrets.R2_BASE_URL }}/db/oald10.db"
 
+      - name: Set up Android signing
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/keystore.jks
+          printf 'storeFile=keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}' \
+            '${{ secrets.ANDROID_KEY_ALIAS }}' \
+            '${{ secrets.ANDROID_KEY_PASSWORD }}' > android/key.properties
+
       - name: Build APK
         run: >-
           flutter build apk --release

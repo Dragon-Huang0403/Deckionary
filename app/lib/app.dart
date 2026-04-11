@@ -15,6 +15,7 @@ import 'core/update/update_service.dart';
 import 'features/dictionary/presentation/dictionary_screen.dart';
 import 'features/review/presentation/review_home_screen.dart';
 import 'features/review/providers/review_providers.dart';
+import 'features/settings/presentation/settings_screen.dart';
 
 /// Reactive theme mode provider
 final themeModeProvider = FutureProvider<ThemeMode>((ref) async {
@@ -53,6 +54,12 @@ class _HotKeyChangeNotifier extends Notifier<int> {
 final showTrayIconProvider = FutureProvider<bool>((ref) async {
   final dao = ref.read(settingsDaoProvider);
   return dao.getShowTrayIcon();
+});
+
+/// Reads the dock visibility setting. Invalidate to reload after change.
+final showInDockProvider = FutureProvider<bool>((ref) async {
+  final dao = ref.read(settingsDaoProvider);
+  return dao.getShowInDock();
 });
 
 /// Clipboard text to auto-fill in search bar on hotkey trigger.
@@ -156,9 +163,12 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     with WidgetsBindingObserver, WindowListener, TrayListener {
   static const _windowChannel = MethodChannel('com.deckionary/window');
 
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   int _currentTab = 0;
   HotKey? _registeredHotKey;
   DateTime? _lastSyncAt;
+  bool _settingsOpen = false;
+  bool _showInDock = true;
 
   @override
   void initState() {
@@ -167,6 +177,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     if (Platform.isMacOS) {
       windowManager.addListener(this);
       trayManager.addListener(this);
+      HardwareKeyboard.instance.addHandler(_handleKeyEvent);
       _initMacOS();
     }
     _checkForUpdate();
@@ -179,6 +190,8 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
     final showTray = await dao.getShowTrayIcon();
     if (showTray) await _setupTrayIcon();
+
+    _showInDock = await dao.getShowInDock();
   }
 
   void _checkForUpdate() {
@@ -249,6 +262,26 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         ],
       ),
     );
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.comma &&
+        HardwareKeyboard.instance.isMetaPressed) {
+      _openSettings();
+      return true;
+    }
+    return false;
+  }
+
+  void _openSettings() {
+    if (_settingsOpen) return;
+    final nav = _navigatorKey.currentState;
+    if (nav == null) return;
+    _settingsOpen = true;
+    nav
+        .push<void>(MaterialPageRoute(builder: (_) => const SettingsScreen()))
+        .then((_) => _settingsOpen = false);
   }
 
   Future<void> _registerHotKey(String hotKeyJson) async {
@@ -350,7 +383,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   @override
   void onWindowClose() async {
-    await _windowChannel.invokeMethod('resetLevel');
+    await _windowChannel.invokeMethod('resetLevel', _showInDock);
     await windowManager.hide();
   }
 
@@ -377,7 +410,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   @override
   void onWindowBlur() {
-    _windowChannel.invokeMethod('resetLevel');
+    _windowChannel.invokeMethod('resetLevel', _showInDock);
     windowManager.hide();
   }
 
@@ -425,6 +458,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     if (Platform.isMacOS) {
+      HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
       windowManager.removeListener(this);
       trayManager.removeListener(this);
       if (_registeredHotKey != null) {
@@ -450,6 +484,9 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
           }
         });
       });
+      ref.listen(showInDockProvider, (prev, next) {
+        next.whenData((val) => _showInDock = val);
+      });
     }
 
     final themeMode = ref
@@ -461,6 +498,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         );
 
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Deckionary',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

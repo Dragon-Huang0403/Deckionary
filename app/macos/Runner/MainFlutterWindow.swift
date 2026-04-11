@@ -38,7 +38,10 @@ class MainFlutterWindow: NSPanel {
         result(nil)
       case "resetLevel":
         self?.level = .floating
-        NSApp.setActivationPolicy(.accessory)
+        let showInDock = (call.arguments as? Bool) ?? false
+        if !showInDock {
+          NSApp.setActivationPolicy(.accessory)
+        }
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
