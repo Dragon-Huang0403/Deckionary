@@ -513,18 +513,27 @@ class _HotKeyTile extends StatefulWidget {
 class _HotKeyTileState extends State<_HotKeyTile> {
   bool _recording = false;
 
+  /// Modifier-only USB HID codes — ignore these until a real key is pressed.
+  static const _modifierUsbHids = {
+    0x000700E0, 0x000700E1, 0x000700E2, 0x000700E3, // L: Ctrl, Shift, Alt, Meta
+    0x000700E4, 0x000700E5, 0x000700E6, 0x000700E7, // R: Ctrl, Shift, Alt, Meta
+  };
+
   @override
   Widget build(BuildContext context) {
     final display = hotKeyDisplayString(widget.hotKeyJson);
 
     return ListTile(
       title: const Text('Global shortcut'),
-      subtitle: Text(_recording ? 'Press new shortcut...' : display),
+      subtitle: Text(_recording ? 'Press modifier + key...' : display),
       trailing: _recording
           ? SizedBox(
               width: 200,
               child: HotKeyRecorder(
                 onHotKeyRecorded: (newHotKey) async {
+                  // Ignore modifier-only presses (user still building the combo)
+                  if (_modifierUsbHids.contains(newHotKey.physicalKey.usbHidUsage)) return;
+
                   final json = serializeHotKey(newHotKey);
                   await widget.ref.read(settingsDaoProvider).setQuickSearchHotKey(json);
                   widget.ref.invalidate(_settingsProvider);
