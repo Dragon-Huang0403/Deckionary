@@ -54,4 +54,4 @@ lib/firebase_options.dart
 
 # Environment config (contains Supabase keys etc.)
 env.json
-env.*.json
+
