@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -227,21 +228,25 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   }
 
   Future<void> _showOverlay() async {
-    // Hide first to avoid visible UI shift (nav bar disappearing)
-    final wasVisible = await windowManager.isVisible();
-    if (wasVisible) {
-      await windowManager.hide();
-    }
-    ref.read(isOverlayModeProvider.notifier).set(true);
-    setState(() => _currentTab = 0);
-    // Wait one frame so overlay UI (no nav bar, no settings) renders
-    // before the window becomes visible.
-    await Future.delayed(const Duration(milliseconds: 16));
-
+    // 1. Configure overlay + space-jump BEFORE showing (same as original)
     await _windowChannel.invokeMethod('setOverlayMode');
     await _windowChannel.invokeMethod('prepareForShow');
     await _positionOnMouseDisplay();
+
+    // 2. Show transparent so Flutter renders the overlay UI
+    await windowManager.setOpacity(0);
     await windowManager.show();
+
+    ref.read(isOverlayModeProvider.notifier).set(true);
+    setState(() => _currentTab = 0);
+
+    // Wait for overlay UI to render (no nav bar, no settings)
+    final completer = Completer<void>();
+    WidgetsBinding.instance.addPostFrameCallback((_) => completer.complete());
+    await completer.future;
+
+    // 3. Reveal with correct UI
+    await windowManager.setOpacity(1);
     await windowManager.focus();
     _readClipboardAndFocusSearch();
   }
@@ -353,6 +358,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   @override
   void onWindowBlur() {
+    if (_windowTransitioning) return;
     if (!ref.read(isOverlayModeProvider)) return;
     if (ref.read(signInInProgressProvider)) return;
     _hideWindow();

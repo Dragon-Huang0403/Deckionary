@@ -308,13 +308,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.escape) {
-          if (_controller.text.isNotEmpty) {
-            // Clear search first
-            _controller.clear();
-            ref.read(searchQueryProvider.notifier).set('');
+          if (_canGoBack()) {
+            _goBack();
             _focusSearchBar();
           } else if (Platform.isMacOS && ref.read(isOverlayModeProvider)) {
-            // Empty search in overlay mode: hide window
             windowManager.hide();
           }
           return KeyEventResult.handled;
