@@ -176,40 +176,43 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
       ),
       body: card == null || _loadingEntry
           ? const Center(child: CircularProgressIndicator())
-          : GestureDetector(
-              onTap: () {
-                if (!_showBack) setState(() => _showBack = true);
-              },
-              child: Column(
-                children: [
-                  Expanded(
-                    child: _showBack ? _buildBack() : _buildFront(card, cs),
-                  ),
-                  if (_showBack)
-                    RatingBar(intervals: _intervals, onRate: _rate)
-                  else
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Tap to show answer',
-                          style: TextStyle(
-                            color: cs.onSurfaceVariant,
-                            fontSize: 14,
+          : _showBack
+              ? Column(
+                  children: [
+                    Expanded(child: _buildBack()),
+                    RatingBar(intervals: _intervals, onRate: _rate),
+                  ],
+                )
+              : GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _showBack = true),
+                  child: SizedBox.expand(
+                    child: Column(
+                      children: [
+                        const Spacer(flex: 4),
+                        _buildFront(card, cs),
+                        const Spacer(flex: 3),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 32),
+                          child: Text(
+                            'Tap to show answer',
+                            style: TextStyle(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ),
     );
   }
 
   Widget _buildFront(QueueCard card, ColorScheme cs) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -235,7 +238,7 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
               ),
             Text(
               card.headword,
-              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             if (card.pos.isNotEmpty)
