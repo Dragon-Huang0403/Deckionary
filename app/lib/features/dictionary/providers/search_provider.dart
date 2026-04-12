@@ -1,7 +1,16 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/database/app_database.dart';
+
+enum SearchMatchSource { headword, definition, example }
+
+class SearchResult {
+  final DictEntry entry;
+  final SearchMatchSource source;
+  final String snippet;
+
+  SearchResult(this.entry, {this.source = SearchMatchSource.headword, this.snippet = ''});
+}
 
 /// Cross-reference data
 class XrefInfo {
@@ -249,12 +258,42 @@ final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
   SearchQueryNotifier.new,
 );
 
+/// Find the best matching snippet for a FTS result.
+SearchResult _buildFtsResult(DictEntry entry, String query) {
+  final q = query.toLowerCase();
+  // Check definitions first
+  for (final group in entry.groups) {
+    for (final sense in group.senses) {
+      final def = sense.sense['definition'] as String? ?? '';
+      if (def.toLowerCase().contains(q)) {
+        return SearchResult(entry, source: SearchMatchSource.definition, snippet: def);
+      }
+    }
+  }
+  // Check examples
+  for (final group in entry.groups) {
+    for (final sense in group.senses) {
+      for (final ex in sense.examples) {
+        final text = ex['text_plain'] as String? ?? '';
+        if (text.toLowerCase().contains(q)) {
+          return SearchResult(entry, source: SearchMatchSource.example, snippet: text);
+        }
+      }
+    }
+  }
+  // Fallback: first definition (FTS matched but query spans multiple tokens)
+  final firstDef = entry.groups.firstOrNull?.senses.firstOrNull
+      ?.sense['definition'] as String? ?? '';
+  return SearchResult(entry, source: SearchMatchSource.definition, snippet: firstDef);
+}
+
 /// Search results: full entries for the query
-final searchResultsProvider = FutureProvider<List<DictEntry>>((ref) async {
+final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
 
   final db = ref.read(dictionaryDbProvider);
+  var isFts = false;
 
   // 1. Exact match (includes all POS for a word)
   var rows = await db.lookupWord(query);
@@ -290,13 +329,17 @@ final searchResultsProvider = FutureProvider<List<DictEntry>>((ref) async {
 
   // 6. Definition/example FTS search
   if (rows.isEmpty && query.length >= 2) {
-    debugPrint('[Search] tier 6: FTS query="$query"');
     rows = await db.searchDefinitions(query, limit: 15);
-    debugPrint('[Search] tier 6: ${rows.length} results');
+    isFts = rows.isNotEmpty;
   }
 
   // Load full entry data in parallel
-  return Future.wait(rows.map((row) => loadFullEntry(db, row)));
+  final entries = await Future.wait(rows.map((row) => loadFullEntry(db, row)));
+
+  if (isFts) {
+    return entries.map((e) => _buildFtsResult(e, query)).toList();
+  }
+  return entries.map((e) => SearchResult(e)).toList();
 });
 
 /// Autocomplete suggestions (lightweight - just headwords, no full load)
