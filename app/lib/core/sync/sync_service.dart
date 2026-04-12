@@ -561,7 +561,7 @@ class SyncService {
     'new_cards_per_day',
     'max_reviews_per_day',
     'review_card_order',
-    'review_auto_pronounce',
+    'review_auto_play_mode',
     'review_filter',
     'audio_dialect',
     'pronunciation_display',

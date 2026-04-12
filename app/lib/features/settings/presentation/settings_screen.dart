@@ -27,7 +27,7 @@ final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
   final themeMode = await dao.getThemeMode();
   final newCardsPerDay = await dao.getNewCardsPerDay();
   final maxReviewsPerDay = await dao.getMaxReviewsPerDay();
-  final reviewAutoPronounce = await dao.getReviewAutoPronounce();
+  final reviewAutoPlayMode = await dao.getReviewAutoPlayMode();
   final reviewCardOrder = await dao.getReviewCardOrder();
   final quickSearchHotKey = Platform.isMacOS
       ? await dao.getQuickSearchHotKey()
@@ -41,7 +41,7 @@ final _settingsProvider = FutureProvider<_AppSettings>((ref) async {
     themeMode: themeMode,
     newCardsPerDay: newCardsPerDay,
     maxReviewsPerDay: maxReviewsPerDay,
-    reviewAutoPronounce: reviewAutoPronounce,
+    reviewAutoPlayMode: reviewAutoPlayMode,
     reviewCardOrder: reviewCardOrder,
     quickSearchHotKey: quickSearchHotKey,
     showTrayIcon: showTrayIcon,
@@ -56,7 +56,7 @@ class _AppSettings {
   final String themeMode;
   final int newCardsPerDay;
   final int maxReviewsPerDay;
-  final bool reviewAutoPronounce;
+  final String reviewAutoPlayMode;
   final String reviewCardOrder;
   final String quickSearchHotKey;
   final bool showTrayIcon;
@@ -68,7 +68,7 @@ class _AppSettings {
     required this.themeMode,
     required this.newCardsPerDay,
     required this.maxReviewsPerDay,
-    required this.reviewAutoPronounce,
+    required this.reviewAutoPlayMode,
     required this.reviewCardOrder,
     required this.quickSearchHotKey,
     required this.showTrayIcon,
@@ -166,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
             const Divider(),
             const _SectionHeader('Review'),
-            _ReviewAutoPronounceTile(settings.reviewAutoPronounce, ref),
+            _ReviewAutoPlayModeTile(settings.reviewAutoPlayMode, ref),
             _CardOrderTile(settings.reviewCardOrder, ref),
             _NewCardsPerDayTile(
               settings.newCardsPerDay,
@@ -549,7 +549,12 @@ class _NewCardsPerDayTile extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
               'Tip: With $current new cards/day, consider setting max reviews to at least $suggestedMin to avoid a backlog.',
-              style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.orange.shade300
+                    : Colors.orange.shade700,
+              ),
             ),
           ),
       ],
@@ -557,21 +562,33 @@ class _NewCardsPerDayTile extends StatelessWidget {
   }
 }
 
-class _ReviewAutoPronounceTile extends StatelessWidget {
-  final bool enabled;
+class _ReviewAutoPlayModeTile extends StatelessWidget {
+  final String current;
   final WidgetRef ref;
-  const _ReviewAutoPronounceTile(this.enabled, this.ref);
+  const _ReviewAutoPlayModeTile(this.current, this.ref);
+
+  static const _labels = {
+    'off': 'Off',
+    'pronunciation': 'Pronunciation only',
+    'sentence': 'Sentence only',
+    'sentence_pronunciation': 'Pronunciation + Sentence',
+  };
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile(
-      title: const Text('Auto-pronounce in review'),
-      subtitle: const Text('Play pronunciation when a card appears'),
-      value: enabled,
-      onChanged: (val) async {
-        await ref.read(settingsDaoProvider).setReviewAutoPronounce(val);
-        ref.invalidate(_settingsProvider);
-      },
+    return ListTile(
+      title: const Text('Auto-play in review'),
+      subtitle: Text(_labels[current] ?? 'Pronunciation only'),
+      trailing: PopupMenuButton<String>(
+        initialValue: current,
+        onSelected: (val) async {
+          await ref.read(settingsDaoProvider).setReviewAutoPlayMode(val);
+          ref.invalidate(_settingsProvider);
+        },
+        itemBuilder: (_) => _labels.entries
+            .map((e) => PopupMenuItem(value: e.key, child: Text(e.value)))
+            .toList(),
+      ),
     );
   }
 }

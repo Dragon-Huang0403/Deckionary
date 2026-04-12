@@ -147,8 +147,15 @@ class EntryCard extends ConsumerWidget {
     );
   }
 
-  static const _usColor = Color(0xFF1565C0); // blue
-  static const _gbColor = Color(0xFFD84315); // deep orange
+  static Color _usColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF64B5F6)
+      : const Color(0xFF1565C0);
+
+  static Color _gbColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFFFF8A65)
+      : const Color(0xFFD84315);
 
   Widget _buildPhonetics(BuildContext context, WidgetRef ref) {
     final display = ref.watch(pronunciationDisplayProvider).value ?? 'both';
@@ -171,7 +178,7 @@ class EntryCard extends ConsumerWidget {
               'US',
               us['ipa'] as String? ?? '',
               us['audio_file'] as String? ?? '',
-              _usColor,
+              _usColor(context),
             ),
           if (gb != null && showGb)
             _phonGroup(
@@ -179,7 +186,7 @@ class EntryCard extends ConsumerWidget {
               'GB',
               gb['ipa'] as String? ?? '',
               gb['audio_file'] as String? ?? '',
-              _gbColor,
+              _gbColor(context),
             ),
         ],
       ),
@@ -228,9 +235,8 @@ class EntryCard extends ConsumerWidget {
     WidgetRef ref,
     String filename, {
     double size = 28,
-    Color? color,
+    required Color color,
   }) {
-    final c = color ?? _usColor;
     return SizedBox(
       width: size,
       height: size,
@@ -238,7 +244,7 @@ class EntryCard extends ConsumerWidget {
         padding: EdgeInsets.zero,
         iconSize: size * 0.55,
         style: IconButton.styleFrom(
-          backgroundColor: c,
+          backgroundColor: color,
           foregroundColor: Colors.white,
         ),
         icon: const Icon(Icons.volume_up),
@@ -272,14 +278,19 @@ class EntryCard extends ConsumerWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontStyle: FontStyle.italic,
-                      color: Colors.orange.shade800,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.orange.shade300
+                          : Colors.orange.shade800,
                     ),
                   ),
                   if (group.topicZh.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Text(
                       group.topicZh,
-                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ],
@@ -327,15 +338,18 @@ class EntryCard extends ConsumerWidget {
               if (grammar.isNotEmpty)
                 Text(
                   grammar,
-                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               if (labels.isNotEmpty)
                 Text(
                   labels,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontStyle: FontStyle.italic,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               if (definition.isNotEmpty)
@@ -348,7 +362,10 @@ class EntryCard extends ConsumerWidget {
           if (definitionZh.isNotEmpty)
             Text(
               definitionZh,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           // Examples
           if (senseData.examples.isNotEmpty)
@@ -390,9 +407,13 @@ class EntryCard extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 7, right: 8),
-            child: Icon(Icons.circle, size: 5, color: Colors.grey),
+          Padding(
+            padding: const EdgeInsets.only(top: 7, right: 8),
+            child: Icon(
+              Icons.circle,
+              size: 5,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           Expanded(
             child: Column(
@@ -414,10 +435,20 @@ class EntryCard extends ConsumerWidget {
                     if (hasAudio && ref != null) ...[
                       const SizedBox(width: 4),
                       if (showUs)
-                        _audioButton(ref, audioUs, size: 22, color: _usColor),
+                        _audioButton(
+                          ref,
+                          audioUs,
+                          size: 22,
+                          color: _usColor(context),
+                        ),
                       if (showGb) ...[
                         const SizedBox(width: 2),
-                        _audioButton(ref, audioGb, size: 22, color: _gbColor),
+                        _audioButton(
+                          ref,
+                          audioGb,
+                          size: 22,
+                          color: _gbColor(context),
+                        ),
                       ],
                     ],
                   ],
@@ -425,7 +456,10 @@ class EntryCard extends ConsumerWidget {
                 if (textZh.isNotEmpty)
                   Text(
                     textZh,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
@@ -465,10 +499,10 @@ class EntryCard extends ConsumerWidget {
                 if (pos.isNotEmpty)
                   Text(
                     ' $pos',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontStyle: FontStyle.italic,
-                      color: Colors.grey,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 if (opp.isNotEmpty)
@@ -532,9 +566,9 @@ class EntryCard extends ConsumerWidget {
               (e) => [
                 Text(
                   '${_xrefLabels[e.key] ?? e.key} ',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontStyle: FontStyle.italic,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 13,
                   ),
                 ),
@@ -600,7 +634,9 @@ class EntryCard extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.orange.shade700,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.orange.shade300
+                      : Colors.orange.shade700,
                   letterSpacing: 0.3,
                 ),
               ),
@@ -614,14 +650,13 @@ class EntryCard extends ConsumerWidget {
 
   List<Widget> _buildClickableWords(String words, BuildContext context) {
     final parts = words.split(',');
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final widgets = <Widget>[];
     for (var i = 0; i < parts.length; i++) {
       final word = parts[i].trim();
       if (word.isEmpty) continue;
       if (widgets.isNotEmpty) {
-        widgets.add(
-          Text(', ', style: const TextStyle(fontSize: 13, color: Colors.grey)),
-        );
+        widgets.add(Text(', ', style: TextStyle(fontSize: 13, color: muted)));
       }
       widgets.add(
         MouseRegion(
@@ -632,9 +667,9 @@ class EntryCard extends ConsumerWidget {
               word,
               style: TextStyle(
                 fontSize: 13,
-                color: Colors.grey.shade600,
+                color: muted,
                 decoration: TextDecoration.underline,
-                decorationColor: Colors.grey.shade400,
+                decorationColor: muted.withValues(alpha: 0.6),
               ),
             ),
           ),
@@ -679,7 +714,11 @@ class EntryCard extends ConsumerWidget {
     final text = entry.wordOrigin?['text_plain'] as String? ?? '';
     return Text(
       text,
-      style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.5),
+      style: TextStyle(
+        fontSize: 13,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+        height: 1.5,
+      ),
     );
   }
 

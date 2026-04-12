@@ -61,10 +61,22 @@ class SettingsDao {
   Future<void> setReviewCardOrder(String order) =>
       set('review_card_order', order);
 
-  Future<bool> getReviewAutoPronounce() async =>
-      (await get('review_auto_pronounce')) != 'false';
-  Future<void> setReviewAutoPronounce(bool enabled) =>
-      set('review_auto_pronounce', enabled.toString());
+  /// Review auto-play mode: 'off', 'pronunciation' (default), 'sentence_pronunciation'
+  /// Migrates from old bool 'review_auto_pronounce' on first read.
+  Future<String> getReviewAutoPlayMode() async {
+    final mode = await get('review_auto_play_mode');
+    if (mode != null) return mode;
+    // Migrate from old bool setting
+    final oldVal = await get('review_auto_pronounce');
+    if (oldVal == 'false') {
+      await setReviewAutoPlayMode('off');
+      return 'off';
+    }
+    return 'pronunciation';
+  }
+
+  Future<void> setReviewAutoPlayMode(String mode) =>
+      set('review_auto_play_mode', mode);
 
   Future<String?> getReviewFilter() async => await get('review_filter');
   Future<void> setReviewFilter(String json) => set('review_filter', json);

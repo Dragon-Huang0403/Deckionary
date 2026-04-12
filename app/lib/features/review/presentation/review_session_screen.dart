@@ -62,13 +62,43 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
 
   Future<void> _autoPronounce(DictEntry entry) async {
     final settings = ref.read(settingsDaoProvider);
-    if (!await settings.getReviewAutoPronounce()) return;
+    final mode = await settings.getReviewAutoPlayMode();
+    if (mode == 'off') return;
     if (entry.pronunciations.isEmpty) return;
     final display = await settings.getPronunciationDisplay();
     final dialect = display == 'both' ? await settings.getDialect() : display;
-    ref
-        .read(audioServiceProvider)
-        .playPronunciation(entry.pronunciations, dialect: dialect);
+    final audio = ref.read(audioServiceProvider);
+
+    final sentenceAudio =
+        (mode == 'sentence' || mode == 'sentence_pronunciation')
+        ? _findFirstExampleAudio(entry, dialect)
+        : null;
+
+    if (mode == 'sentence') {
+      if (sentenceAudio != null) await audio.play(sentenceAudio);
+      return;
+    }
+
+    // 'pronunciation' or 'sentence_pronunciation'
+    await audio.playPronunciation(entry.pronunciations, dialect: dialect);
+    if (sentenceAudio != null) {
+      await Future.delayed(const Duration(milliseconds: 1000));
+      await audio.play(sentenceAudio);
+    }
+  }
+
+  /// Find the first example sentence audio filename for the given dialect.
+  String? _findFirstExampleAudio(DictEntry entry, String dialect) {
+    final audioKey = dialect == 'gb' ? 'audio_gb' : 'audio_us';
+    for (final group in entry.groups) {
+      for (final sense in group.senses) {
+        for (final example in sense.examples) {
+          final file = example[audioKey] as String?;
+          if (file != null && file.isNotEmpty) return file;
+        }
+      }
+    }
+    return null;
   }
 
   Future<void> _rate(fsrs.Rating rating) async {
@@ -241,8 +271,15 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
     );
   }
 
-  static const _usColor = Color(0xFF1565C0);
-  static const _gbColor = Color(0xFFD84315);
+  static Color _usColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF64B5F6)
+      : const Color(0xFF1565C0);
+
+  static Color _gbColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFFFF8A65)
+      : const Color(0xFFD84315);
 
   Widget _buildPhonetics(List<Map<String, dynamic>> pronunciations) {
     final display = ref.watch(pronunciationDisplayProvider).value ?? 'both';
@@ -260,14 +297,14 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
             'US',
             us['ipa'] as String? ?? '',
             us['audio_file'] as String? ?? '',
-            _usColor,
+            _usColor(context),
           ),
         if (gb != null && showGb)
           _phonGroup(
             'GB',
             gb['ipa'] as String? ?? '',
             gb['audio_file'] as String? ?? '',
-            _gbColor,
+            _gbColor(context),
           ),
       ],
     );
