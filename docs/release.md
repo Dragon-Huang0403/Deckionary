@@ -4,9 +4,9 @@
 
 The app shows version, build date, and commit hash at the bottom of the Settings screen:
 - Release builds: `v0.1.0 · 2026-04-12 · a3b4c5d`
-- Local dev builds: `v0.1.0 · 2026-04-12 · dev`
+- Local dev builds: `v0.1.0 · 2026-04-12 14:32 · dev`
 
-Source of truth: `app/lib/core/build_info.dart` (generated — do not edit manually). The commit hash is injected at build time via `--dart-define=BUILD_COMMIT` in CI.
+Source of truth: `app/lib/core/build_info.dart` (generated — do not edit manually). The commit hash and build date are injected at build time via `--dart-define` in CI. Local dev builds fall back to `DateTime.now()` (date + HH:MM).
 
 ## How to Release
 
@@ -36,6 +36,10 @@ That's it. The script and CI handle the rest:
 `pubspec.yaml` uses `<semver>+<build>`:
 - **Semver** (e.g. `0.2.0`) — the user-facing version, used for git tags and display
 - **Build number** (e.g. `+2`) — auto-incremented by `bump_version.sh`, used by Android `versionCode` and iOS `CFBundleVersion`
+
+## Build Date
+
+`buildDate` uses `String.fromEnvironment('BUILD_DATE')`. CI injects a UTC date (`YYYY-MM-DD`). Local dev builds default to `DateTime.now()` formatted as `YYYY-MM-DD HH:MM`, so the Settings screen always shows a meaningful timestamp.
 
 ## Commit Hash
 

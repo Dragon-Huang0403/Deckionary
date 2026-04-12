@@ -48,6 +48,7 @@ jobs:
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           --dart-define=R2_BASE_URL=${{ secrets.R2_BASE_URL }}
           --dart-define=BUILD_COMMIT=${{ github.sha }}
+          --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - uses: actions/upload-artifact@v4
         with:
@@ -90,6 +91,7 @@ jobs:
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           --dart-define=R2_BASE_URL=${{ secrets.R2_BASE_URL }}
           --dart-define=BUILD_COMMIT=${{ github.sha }}
+          --dart-define=BUILD_DATE=$(date -u +%Y-%m-%d)
 
       - name: Archive macOS app
         run: cd build/macos/Build/Products/Release && zip -r ../../../../../macos-build.zip *.app
