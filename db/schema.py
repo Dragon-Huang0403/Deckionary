@@ -2,7 +2,7 @@
 
 import sqlite3
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 TABLES = """
 CREATE TABLE IF NOT EXISTS sources (

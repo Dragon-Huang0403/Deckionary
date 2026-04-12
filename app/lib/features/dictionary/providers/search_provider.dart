@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/database/app_database.dart';
@@ -289,7 +290,9 @@ final searchResultsProvider = FutureProvider<List<DictEntry>>((ref) async {
 
   // 6. Definition/example FTS search
   if (rows.isEmpty && query.length >= 2) {
+    debugPrint('[Search] tier 6: FTS query="$query"');
     rows = await db.searchDefinitions(query, limit: 15);
+    debugPrint('[Search] tier 6: ${rows.length} results');
   }
 
   // Load full entry data in parallel
