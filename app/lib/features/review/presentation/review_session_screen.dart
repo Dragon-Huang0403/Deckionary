@@ -189,13 +189,13 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
                   child: SizedBox.expand(
                     child: Column(
                       children: [
-                        const Spacer(flex: 4),
-                        _buildFront(card, cs),
                         const Spacer(flex: 3),
+                        _buildFront(card, cs),
+                        const Spacer(flex: 4),
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 32),
+                          padding: const EdgeInsets.only(bottom: 48),
                           child: Text(
-                            'Tap to show answer',
+                            'Tap anywhere to reveal',
                             style: TextStyle(
                               color: cs.onSurfaceVariant,
                               fontSize: 14,
