@@ -8,6 +8,9 @@ const int appBuildNumber = 1;
 const String _buildCommitEnv =
     String.fromEnvironment('BUILD_COMMIT', defaultValue: '');
 
+/// True when BUILD_COMMIT was not injected via --dart-define (i.e. local dev build).
+final bool isDevBuild = _buildCommitEnv.isEmpty;
+
 /// CI injects the full SHA; local dev builds resolve from git.
 final String buildCommit = _resolveBuildCommit();
 

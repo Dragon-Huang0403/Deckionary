@@ -26,6 +26,12 @@ class SettingsDao {
     onSettingChanged?.call(key, value);
   }
 
+  /// Fetch all settings in a single query. Returns {key: value}.
+  Future<Map<String, String>> getAll() async {
+    final rows = await _db.select(_db.settings).get();
+    return {for (final row in rows) row.key: row.value};
+  }
+
   Future<String> getDialect() async => await get('audio_dialect') ?? 'us';
   Future<void> setDialect(String dialect) => set('audio_dialect', dialect);
 
@@ -85,11 +91,11 @@ class SettingsDao {
 
   /// Stored as JSON: {"keyCode": 458759, "modifiers": ["meta", "shift"], "label": "D"}
   /// Default: Cmd+Shift+D
-  static const _defaultHotKey =
+  static const defaultHotKey =
       '{"keyCode":458759,"modifiers":["meta","shift"],"label":"D"}';
 
   Future<String> getQuickSearchHotKey() async =>
-      await get('quick_search_hotkey') ?? _defaultHotKey;
+      await get('quick_search_hotkey') ?? defaultHotKey;
   Future<void> setQuickSearchHotKey(String json) =>
       set('quick_search_hotkey', json);
 

@@ -1,34 +1,38 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/database/settings_dao.dart';
 
 final settingsStateProvider = FutureProvider<AppSettings>((ref) async {
   final dao = ref.read(settingsDaoProvider);
-  final dialect = await dao.getDialect();
-  final pronunciationDisplay = await dao.getPronunciationDisplay();
-  final autoPronounce = await dao.getAutoPronounce();
-  final themeMode = await dao.getThemeMode();
-  final newCardsPerDay = await dao.getNewCardsPerDay();
-  final maxReviewsPerDay = await dao.getMaxReviewsPerDay();
-  final reviewAutoPlayMode = await dao.getReviewAutoPlayMode();
-  final reviewCardOrder = await dao.getReviewCardOrder();
-  final quickSearchHotKey = Platform.isMacOS
-      ? await dao.getQuickSearchHotKey()
-      : '';
-  final showTrayIcon = Platform.isMacOS ? await dao.getShowTrayIcon() : false;
-  final showInDock = Platform.isMacOS ? await dao.getShowInDock() : true;
+  final all = await dao.getAll();
+
+  // Handle reviewAutoPlayMode migration (from old bool key)
+  String reviewAutoPlayMode;
+  final mode = all['review_auto_play_mode'];
+  if (mode != null) {
+    reviewAutoPlayMode = mode;
+  } else if (all['review_auto_pronounce'] == 'false') {
+    await dao.setReviewAutoPlayMode('off');
+    reviewAutoPlayMode = 'off';
+  } else {
+    reviewAutoPlayMode = 'pronunciation';
+  }
+
   return AppSettings(
-    dialect: dialect,
-    pronunciationDisplay: pronunciationDisplay,
-    autoPronounce: autoPronounce,
-    themeMode: themeMode,
-    newCardsPerDay: newCardsPerDay,
-    maxReviewsPerDay: maxReviewsPerDay,
+    dialect: all['audio_dialect'] ?? 'us',
+    pronunciationDisplay: all['pronunciation_display'] ?? 'both',
+    autoPronounce: all['auto_pronounce'] != 'false',
+    themeMode: all['theme_mode'] ?? 'system',
+    newCardsPerDay: int.tryParse(all['new_cards_per_day'] ?? '') ?? 20,
+    maxReviewsPerDay: int.tryParse(all['max_reviews_per_day'] ?? '') ?? 200,
     reviewAutoPlayMode: reviewAutoPlayMode,
-    reviewCardOrder: reviewCardOrder,
-    quickSearchHotKey: quickSearchHotKey,
-    showTrayIcon: showTrayIcon,
-    showInDock: showInDock,
+    reviewCardOrder: all['review_card_order'] ?? 'random',
+    quickSearchHotKey: Platform.isMacOS
+        ? all['quick_search_hotkey'] ?? SettingsDao.defaultHotKey
+        : '',
+    showTrayIcon: Platform.isMacOS ? all['show_tray_icon'] != 'false' : false,
+    showInDock: Platform.isMacOS ? all['show_in_dock'] != 'false' : true,
   );
 });
 
