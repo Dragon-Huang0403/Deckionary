@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -233,12 +234,18 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
       await windowManager.hide();
     }
     ref.read(isOverlayModeProvider.notifier).set(true);
+    setState(() => _currentTab = 0);
+    // Wait for rebuild so overlay UI (no nav bar, no settings) renders
+    // before the window becomes visible
+    final completer = Completer<void>();
+    WidgetsBinding.instance.addPostFrameCallback((_) => completer.complete());
+    await completer.future;
+
     await _windowChannel.invokeMethod('setOverlayMode');
     await _windowChannel.invokeMethod('prepareForShow');
     await _positionOnMouseDisplay();
     await windowManager.show();
     await windowManager.focus();
-    setState(() => _currentTab = 0);
     _readClipboardAndFocusSearch();
   }
 

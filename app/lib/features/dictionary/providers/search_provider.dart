@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_provider.dart';
-import '../../../core/database/app_database.dart';
 
 /// Cross-reference data
 class XrefInfo {

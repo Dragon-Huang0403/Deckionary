@@ -40,17 +40,15 @@ class EntryCard extends ConsumerWidget {
               if (entry.wordFamily.isNotEmpty)
                 WordFamilyWidget(entry.wordFamily),
               // Verb forms
-              if (entry.verbForms.isNotEmpty)
-                VerbFormsWidget(entry.verbForms),
+              if (entry.verbForms.isNotEmpty) VerbFormsWidget(entry.verbForms),
               // Cross-references
               if (entry.xrefs.isNotEmpty)
                 XrefInlineWidget(entry.xrefs, onWordTap: onWordTap),
               // Senses
-              ...entry.groups.map((g) => SenseGroupWidget(
-                    group: g,
-                    ref: ref,
-                    onWordTap: onWordTap,
-                  )),
+              ...entry.groups.map(
+                (g) =>
+                    SenseGroupWidget(group: g, ref: ref, onWordTap: onWordTap),
+              ),
               // Synonyms
               if (entry.synonyms.isNotEmpty)
                 CollapsibleSection(

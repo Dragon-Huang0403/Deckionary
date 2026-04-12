@@ -104,9 +104,7 @@ class DictionaryDatabase {
     final db = Database(NativeDatabase.createInBackground(File(dbPath)));
     try {
       final rows = await db
-          .customSelect(
-            "SELECT value FROM meta WHERE key = 'schema_version'",
-          )
+          .customSelect("SELECT value FROM meta WHERE key = 'schema_version'")
           .get();
       if (rows.isEmpty) return 0;
       return int.tryParse(rows.first.data['value'] as String? ?? '') ?? 0;

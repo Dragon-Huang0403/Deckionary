@@ -62,10 +62,7 @@ class CollocationsWidget extends StatelessWidget {
                   letterSpacing: 0.3,
                 ),
               ),
-              Wrap(
-                spacing: 0,
-                children: _buildClickableWords(words, context),
-              ),
+              Wrap(spacing: 0, children: _buildClickableWords(words, context)),
             ],
           ),
         );
@@ -110,15 +107,18 @@ class IdiomsWidget extends StatelessWidget {
   final WidgetRef ref;
   final void Function(String word)? onWordTap;
 
-  const IdiomsWidget(this.idioms, {super.key, required this.ref, this.onWordTap});
+  const IdiomsWidget(
+    this.idioms, {
+    super.key,
+    required this.ref,
+    this.onWordTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: idioms
-          .map((idiom) => _buildIdiomItem(context, idiom))
-          .toList(),
+      children: idioms.map((idiom) => _buildIdiomItem(context, idiom)).toList(),
     );
   }
 
@@ -162,11 +162,13 @@ class IdiomsWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final group in idiom.groups)
-                  ...group.senses.map((s) => SenseWidget(
-                        senseData: s,
-                        ref: ref,
-                        onWordTap: onWordTap,
-                      )),
+                  ...group.senses.map(
+                    (s) => SenseWidget(
+                      senseData: s,
+                      ref: ref,
+                      onWordTap: onWordTap,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -215,9 +217,7 @@ class ExtraExamplesWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: extraExamples
-          .map((ex) => ExampleWidget(example: ex))
-          .toList(),
+      children: extraExamples.map((ex) => ExampleWidget(example: ex)).toList(),
     );
   }
 }

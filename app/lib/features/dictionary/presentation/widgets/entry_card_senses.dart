@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/audio/audio_provider.dart';
 import '../../../../core/database/database_provider.dart';
 import '../../../../shared/widgets/tappable_text.dart';
 import '../../providers/search_provider.dart';
@@ -60,11 +59,9 @@ class SenseGroupWidget extends StatelessWidget {
               ),
             ),
           ),
-        ...group.senses.map((s) => SenseWidget(
-              senseData: s,
-              ref: ref,
-              onWordTap: onWordTap,
-            )),
+        ...group.senses.map(
+          (s) => SenseWidget(senseData: s, ref: ref, onWordTap: onWordTap),
+        ),
         if (group.xrefs.isNotEmpty)
           XrefInlineWidget(group.xrefs, onWordTap: onWordTap),
       ],
@@ -140,10 +137,9 @@ class SenseWidget extends StatelessWidget {
                   definitionZh,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.4),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
             ],
@@ -155,11 +151,13 @@ class SenseWidget extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: senseData.examples
-                    .map((ex) => ExampleWidget(
-                          example: ex,
-                          ref: ref,
-                          onWordTap: onWordTap,
-                        ))
+                    .map(
+                      (ex) => ExampleWidget(
+                        example: ex,
+                        ref: ref,
+                        onWordTap: onWordTap,
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -186,13 +184,13 @@ class ExampleWidget extends StatelessWidget {
 
   static Color _usColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF64B5F6)
-          : const Color(0xFF1565C0);
+      ? const Color(0xFF64B5F6)
+      : const Color(0xFF1565C0);
 
   static Color _gbColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFFFF8A65)
-          : const Color(0xFFD84315);
+      ? const Color(0xFFFF8A65)
+      : const Color(0xFFD84315);
 
   @override
   Widget build(BuildContext context) {
@@ -261,10 +259,9 @@ class ExampleWidget extends StatelessWidget {
                     textZh,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.4),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
               ],

@@ -7,13 +7,15 @@ import 'package:window_manager/window_manager.dart';
 import '../../../app.dart'
     show searchBarFocusTrigger, clipboardSearchText, isOverlayModeProvider;
 import '../../../core/audio/audio_provider.dart';
-import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../providers/search_provider.dart';
 import '../providers/search_history_provider.dart';
 import '../../../core/sync/sync_provider.dart';
-import '../../settings/presentation/settings_screen.dart';
+import 'widgets/dictionary_search_bar.dart';
+import 'widgets/dictionary_welcome.dart';
 import 'widgets/entry_card.dart';
+import 'widgets/entry_options_list.dart';
+import 'widgets/search_history_list.dart';
 
 class DictionaryScreen extends ConsumerStatefulWidget {
   const DictionaryScreen({super.key});
@@ -68,7 +70,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     if (_history.isNotEmpty) {
       final prev = _history.removeLast();
       if (prev.isEmpty) {
-        // Came from home screen — return there
+        // Came from home screen -- return there
         _controller.clear();
         setState(() {
           _committed = false;
@@ -94,7 +96,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       ref.read(searchQueryProvider.notifier).set(prev);
       return;
     }
-    // No history but has text — clear search, go home
+    // No history but has text -- clear search, go home
     if (_controller.text.isNotEmpty) {
       _controller.clear();
       setState(() {
@@ -238,20 +240,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     final results = ref.watch(searchResultsProvider);
     final query = ref.watch(searchQueryProvider);
 
-    // Reset to fresh search screen when overlay opens
-    ref.listen(isOverlayModeProvider, (prev, next) {
-      if (next) {
-        setState(() {
-          _controller.clear();
-          _selectedEntryIndex = null;
-          _entryAutoSelected = false;
-          _history.clear();
-          _committed = false;
-        });
-        ref.read(searchQueryProvider.notifier).set('');
-      }
-    });
-
     // Focus search bar when global hotkey fires, auto-fill clipboard word
     ref.listen(searchBarFocusTrigger, (prev, next) {
       final clipText = ref.read(clipboardSearchText);
@@ -327,7 +315,19 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
           body: SafeArea(
             child: Column(
               children: [
-                _buildSearchBar(context),
+                DictionarySearchBar(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  onChanged: _onSearchChanged,
+                  onSubmitted: _onSubmitted,
+                  canGoBack: _canGoBack(),
+                  onBack: _goBack,
+                  onClear: () {
+                    _controller.clear();
+                    ref.read(searchQueryProvider.notifier).set('');
+                    _focusNode.requestFocus();
+                  },
+                ),
                 // Results (SelectionArea enables text selection)
                 Expanded(
                   child: SelectionArea(
@@ -365,7 +365,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
                                 );
                               }
                               // Multiple entries: show options list
-                              return _buildOptionslist(entries);
+                              return EntryOptionsList(
+                                entries: entries,
+                                onSelect: _selectEntry,
+                              );
                             },
                             loading: () => const Center(
                               child: CircularProgressIndicator(),
@@ -382,284 +385,19 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     );
   }
 
-  /// Options list: shows each POS variant for the user to pick
-  Widget _buildOptionslist(List<DictEntry> entries) {
-    final cs = Theme.of(context).colorScheme;
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: entries.length,
-      itemBuilder: (context, index) {
-        final e = entries[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            title: Text(
-              e.headword,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            subtitle: e.pos.isNotEmpty
-                ? Text(
-                    e.pos,
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  )
-                : null,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (e.cefrLevel.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      e.cefrLevel.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: cs.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                if (e.ox3000) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    '3K',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: cs.tertiary,
-                    ),
-                  ),
-                ],
-                if (e.ox5000 && !e.ox3000) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    '5K',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: cs.tertiary,
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 20),
-              ],
-            ),
-            onTap: () => _selectEntry(index, e),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSearchBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        children: [
-          if (_canGoBack())
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: _goBack,
-              tooltip: 'Back',
-            ),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              onChanged: _onSearchChanged,
-              onSubmitted: _onSubmitted,
-              textInputAction: TextInputAction.search,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search for a word...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _controller.clear();
-                          ref.read(searchQueryProvider.notifier).set('');
-                          _focusNode.requestFocus();
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
-            ),
-          ),
-          if (!ref.watch(isOverlayModeProvider)) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildHomeScreen() {
     final historyAsync = ref.watch(searchHistoryProvider);
     // Use .hasValue to keep showing previous data while loading more,
     // preventing the list from jumping to top on pagination.
     if (historyAsync.hasValue && historyAsync.value!.isNotEmpty) {
-      return _buildSearchHistory(historyAsync.value!);
+      return SearchHistoryList(
+        history: historyAsync.value!,
+        scrollController: _historyScrollController,
+        onTap: (word, {String? pos}) => _commitSearch(word, pos: pos),
+        onClearAll: () => ref.read(searchHistoryDaoProvider).clearAll(),
+        onDelete: (id) => ref.read(searchHistoryDaoProvider).deleteById(id),
+      );
     }
-    return _buildWelcome();
-  }
-
-  Widget _buildWelcome() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.menu_book_outlined,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'OALD10 Dictionary',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Type a word to look it up',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchHistory(List<SearchHistoryData> history) {
-    final cs = Theme.of(context).colorScheme;
-    // +1 for the header row
-    return ListView.builder(
-      controller: _historyScrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: history.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Text(
-                  'Recent',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(color: cs.onSurfaceVariant),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Clear search history?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Clear'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      ref.read(searchHistoryDaoProvider).clearAll();
-                    }
-                  },
-                  child: const Text('Clear all'),
-                ),
-              ],
-            ),
-          );
-        }
-        final item = history[index - 1];
-        final word = item.headword ?? item.query;
-        final pos = item.pos;
-        return Dismissible(
-          key: ValueKey(item.id),
-          direction: DismissDirection.endToStart,
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 16),
-            color: cs.errorContainer,
-            child: Icon(Icons.delete_outline, color: cs.onErrorContainer),
-          ),
-          onDismissed: (_) {
-            ref.read(searchHistoryDaoProvider).deleteById(item.id);
-          },
-          child: ListTile(
-            leading: Icon(Icons.history, color: cs.onSurfaceVariant, size: 20),
-            title: Row(
-              children: [
-                Text(word),
-                if (pos.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    pos,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: cs.primary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            trailing: Text(
-              _relativeTime(item.searchedAt),
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            onTap: () => _commitSearch(word, pos: pos.isNotEmpty ? pos : null),
-            contentPadding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-          ),
-        );
-      },
-    );
-  }
-
-  String _relativeTime(String isoString) {
-    final date = DateTime.tryParse(isoString);
-    if (date == null) return '';
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.month}/${date.day}';
+    return const DictionaryWelcome();
   }
 }
