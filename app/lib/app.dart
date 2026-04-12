@@ -388,7 +388,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     final sync = ref.read(syncServiceProvider);
     if (sync == null) return;
 
-    sync.pullSearchHistory();
+    sync.syncSearchHistory();
     sync.syncReviewData().then((_) {
       ref.invalidate(reviewSummaryProvider);
     });
