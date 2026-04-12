@@ -1,32 +1,83 @@
 import 'package:flutter/material.dart';
 import '../../providers/search_provider.dart';
 
-class EntryOptionsList extends StatelessWidget {
+class EntryOptionsList extends StatefulWidget {
   final List<SearchResult> results;
+  final int highlightedIndex;
   final void Function(int index, DictEntry entry) onSelect;
 
   const EntryOptionsList({
     super.key,
     required this.results,
+    required this.highlightedIndex,
     required this.onSelect,
   });
+
+  @override
+  State<EntryOptionsList> createState() => _EntryOptionsListState();
+}
+
+class _EntryOptionsListState extends State<EntryOptionsList> {
+  final _scrollController = ScrollController();
+  static const _estimatedItemHeight = 80.0;
+
+  @override
+  void didUpdateWidget(EntryOptionsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.highlightedIndex != oldWidget.highlightedIndex) {
+      _scrollToHighlighted();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToHighlighted() {
+    if (!_scrollController.hasClients) return;
+    final targetTop = widget.highlightedIndex * _estimatedItemHeight;
+    final targetBottom = targetTop + _estimatedItemHeight;
+    final viewport = _scrollController.position;
+    if (targetTop < viewport.pixels) {
+      _scrollController.animateTo(
+        targetTop,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+    } else if (targetBottom > viewport.pixels + viewport.viewportDimension) {
+      _scrollController.animateTo(
+        targetBottom - viewport.viewportDimension,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: results.length,
+      itemCount: widget.results.length,
       itemBuilder: (context, index) {
-        final r = results[index];
+        final r = widget.results[index];
         final e = r.entry;
         final isFts = r.source != SearchMatchSource.headword;
+        final isHighlighted = index == widget.highlightedIndex;
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
+          color: isHighlighted ? cs.primaryContainer : null,
           child: ListTile(
             title: Text(
               e.headword,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: isHighlighted ? cs.onPrimaryContainer : null,
+              ),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +86,7 @@ class EntryOptionsList extends StatelessWidget {
                   Text(
                     e.pos,
                     style: TextStyle(
-                      color: cs.primary,
+                      color: isHighlighted ? cs.onPrimaryContainer : cs.primary,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -75,7 +126,9 @@ class EntryOptionsList extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color: cs.onSurfaceVariant,
+                            color: isHighlighted
+                                ? cs.onPrimaryContainer
+                                : cs.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -131,7 +184,7 @@ class EntryOptionsList extends StatelessWidget {
                 Icon(Icons.chevron_right, color: cs.onSurfaceVariant, size: 20),
               ],
             ),
-            onTap: () => onSelect(index, e),
+            onTap: () => widget.onSelect(index, e),
           ),
         );
       },

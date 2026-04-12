@@ -314,7 +314,6 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
   if (query.isEmpty) return [];
 
   final db = ref.read(dictionaryDbProvider);
-  var isFts = false;
 
   // 1. Exact match (includes all POS for a word)
   var rows = await db.lookupWord(query);
@@ -348,19 +347,26 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
     rows = await db.fuzzySearch(query, limit: 10, maxDistance: 2);
   }
 
-  // 6. Definition/example FTS search
-  if (rows.isEmpty && query.length >= 2) {
-    rows = await db.searchDefinitions(query, limit: 15);
-    isFts = rows.isNotEmpty;
-  }
-
-  // Load full entry data in parallel
+  // Load headword-match entries
+  final headwordIds = rows.map((r) => r['id'] as int).toSet();
   final entries = await Future.wait(rows.map((row) => loadFullEntry(db, row)));
+  final results = entries.map((e) => SearchResult(e)).toList();
 
-  if (isFts) {
-    return entries.map((e) => _buildFtsResult(e, query)).toList();
+  // Always append FTS results (definitions/examples) if query is 2+ chars
+  if (query.length >= 2) {
+    final ftsRows = await db.searchDefinitions(query, limit: 15);
+    final newFtsRows = ftsRows
+        .where((r) => !headwordIds.contains(r['id'] as int))
+        .toList();
+    if (newFtsRows.isNotEmpty) {
+      final ftsEntries = await Future.wait(
+        newFtsRows.map((row) => loadFullEntry(db, row)),
+      );
+      results.addAll(ftsEntries.map((e) => _buildFtsResult(e, query)));
+    }
   }
-  return entries.map((e) => SearchResult(e)).toList();
+
+  return results;
 });
 
 /// Autocomplete suggestions (lightweight - just headwords, no full load)

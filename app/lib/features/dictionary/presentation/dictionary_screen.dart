@@ -36,15 +36,48 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
 
   // Two-step search: null = show options list, int = show that entry
   int? _selectedEntryIndex;
-  // true when entry was auto-selected (single result or pendingPos), not manually picked from options list
-  bool _entryAutoSelected = false;
-  // When navigating from history with POS, auto-select matching entry
+  // When navigating from history with POS, highlight matching entry
   String? _pendingPos;
+  // Keyboard-navigable highlight in options list
+  int _highlightedIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    _focusNode.onKeyEvent = _handleSearchKeyEvent;
     _historyScrollController.addListener(_onHistoryScroll);
+  }
+
+  KeyEventResult _handleSearchKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final asyncResults = ref.read(searchResultsProvider);
+    if (!asyncResults.hasValue ||
+        asyncResults.value!.isEmpty ||
+        _selectedEntryIndex != null) {
+      return KeyEventResult.ignored;
+    }
+    final results = asyncResults.value!;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      setState(() {
+        _highlightedIndex = (_highlightedIndex + 1).clamp(
+          0,
+          results.length - 1,
+        );
+      });
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      setState(() {
+        _highlightedIndex = (_highlightedIndex - 1).clamp(
+          0,
+          results.length - 1,
+        );
+      });
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   void _onHistoryScroll() {
@@ -62,9 +95,12 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   }
 
   void _goBack() {
-    // If user manually picked from multi-POS options list, go back to that list
-    if (_selectedEntryIndex != null && !_entryAutoSelected) {
-      setState(() => _selectedEntryIndex = null);
+    // If viewing a selected entry, go back to options list
+    if (_selectedEntryIndex != null) {
+      setState(() {
+        _highlightedIndex = _selectedEntryIndex!;
+        _selectedEntryIndex = null;
+      });
       return;
     }
     if (_history.isNotEmpty) {
@@ -75,7 +111,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
         setState(() {
           _committed = false;
           _selectedEntryIndex = null;
-          _entryAutoSelected = false;
+
           _pendingPos = null;
         });
         ref.read(searchQueryProvider.notifier).set('');
@@ -89,7 +125,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       setState(() {
         _committed = true;
         _selectedEntryIndex = null;
-        _entryAutoSelected = false;
+
         _pendingPos = null;
       });
       ref.invalidate(searchResultsProvider);
@@ -102,7 +138,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       setState(() {
         _committed = false;
         _selectedEntryIndex = null;
-        _entryAutoSelected = false;
+
         _pendingPos = null;
       });
       ref.read(searchQueryProvider.notifier).set('');
@@ -113,6 +149,21 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _onSubmitted(String value) {
     final text = value.trim();
     if (text.isEmpty) return;
+
+    // If options list is showing and results match current text, select highlighted
+    final asyncResults = ref.read(searchResultsProvider);
+    final query = ref.read(searchQueryProvider);
+    if (asyncResults.hasValue &&
+        asyncResults.value!.isNotEmpty &&
+        _selectedEntryIndex == null &&
+        text.toLowerCase() == query.toLowerCase()) {
+      final results = asyncResults.value!;
+      final idx = _highlightedIndex.clamp(0, results.length - 1);
+      _selectEntry(idx, results[idx].entry);
+      _focusNode.requestFocus();
+      return;
+    }
+
     _commitSearch(text);
     _focusNode.requestFocus();
   }
@@ -139,8 +190,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _onSearchChanged(String value) {
     _committed = false;
     _selectedEntryIndex = null;
-    _entryAutoSelected = false;
     _pendingPos = null;
+    _highlightedIndex = 0;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       ref.read(searchQueryProvider.notifier).set(value.trim());
@@ -163,7 +214,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     setState(() {
       _committed = true;
       _selectedEntryIndex = null;
-      _entryAutoSelected = false;
       _pendingPos = pos;
     });
     // Force provider refresh even if same word
@@ -175,7 +225,6 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
   void _selectEntry(int index, DictEntry entry) {
     setState(() {
       _selectedEntryIndex = index;
-      _entryAutoSelected = false;
     });
     // Save to history with POS
     _lastSavedHeadword = '${entry.headword}:${entry.pos}';
@@ -245,7 +294,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
         setState(() {
           _controller.clear();
           _selectedEntryIndex = null;
-          _entryAutoSelected = false;
+
           _history.clear();
           _committed = false;
         });
@@ -267,37 +316,19 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
       next.whenData((results) {
         final q = ref.read(searchQueryProvider);
         _saveToHistory(results, q);
-        // Auto-select if single entry or pending POS from history tap
-        if (results.length == 1) {
-          if (_selectedEntryIndex == null) {
-            setState(() {
-              _selectedEntryIndex = 0;
-              _entryAutoSelected = true;
-            });
-          }
-          _autoPronounce(results, q);
-        } else if (_pendingPos != null && results.length > 1) {
+        // Always show options list — highlight matching entry instead of auto-selecting
+        if (_pendingPos != null && results.length > 1) {
           final idx = results.indexWhere((r) => r.entry.pos == _pendingPos);
-          if (idx >= 0) {
-            final entry = results[idx].entry;
-            setState(() {
-              _selectedEntryIndex = idx;
-              _entryAutoSelected = true;
-            });
-            // Save to history and auto-pronounce
-            _lastSavedHeadword = '${entry.headword}:${entry.pos}';
-            ref
-                .read(searchHistoryDaoProvider)
-                .addSearch(
-                  entry.headword,
-                  entryId: entry.id,
-                  headword: entry.headword,
-                  pos: entry.pos,
-                )
-                .then((_) => ref.read(syncServiceProvider)?.pushLatestSearch());
-            _autoPronounceEntry(entry);
-          }
+          setState(() {
+            _highlightedIndex = idx >= 0 ? idx : 0;
+          });
           _pendingPos = null;
+        } else {
+          setState(() => _highlightedIndex = 0);
+        }
+        // Auto-pronounce committed single-result searches
+        if (results.length == 1) {
+          _autoPronounce(results, q);
         }
       });
     });
@@ -376,9 +407,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
                                   ),
                                 );
                               }
-                              // Multiple entries: show options list
+                              // Show options list
                               return EntryOptionsList(
                                 results: searchResults,
+                                highlightedIndex: _highlightedIndex,
                                 onSelect: _selectEntry,
                               );
                             },
