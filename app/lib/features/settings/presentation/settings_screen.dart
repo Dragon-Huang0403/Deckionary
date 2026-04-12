@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../app_providers.dart';
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/build_info.dart';
 import '../../review/providers/review_providers.dart';
@@ -29,14 +30,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _signingIn = true);
     try {
       await ref.read(authServiceProvider)?.signInWithGoogle();
-      // Auto-sync on first sign-in
+      // Auto-sync on first sign-in: pull remote first, then push local
       final syncService = ref.read(syncServiceProvider);
       if (syncService != null) {
-        syncService.pushAllSettings();
+        final settingsPulled = await syncService.pullSettings();
+        await syncService.pushDirtySettings();
         syncService.syncSearchHistory();
         syncService.syncReviewData();
-        syncService.pullSettings();
         syncService.cleanupSoftDeletes();
+        if (settingsPulled > 0) {
+          ref.invalidate(themeModeProvider);
+          ref.invalidate(reviewFilterProvider);
+          ref.invalidate(settingsStateProvider);
+        }
       }
     } catch (e) {
       if (mounted) {
