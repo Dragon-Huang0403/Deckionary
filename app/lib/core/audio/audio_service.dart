@@ -75,20 +75,12 @@ class AudioDb {
     });
   }
 
-  Future<({int fileCount, int sizeBytes})> stats() async {
+  Future<int> fileCount() async {
     await init();
-    final countRow = await _db
+    final row = await _db
         .customSelect('SELECT COUNT(*) as c FROM audio_files')
         .getSingle();
-    final sizeRow = await _db
-        .customSelect(
-          'SELECT COALESCE(SUM(LENGTH(data)), 0) as s FROM audio_files',
-        )
-        .getSingle();
-    return (
-      fileCount: countRow.data['c'] as int,
-      sizeBytes: sizeRow.data['s'] as int,
-    );
+    return row.data['c'] as int;
   }
 
   Future<Set<String>> getCachedFilenames() async {
@@ -359,8 +351,8 @@ class AudioService {
     return files.length;
   }
 
-  /// Cache stats from audio.db.
-  Future<({int fileCount, int sizeBytes})> getCacheStats() => audioDB.stats();
+  /// Cached file count from audio.db.
+  Future<int> getCachedFileCount() => audioDB.fileCount();
 
   /// Whether all audio packs have been downloaded.
   Future<bool> isDownloadComplete() => audioDB.isDownloadComplete();

@@ -129,7 +129,7 @@ class AudioDownloadSection extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${s.completedPacks} / ${s.totalPacks} packs (${s.cacheSizeFormatted})',
+                  '${s.completedPacks} / ${s.totalPacks} packs',
                   style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
                 ),
               ],
@@ -156,7 +156,7 @@ class AudioDownloadSection extends ConsumerWidget {
           return ListTile(
             leading: Icon(Icons.check_circle, color: Colors.green.shade600),
             title: const Text('All audio downloaded'),
-            subtitle: Text('${s.cachedFiles} files (${s.cacheSizeFormatted})'),
+            subtitle: Text('${s.cachedFiles} files'),
             trailing: TextButton(
               onPressed: () =>
                   ref.read(offlineAudioProvider.notifier).clearCache(),
