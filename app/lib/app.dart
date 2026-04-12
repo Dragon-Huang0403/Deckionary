@@ -84,6 +84,17 @@ class _SignInFlagNotifier extends Notifier<bool> {
   void set(bool value) => state = value;
 }
 
+/// Whether the app is currently in overlay (Raycast-style) mode.
+final isOverlayModeProvider = NotifierProvider<_OverlayModeNotifier, bool>(
+  _OverlayModeNotifier.new,
+);
+
+class _OverlayModeNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void set(bool value) => state = value;
+}
+
 /// Check if clipboard text looks like a word/phrase worth searching.
 bool _looksLikeSearchQuery(String text) {
   if (text.length > 50 || text.contains('\n')) return false;
@@ -180,6 +191,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   DateTime? _lastSyncAt;
   bool _settingsOpen = false;
   bool _showInDock = true;
+  bool _windowTransitioning = false;
 
   @override
   void initState() {
@@ -203,6 +215,20 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     if (showTray) await _setupTrayIcon();
 
     _showInDock = await dao.getShowInDock();
+
+    // Listen for native-to-Flutter calls (dock icon click)
+    _windowChannel.setMethodCallHandler((call) async {
+      if (call.method == 'dockClicked') {
+        await _showNormalMode();
+      }
+    });
+
+    // Show window in normal mode on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _windowChannel.invokeMethod('setNormalMode');
+      await windowManager.show();
+      await windowManager.focus();
+    });
   }
 
   void _checkForUpdate() {
@@ -335,30 +361,62 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   }
 
   Future<void> _toggleWindow() async {
-    final isVisible = await windowManager.isVisible();
-    if (isVisible) {
-      await _windowChannel.invokeMethod('resetLevel');
-      await windowManager.hide();
-    } else {
-      // Jump to user's current Space, then show
-      await _windowChannel.invokeMethod('prepareForShow');
-      await _positionOnMouseDisplay();
-      await windowManager.show();
-      await windowManager.focus();
-      setState(() => _currentTab = 0);
+    if (_windowTransitioning) return;
+    _windowTransitioning = true;
+    try {
+      final isVisible = await windowManager.isVisible();
+      final isOverlay = ref.read(isOverlayModeProvider);
 
-      // Clipboard auto-search
-      String? clipText;
-      try {
-        final data = await Clipboard.getData(Clipboard.kTextPlain);
-        final text = data?.text?.trim();
-        if (text != null && text.isNotEmpty && _looksLikeSearchQuery(text)) {
-          clipText = text;
-        }
-      } catch (_) {}
-      ref.read(clipboardSearchText.notifier).set(clipText);
-      ref.read(searchBarFocusTrigger.notifier).increment();
+      if (isVisible && isOverlay) {
+        // Overlay visible → hide it
+        await _hideWindow();
+      } else if (isVisible) {
+        // Normal mode visible → focus search bar + clipboard auto-fill
+        setState(() => _currentTab = 0);
+        _readClipboardAndFocusSearch();
+      } else {
+        // Hidden → show as overlay
+        ref.read(isOverlayModeProvider.notifier).set(true);
+        await _windowChannel.invokeMethod('setOverlayMode');
+        await _windowChannel.invokeMethod('prepareForShow');
+        await _positionOnMouseDisplay();
+        await windowManager.show();
+        await windowManager.focus();
+        setState(() => _currentTab = 0);
+        _readClipboardAndFocusSearch();
+      }
+    } finally {
+      _windowTransitioning = false;
     }
+  }
+
+  void _readClipboardAndFocusSearch() async {
+    String? clipText;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (text != null && text.isNotEmpty && _looksLikeSearchQuery(text)) {
+        clipText = text;
+      }
+    } catch (_) {}
+    ref.read(clipboardSearchText.notifier).set(clipText);
+    ref.read(searchBarFocusTrigger.notifier).increment();
+  }
+
+  Future<void> _hideWindow() async {
+    ref.read(isOverlayModeProvider.notifier).set(false);
+    await _windowChannel.invokeMethod('setNormalMode');
+    await _windowChannel.invokeMethod('resetLevel', _showInDock);
+    await windowManager.hide();
+  }
+
+  Future<void> _showNormalMode() async {
+    if (ref.read(isOverlayModeProvider)) {
+      ref.read(isOverlayModeProvider.notifier).set(false);
+      await _windowChannel.invokeMethod('setNormalMode');
+    }
+    await windowManager.show();
+    await windowManager.focus();
   }
 
   Future<void> _positionOnMouseDisplay() async {
@@ -394,13 +452,17 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   @override
   void onWindowClose() async {
-    await _windowChannel.invokeMethod('resetLevel', _showInDock);
-    await windowManager.hide();
+    if (ref.read(isOverlayModeProvider)) {
+      await _hideWindow();
+    } else {
+      await _windowChannel.invokeMethod('resetLevel', _showInDock);
+      await windowManager.hide();
+    }
   }
 
   @override
   void onTrayIconMouseDown() {
-    _toggleWindow();
+    _toggleTrayWindow();
   }
 
   @override
@@ -412,18 +474,32 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.label) {
       case 'Show/Hide Deckionary':
-        _toggleWindow();
+        _toggleTrayWindow();
       case 'Quit':
         windowManager.setPreventClose(false);
         windowManager.close();
     }
   }
 
+  Future<void> _toggleTrayWindow() async {
+    final isVisible = await windowManager.isVisible();
+    if (isVisible) {
+      if (ref.read(isOverlayModeProvider)) {
+        await _hideWindow();
+      } else {
+        await _windowChannel.invokeMethod('resetLevel', _showInDock);
+        await windowManager.hide();
+      }
+    } else {
+      await _showNormalMode();
+    }
+  }
+
   @override
   void onWindowBlur() {
+    if (!ref.read(isOverlayModeProvider)) return;
     if (ref.read(signInInProgressProvider)) return;
-    _windowChannel.invokeMethod('resetLevel', _showInDock);
-    windowManager.hide();
+    _hideWindow();
   }
 
   @override
@@ -529,26 +605,30 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
       ),
       themeMode: themeMode,
       home: Scaffold(
-        body: IndexedStack(
-          index: _currentTab,
-          children: const [DictionaryScreen(), ReviewHomeScreen()],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentTab,
-          onDestinationSelected: (i) => setState(() => _currentTab = i),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.book_outlined),
-              selectedIcon: Icon(Icons.book),
-              label: 'Dictionary',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.school_outlined),
-              selectedIcon: Icon(Icons.school),
-              label: 'Review',
-            ),
-          ],
-        ),
+        body: ref.watch(isOverlayModeProvider)
+            ? const DictionaryScreen()
+            : IndexedStack(
+                index: _currentTab,
+                children: const [DictionaryScreen(), ReviewHomeScreen()],
+              ),
+        bottomNavigationBar: ref.watch(isOverlayModeProvider)
+            ? null
+            : NavigationBar(
+                selectedIndex: _currentTab,
+                onDestinationSelected: (i) => setState(() => _currentTab = i),
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.book_outlined),
+                    selectedIcon: Icon(Icons.book),
+                    label: 'Dictionary',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.school_outlined),
+                    selectedIcon: Icon(Icons.school),
+                    label: 'Review',
+                  ),
+                ],
+              ),
       ),
     );
   }

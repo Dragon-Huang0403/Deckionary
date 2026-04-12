@@ -28,7 +28,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (_signingIn) return;
     setState(() => _signingIn = true);
     ref.read(signInInProgressProvider.notifier).set(true);
-    if (Platform.isMacOS) {
+    final wasOverlay = ref.read(isOverlayModeProvider);
+    if (Platform.isMacOS && wasOverlay) {
       await _windowChannel.invokeMethod('setNormalMode');
     }
     try {
@@ -43,9 +44,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       }
     } finally {
       ref.read(signInInProgressProvider.notifier).set(false);
-      if (Platform.isMacOS) {
-        final dock = ref.read(showInDockProvider).value ?? true;
-        await _windowChannel.invokeMethod('setOverlayMode', dock);
+      if (Platform.isMacOS && wasOverlay) {
+        await _windowChannel.invokeMethod('setOverlayMode');
       }
       if (mounted) setState(() => _signingIn = false);
     }

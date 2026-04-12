@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
-import '../../../app.dart' show searchBarFocusTrigger, clipboardSearchText;
+import '../../../app.dart'
+    show searchBarFocusTrigger, clipboardSearchText, isOverlayModeProvider;
 import '../../../core/audio/audio_provider.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
@@ -296,8 +297,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
             _controller.clear();
             ref.read(searchQueryProvider.notifier).set('');
             _focusSearchBar();
-          } else if (Platform.isMacOS) {
-            // Empty search on macOS: hide window
+          } else if (Platform.isMacOS && ref.read(isOverlayModeProvider)) {
+            // Empty search in overlay mode: hide window
             windowManager.hide();
           }
           return KeyEventResult.handled;

@@ -10,12 +10,10 @@ class MainFlutterWindow: NSPanel {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
-    // NSPanel config for fullscreen overlay (Spotlight/Raycast behavior)
-    self.isFloatingPanel = true
-    self.becomesKeyOnlyIfNeeded = false
+    self.isFloatingPanel = false
     self.hidesOnDeactivate = false
-    self.styleMask.insert(.nonactivatingPanel)
-    self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+    self.level = .normal
+    NSApp.setActivationPolicy(.regular)
 
     windowChannel = FlutterMethodChannel(
       name: "com.deckionary/window",
@@ -32,8 +30,7 @@ class MainFlutterWindow: NSPanel {
         self?.makeKey()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
           self?.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-          self?.isFloatingPanel = false
-          self?.level = .normal
+          self?.level = .floating
         }
         result(nil)
       case "resetLevel":
@@ -45,16 +42,16 @@ class MainFlutterWindow: NSPanel {
         result(nil)
       case "setNormalMode":
         self?.styleMask.remove(.nonactivatingPanel)
+        self?.isFloatingPanel = false
         self?.level = .normal
+        self?.collectionBehavior = [.fullScreenAuxiliary]
         NSApp.setActivationPolicy(.regular)
         result(nil)
       case "setOverlayMode":
         self?.styleMask.insert(.nonactivatingPanel)
+        self?.isFloatingPanel = true
         self?.level = .floating
-        let showInDock = (call.arguments as? Bool) ?? false
-        if !showInDock {
-          NSApp.setActivationPolicy(.accessory)
-        }
+        self?.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         result(nil)
       default:
         result(FlutterMethodNotImplemented)

@@ -13,6 +13,9 @@ class AppDelegate: FlutterAppDelegate {
 
   override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
     if !flag {
+      if let mainWindow = sender.windows.first(where: { $0 is MainFlutterWindow }) as? MainFlutterWindow {
+        mainWindow.windowChannel?.invokeMethod("dockClicked", arguments: nil)
+      }
       for window in sender.windows {
         window.makeKeyAndOrderFront(self)
       }
