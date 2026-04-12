@@ -293,6 +293,26 @@ def import_all(db_path: str | Path, verbose: bool = False) -> None:
             )
     db.commit()
 
+    # Populate definition/example FTS index
+    print("Building definition/example FTS index...", file=sys.stderr)
+    db.execute("""
+        INSERT INTO dictionary_fts(rowid, headword, definitions, examples)
+        SELECT
+            e.id,
+            e.headword,
+            COALESCE((SELECT GROUP_CONCAT(s.definition, char(10))
+                      FROM senses s WHERE s.entry_id = e.id), ''),
+            COALESCE((SELECT GROUP_CONCAT(ex.text_plain, char(10))
+                      FROM examples ex
+                      JOIN senses s2 ON ex.sense_id = s2.id
+                      WHERE s2.entry_id = e.id), '')
+        FROM entries e
+    """)
+    db.execute("INSERT INTO dictionary_fts(dictionary_fts) VALUES('optimize')")
+    db.commit()
+    fts_count = db.execute("SELECT COUNT(*) FROM dictionary_fts").fetchone()[0]
+    print(f"  {fts_count} entries indexed", file=sys.stderr)
+
     # Optimize
     print("Optimizing database...", file=sys.stderr)
     db.execute("PRAGMA optimize")

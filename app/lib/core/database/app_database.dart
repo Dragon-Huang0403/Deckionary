@@ -244,6 +244,44 @@ class DictionaryDatabase {
     return results.map((r) => r.data).toList();
   }
 
+  /// Search definitions and examples via FTS5.
+  /// Returns entry rows ranked by BM25 relevance
+  /// (headword > definition > example).
+  Future<List<Map<String, dynamic>>> searchDefinitions(
+    String query, {
+    int limit = 20,
+  }) async {
+    final q = query.trim();
+    if (q.isEmpty) return [];
+
+    // Sanitize: quote each token to prevent FTS5 syntax injection
+    final sanitized = q
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .map((w) => '"${w.replaceAll('"', '')}"')
+        .join(' ');
+    if (sanitized.isEmpty) return [];
+
+    try {
+      final results = await _db
+          .customSelect(
+            '''SELECT e.* FROM dictionary_fts fts
+           JOIN entries e ON e.id = fts.rowid
+           WHERE dictionary_fts MATCH ?
+           ORDER BY bm25(dictionary_fts, 10.0, 5.0, 1.0)
+           LIMIT ?''',
+            variables: [
+              Variable.withString(sanitized),
+              Variable.withInt(limit),
+            ],
+          )
+          .get();
+      return results.map((r) => r.data).toList();
+    } catch (_) {
+      return []; // graceful fallback on malformed queries
+    }
+  }
+
   Future<List<Map<String, dynamic>>> lookupWord(String headword) async {
     final results = await _db
         .customSelect(

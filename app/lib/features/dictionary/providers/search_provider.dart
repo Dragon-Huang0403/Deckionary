@@ -287,6 +287,11 @@ final searchResultsProvider = FutureProvider<List<DictEntry>>((ref) async {
     rows = await db.fuzzySearch(query, limit: 10, maxDistance: 2);
   }
 
+  // 6. Definition/example FTS search
+  if (rows.isEmpty && query.length >= 2) {
+    rows = await db.searchDefinitions(query, limit: 15);
+  }
+
   // Load full entry data in parallel
   return Future.wait(rows.map((row) => loadFullEntry(db, row)));
 });
