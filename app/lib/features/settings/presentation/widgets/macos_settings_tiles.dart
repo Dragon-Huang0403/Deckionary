@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import '../../../../app.dart'
@@ -82,6 +83,28 @@ class TrayIconTile extends StatelessWidget {
         await ref.read(settingsDaoProvider).setShowTrayIcon(val);
         ref.invalidate(settingsStateProvider);
         ref.invalidate(showTrayIconProvider);
+      },
+    );
+  }
+}
+
+class LaunchOnStartupTile extends StatelessWidget {
+  final bool enabled;
+  final WidgetRef ref;
+  const LaunchOnStartupTile(this.enabled, this.ref, {super.key});
+
+  static const _channel = MethodChannel('com.deckionary/window');
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      title: const Text('Launch on startup'),
+      subtitle: const Text('Open Deckionary when you log in'),
+      value: enabled,
+      onChanged: (val) async {
+        await ref.read(settingsDaoProvider).setLaunchOnStartup(val);
+        ref.invalidate(settingsStateProvider);
+        await _channel.invokeMethod('setLaunchOnStartup', val);
       },
     );
   }

@@ -108,6 +108,11 @@ class SettingsDao {
   Future<void> setShowInDock(bool enabled) =>
       set('show_in_dock', enabled.toString());
 
+  Future<bool> getLaunchOnStartup() async =>
+      (await get('launch_on_startup')) == 'true';
+  Future<void> setLaunchOnStartup(bool enabled) =>
+      set('launch_on_startup', enabled.toString());
+
   // ── App update ──────────────────────────────────────────────────────────
 
   Future<String?> getSkippedVersion() => get('skipped_version');

@@ -108,6 +108,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               HotKeyTile(settings.quickSearchHotKey, ref),
               TrayIconTile(settings.showTrayIcon, ref),
               DockTile(settings.showInDock, ref),
+              LaunchOnStartupTile(settings.launchOnStartup, ref),
             ],
             const Divider(),
             const SectionHeader('Review'),

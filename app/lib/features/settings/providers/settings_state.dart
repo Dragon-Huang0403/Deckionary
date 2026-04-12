@@ -33,6 +33,8 @@ final settingsStateProvider = FutureProvider<AppSettings>((ref) async {
         : '',
     showTrayIcon: Platform.isMacOS ? all['show_tray_icon'] != 'false' : false,
     showInDock: Platform.isMacOS ? all['show_in_dock'] != 'false' : true,
+    launchOnStartup:
+        Platform.isMacOS ? all['launch_on_startup'] == 'true' : false,
   );
 });
 
@@ -48,6 +50,7 @@ class AppSettings {
   final String quickSearchHotKey;
   final bool showTrayIcon;
   final bool showInDock;
+  final bool launchOnStartup;
   AppSettings({
     required this.dialect,
     required this.pronunciationDisplay,
@@ -60,5 +63,6 @@ class AppSettings {
     required this.quickSearchHotKey,
     required this.showTrayIcon,
     required this.showInDock,
+    required this.launchOnStartup,
   });
 }

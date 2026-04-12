@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import ServiceManagement
 
 class MainFlutterWindow: NSPanel {
   var windowChannel: FlutterMethodChannel?
@@ -46,6 +47,16 @@ class MainFlutterWindow: NSPanel {
         self?.level = .normal
         self?.collectionBehavior = [.fullScreenAuxiliary]
         NSApp.setActivationPolicy(.regular)
+        result(nil)
+      case "setLaunchOnStartup":
+        if #available(macOS 13.0, *) {
+          let enabled = (call.arguments as? Bool) ?? false
+          if enabled {
+            try? SMAppService.mainApp.register()
+          } else {
+            try? SMAppService.mainApp.unregister()
+          }
+        }
         result(nil)
       case "setOverlayMode":
         self?.styleMask.insert(.nonactivatingPanel)
