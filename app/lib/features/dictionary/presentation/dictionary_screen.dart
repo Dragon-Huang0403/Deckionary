@@ -238,7 +238,20 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
     final results = ref.watch(searchResultsProvider);
     final query = ref.watch(searchQueryProvider);
 
-    // Focus search bar when global hotkey fires
+    // Reset to fresh search screen when overlay opens
+    ref.listen(isOverlayModeProvider, (prev, next) {
+      if (next) {
+        setState(() {
+          _controller.clear();
+          _selectedEntryIndex = null;
+          _entryAutoSelected = false;
+          _history.clear();
+          _committed = false;
+        });
+        ref.read(searchQueryProvider.notifier).set('');
+      }
+    });
+
     // Focus search bar when global hotkey fires, auto-fill clipboard word
     ref.listen(searchBarFocusTrigger, (prev, next) {
       final clipText = ref.read(clipboardSearchText);
@@ -486,16 +499,18 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-          ),
+          if (!ref.watch(isOverlayModeProvider)) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
+          ],
         ],
       ),
     );

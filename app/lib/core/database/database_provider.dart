@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+export 'app_database.dart';
 import 'app_database.dart';
 import 'review_dao.dart';
 import 'search_history_dao.dart';

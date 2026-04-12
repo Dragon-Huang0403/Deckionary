@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,162 +16,11 @@ import 'features/review/presentation/review_home_screen.dart';
 import 'features/review/providers/review_providers.dart';
 import 'features/settings/presentation/settings_screen.dart';
 
-/// Reactive theme mode provider
-final themeModeProvider = FutureProvider<ThemeMode>((ref) async {
-  final dao = ref.read(settingsDaoProvider);
-  final mode = await dao.getThemeMode();
-  return switch (mode) {
-    'light' => ThemeMode.light,
-    'dark' => ThemeMode.dark,
-    _ => ThemeMode.system,
-  };
-});
+export 'app_providers.dart';
+export 'core/hotkey/hotkey_helpers.dart';
 
-/// Incremented to signal DictionaryScreen to focus its search bar.
-final searchBarFocusTrigger = NotifierProvider<_FocusTriggerNotifier, int>(
-  _FocusTriggerNotifier.new,
-);
-
-class _FocusTriggerNotifier extends Notifier<int> {
-  @override
-  int build() => 0;
-  void increment() => state++;
-}
-
-/// Incremented by settings screen to trigger hotkey re-registration.
-final hotKeyChangeTrigger = NotifierProvider<_HotKeyChangeNotifier, int>(
-  _HotKeyChangeNotifier.new,
-);
-
-class _HotKeyChangeNotifier extends Notifier<int> {
-  @override
-  int build() => 0;
-  void fire() => state++;
-}
-
-/// Reads the tray icon setting from DB. Invalidate to reload after change.
-final showTrayIconProvider = FutureProvider<bool>((ref) async {
-  final dao = ref.read(settingsDaoProvider);
-  return dao.getShowTrayIcon();
-});
-
-/// Reads the dock visibility setting. Invalidate to reload after change.
-final showInDockProvider = FutureProvider<bool>((ref) async {
-  final dao = ref.read(settingsDaoProvider);
-  return dao.getShowInDock();
-});
-
-/// Clipboard text to auto-fill in search bar on hotkey trigger.
-final clipboardSearchText = NotifierProvider<_ClipboardNotifier, String?>(
-  _ClipboardNotifier.new,
-);
-
-class _ClipboardNotifier extends Notifier<String?> {
-  @override
-  String? build() => null;
-  void set(String? text) => state = text;
-}
-
-/// True while Google Sign-In is in progress; suppresses window auto-hide.
-final signInInProgressProvider = NotifierProvider<_SignInFlagNotifier, bool>(
-  _SignInFlagNotifier.new,
-);
-
-class _SignInFlagNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-  void set(bool value) => state = value;
-}
-
-/// Whether the app is currently in overlay (Raycast-style) mode.
-final isOverlayModeProvider = NotifierProvider<_OverlayModeNotifier, bool>(
-  _OverlayModeNotifier.new,
-);
-
-class _OverlayModeNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-  void set(bool value) => state = value;
-}
-
-/// Check if clipboard text looks like a word/phrase worth searching.
-bool _looksLikeSearchQuery(String text) {
-  if (text.length > 50 || text.contains('\n')) return false;
-  // Must start with a letter, allow letters/digits/spaces/hyphens/apostrophes
-  return RegExp(r"^[a-zA-Z][a-zA-Z0-9 '\-]*$").hasMatch(text);
-}
-
-// ── HotKey serialization helpers ────────────────────────────────────────
-
-HotKey deserializeHotKey(String jsonStr) {
-  final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-  final keyCode = map['keyCode'] as int;
-  final modifiers = (map['modifiers'] as List)
-      .map((name) => HotKeyModifier.values.firstWhere((m) => m.name == name))
-      .toList();
-  return HotKey(
-    key: PhysicalKeyboardKey(keyCode),
-    modifiers: modifiers,
-    scope: HotKeyScope.system,
-  );
-}
-
-String serializeHotKey(HotKey hotKey) {
-  // Capture debugName now — it's only available on predefined key constants,
-  // not on keys reconstructed from usbHidUsage alone.
-  final rawName = hotKey.physicalKey.debugName ?? '';
-  final label = rawName.replaceFirst('Key ', '').replaceFirst('Digit ', '');
-  return jsonEncode({
-    'keyCode': hotKey.physicalKey.usbHidUsage,
-    'modifiers': hotKey.modifiers?.map((m) => m.name).toList() ?? [],
-    'label': label.isEmpty ? '?' : label,
-  });
-}
-
-/// Derive a key label from USB HID usage code (fallback for old JSON without 'label').
-String _labelFromUsbHid(int keyCode) {
-  // Letters A-Z: USB HID 0x00070004 (458756) through 0x0007001D (458781)
-  if (keyCode >= 458756 && keyCode <= 458781) {
-    return String.fromCharCode('A'.codeUnitAt(0) + keyCode - 458756);
-  }
-  // Digits 1-9: USB HID 0x0007001E (458782) through 0x00070026 (458790)
-  if (keyCode >= 458782 && keyCode <= 458790) {
-    return String.fromCharCode('1'.codeUnitAt(0) + keyCode - 458782);
-  }
-  // Digit 0: USB HID 0x00070027 (458791)
-  if (keyCode == 458791) return '0';
-  return '?';
-}
-
-/// Display a hotkey from its JSON representation (e.g. "⌘⇧D").
-String hotKeyDisplayString(String hotKeyJson) {
-  final map = jsonDecode(hotKeyJson) as Map<String, dynamic>;
-  final modifiers = (map['modifiers'] as List).cast<String>();
-  // Use stored label, or derive from keyCode for old format without label
-  var label = map['label'] as String?;
-  if (label == null || label == '?') {
-    final keyCode = map['keyCode'] as int?;
-    label = keyCode != null ? _labelFromUsbHid(keyCode) : '?';
-  }
-
-  final buffer = StringBuffer();
-  for (final mod in modifiers) {
-    switch (mod) {
-      case 'meta':
-        buffer.write('\u2318');
-      case 'shift':
-        buffer.write('\u21E7');
-      case 'alt':
-        buffer.write('\u2325');
-      case 'control':
-        buffer.write('\u2303');
-      default:
-        buffer.write(mod);
-    }
-  }
-  buffer.write(label);
-  return buffer.toString();
-}
+import 'app_providers.dart';
+import 'core/hotkey/hotkey_helpers.dart';
 
 class DeckionaryApp extends ConsumerStatefulWidget {
   const DeckionaryApp({super.key});
@@ -304,7 +152,8 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.comma &&
-        HardwareKeyboard.instance.isMetaPressed) {
+        HardwareKeyboard.instance.isMetaPressed &&
+        !ref.read(isOverlayModeProvider)) {
       _openSettings();
       return true;
     }
@@ -322,8 +171,6 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   }
 
   Future<void> _registerHotKey(String hotKeyJson) async {
-    // Unregister ALL hotkeys — unregister(singleKey) doesn't reliably
-    // remove the native listener on macOS.
     await hotKeyManager.unregisterAll();
     _registeredHotKey = null;
     try {
@@ -368,26 +215,31 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
       final isOverlay = ref.read(isOverlayModeProvider);
 
       if (isVisible && isOverlay) {
-        // Overlay visible → hide it
+        // Overlay visible -> hide it
         await _hideWindow();
-      } else if (isVisible) {
-        // Normal mode visible → focus search bar + clipboard auto-fill
-        setState(() => _currentTab = 0);
-        _readClipboardAndFocusSearch();
       } else {
-        // Hidden → show as overlay
-        ref.read(isOverlayModeProvider.notifier).set(true);
-        await _windowChannel.invokeMethod('setOverlayMode');
-        await _windowChannel.invokeMethod('prepareForShow');
-        await _positionOnMouseDisplay();
-        await windowManager.show();
-        await windowManager.focus();
-        setState(() => _currentTab = 0);
-        _readClipboardAndFocusSearch();
+        // Normal visible or hidden -> show as overlay
+        await _showOverlay();
       }
     } finally {
       _windowTransitioning = false;
     }
+  }
+
+  Future<void> _showOverlay() async {
+    // Hide first to avoid visible UI shift (nav bar disappearing)
+    final wasVisible = await windowManager.isVisible();
+    if (wasVisible) {
+      await windowManager.hide();
+    }
+    ref.read(isOverlayModeProvider.notifier).set(true);
+    await _windowChannel.invokeMethod('setOverlayMode');
+    await _windowChannel.invokeMethod('prepareForShow');
+    await _positionOnMouseDisplay();
+    await windowManager.show();
+    await windowManager.focus();
+    setState(() => _currentTab = 0);
+    _readClipboardAndFocusSearch();
   }
 
   void _readClipboardAndFocusSearch() async {
@@ -395,7 +247,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text?.trim();
-      if (text != null && text.isNotEmpty && _looksLikeSearchQuery(text)) {
+      if (text != null && text.isNotEmpty && looksLikeSearchQuery(text)) {
         clipText = text;
       }
     } catch (_) {}
