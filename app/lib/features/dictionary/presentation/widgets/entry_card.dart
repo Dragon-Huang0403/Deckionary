@@ -365,16 +365,16 @@ class EntryCard extends ConsumerWidget {
                   text: definition,
                   onWordTap: (w) => onWordTap?.call(w),
                 ),
+              if (definitionZh.isNotEmpty)
+                Text(
+                  definitionZh,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
             ],
           ),
-          if (definitionZh.isNotEmpty)
-            Text(
-              definitionZh,
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
           // Examples
           if (senseData.examples.isNotEmpty)
             Padding(
@@ -466,7 +466,7 @@ class EntryCard extends ConsumerWidget {
                     textZh,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
               ],
@@ -527,16 +527,42 @@ class EntryCard extends ConsumerWidget {
   }
 
   Widget _buildVerbForms(BuildContext context) {
-    return _buildCollapsible(
-      context,
-      'Verb Forms',
-      Column(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
         children: entry.verbForms.map((vf) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Text(
-              vf['form_text'] as String? ?? '',
-              style: const TextStyle(fontSize: 14),
+          final label = vf['form_label'] as String? ?? '';
+          final text = vf['form_text'] as String? ?? '';
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (label.isNotEmpty) ...[
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                ],
+                Text(
+                  text,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
           );
         }).toList(),
