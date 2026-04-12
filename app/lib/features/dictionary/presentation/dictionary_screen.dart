@@ -39,6 +39,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
   int? _selectedEntryIndex;
   // When navigating from history with POS, highlight matching entry
   String? _pendingPos;
+  // When navigating from history with entry ID, auto-select matching entry
+  int? _pendingEntryId;
   // Keyboard-navigable highlight in options list
   int _highlightedIndex = 0;
 
@@ -144,8 +146,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
         setState(() {
           _committed = false;
           _selectedEntryIndex = null;
-
           _pendingPos = null;
+          _pendingEntryId = null;
         });
         ref.read(searchQueryProvider.notifier).set('');
         return;
@@ -158,8 +160,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
       setState(() {
         _committed = true;
         _selectedEntryIndex = null;
-
         _pendingPos = null;
+        _pendingEntryId = null;
       });
       ref.invalidate(searchResultsProvider);
       ref.read(searchQueryProvider.notifier).set(prev);
@@ -171,8 +173,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
       setState(() {
         _committed = false;
         _selectedEntryIndex = null;
-
         _pendingPos = null;
+        _pendingEntryId = null;
       });
       ref.read(searchQueryProvider.notifier).set('');
     }
@@ -191,7 +193,11 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
         final item = history[idx];
         final word = item.headword ?? item.query;
         final pos = item.pos;
-        _commitSearch(word, pos: pos.isNotEmpty ? pos : null);
+        _commitSearch(
+          word,
+          pos: pos.isNotEmpty ? pos : null,
+          entryId: item.entryId,
+        );
       }
       _focusNode.requestFocus();
       return;
@@ -244,6 +250,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
     _committed = false;
     _selectedEntryIndex = null;
     _pendingPos = null;
+    _pendingEntryId = null;
     _highlightedIndex = 0;
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
@@ -252,7 +259,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
   }
 
   /// Called when user taps a suggestion or presses Enter - commit the search
-  void _commitSearch(String word, {String? pos}) {
+  void _commitSearch(String word, {String? pos, int? entryId}) {
     // Push current query to history for back navigation (empty string = home screen)
     final current = ref.read(searchQueryProvider);
     if (current.toLowerCase() != word.toLowerCase()) {
@@ -268,6 +275,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
       _committed = true;
       _selectedEntryIndex = null;
       _pendingPos = pos;
+      _pendingEntryId = entryId;
     });
     // Force provider refresh even if same word
     ref.invalidate(searchResultsProvider);
@@ -369,6 +377,18 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
       next.whenData((results) {
         final q = ref.read(searchQueryProvider);
         _saveToHistory(results, q);
+        // Navigate from history: auto-select matching entry by ID
+        if (_pendingEntryId != null && results.isNotEmpty) {
+          final idx = results.indexWhere(
+            (r) => r.entry.id == _pendingEntryId,
+          );
+          _pendingEntryId = null;
+          _pendingPos = null;
+          if (idx >= 0) {
+            _selectEntry(idx, results[idx].entry);
+            return;
+          }
+        }
         // Always show options list — highlight matching entry instead of auto-selecting
         if (_pendingPos != null && results.length > 1) {
           final idx = results.indexWhere((r) => r.entry.pos == _pendingPos);
@@ -491,7 +511,8 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
         history: historyAsync.value!,
         highlightedIndex: Platform.isMacOS ? _highlightedIndex : -1,
         scrollController: _historyScrollController,
-        onTap: (word, {String? pos}) => _commitSearch(word, pos: pos),
+        onTap: (word, {String? pos, int? entryId}) =>
+            _commitSearch(word, pos: pos, entryId: entryId),
         onClearAll: () async {
           await ref.read(searchHistoryDaoProvider).clearAll();
           ref.read(syncServiceProvider)?.pushAllUnsynced();

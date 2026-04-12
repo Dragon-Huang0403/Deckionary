@@ -5,7 +5,7 @@ class SearchHistoryList extends StatefulWidget {
   final List<SearchHistoryData> history;
   final int highlightedIndex;
   final ScrollController scrollController;
-  final void Function(String word, {String? pos}) onTap;
+  final void Function(String word, {String? pos, int? entryId}) onTap;
   final VoidCallback onClearAll;
   final void Function(SearchHistoryData item) onDelete;
 
@@ -154,7 +154,11 @@ class _SearchHistoryListState extends State<SearchHistoryList> {
               ),
             ],
           ),
-          onTap: () => widget.onTap(word, pos: pos.isNotEmpty ? pos : null),
+          onTap: () => widget.onTap(
+                word,
+                pos: pos.isNotEmpty ? pos : null,
+                entryId: item.entryId,
+              ),
           contentPadding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
         );
