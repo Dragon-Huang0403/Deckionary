@@ -9,6 +9,7 @@ class DictionarySearchBar extends StatelessWidget {
   final bool canGoBack;
   final VoidCallback onBack;
   final VoidCallback onClear;
+  final bool isOverlay;
 
   const DictionarySearchBar({
     super.key,
@@ -19,6 +20,7 @@ class DictionarySearchBar extends StatelessWidget {
     required this.canGoBack,
     required this.onBack,
     required this.onClear,
+    this.isOverlay = false,
   });
 
   @override
@@ -57,16 +59,18 @@ class DictionarySearchBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-          ),
+          if (!isOverlay) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
