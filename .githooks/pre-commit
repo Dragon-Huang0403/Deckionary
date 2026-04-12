@@ -5,7 +5,6 @@ cd app
 
 echo "Auto-formatting..."
 dart format .
-git add -u
 
 echo "Running lint..."
 flutter analyze --fatal-warnings
