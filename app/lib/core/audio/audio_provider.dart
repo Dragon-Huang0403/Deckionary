@@ -73,8 +73,9 @@ class OfflineAudioNotifier extends AsyncNotifier<OfflineAudioState> {
         },
       );
       final count = await audio.getCachedFileCount();
+      final complete = await audio.isDownloadComplete();
       state = AsyncData(
-        OfflineAudioState(cachedFiles: count, allPacksComplete: true),
+        OfflineAudioState(cachedFiles: count, allPacksComplete: complete),
       );
     } catch (e) {
       final count = await audio.getCachedFileCount();

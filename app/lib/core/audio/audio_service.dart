@@ -107,26 +107,17 @@ class AudioDb {
     );
   }
 
+  // Hardcoded pack count — must match scripts/export_for_r2.py output.
+  // PACK_SIZE=4000, ~260K audio files → 65 tar packs.
+  static const totalPacks = 65;
+
   /// Returns true if all audio packs have been downloaded.
-  /// Falls back to checking completed_packs > 0 if total_packs
-  /// meta hasn't been stored yet (upgrade path).
   Future<bool> isDownloadComplete() async {
     await init();
-    final totalRow = await _db
-        .customSelect("SELECT value FROM meta WHERE key = 'total_packs'")
-        .get();
-    final completedRow = await _db
+    final row = await _db
         .customSelect('SELECT COUNT(*) as c FROM completed_packs')
         .getSingle();
-    final completedCount = completedRow.data['c'] as int;
-    if (totalRow.isEmpty) {
-      // No manifest stored yet — if we have completed packs, assume complete
-      // (upgrade path: user downloaded before this code was added).
-      return completedCount > 0;
-    }
-    final total = int.tryParse(totalRow.first.data['value'] as String) ?? 0;
-    if (total == 0) return false;
-    return completedCount >= total;
+    return (row.data['c'] as int) >= totalPacks;
   }
 
   Future<void> setMeta(String key, String value) async {
