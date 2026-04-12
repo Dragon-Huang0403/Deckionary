@@ -38,7 +38,7 @@ class EntryCard extends ConsumerWidget {
                 EntryPhonetics(entry.pronunciations),
               // Word family
               if (entry.wordFamily.isNotEmpty)
-                WordFamilyWidget(entry.wordFamily),
+                WordFamilyWidget(entry.wordFamily, onWordTap: onWordTap),
               // Verb forms
               if (entry.verbForms.isNotEmpty) VerbFormsWidget(entry.verbForms),
               // Cross-references
