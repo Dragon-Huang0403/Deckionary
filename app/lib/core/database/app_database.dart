@@ -33,7 +33,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -53,6 +53,23 @@ class UserDatabase extends _$UserDatabase {
       }
       if (from < 5) {
         await m.addColumn(searchHistory, searchHistory.pos);
+      }
+      if (from < 6) {
+        await m.addColumn(searchHistory, searchHistory.deletedAt);
+        await m.addColumn(reviewCards, reviewCards.deletedAt);
+        await m.addColumn(reviewLogs, reviewLogs.deletedAt);
+        await customStatement(
+          'ALTER TABLE search_history ADD COLUMN updated_at TEXT',
+        );
+        await customStatement(
+          'ALTER TABLE review_logs ADD COLUMN updated_at TEXT',
+        );
+        await customStatement(
+          'UPDATE search_history SET updated_at = searched_at',
+        );
+        await customStatement(
+          'UPDATE review_logs SET updated_at = reviewed_at',
+        );
       }
     },
   );

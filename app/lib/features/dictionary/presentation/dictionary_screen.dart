@@ -408,11 +408,9 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen> {
         onTap: (word, {String? pos}) => _commitSearch(word, pos: pos),
         onClearAll: () {
           ref.read(searchHistoryDaoProvider).clearAll();
-          ref.read(syncServiceProvider)?.clearRemoteSearchHistory();
         },
         onDelete: (item) {
           ref.read(searchHistoryDaoProvider).deleteById(item.id);
-          ref.read(syncServiceProvider)?.deleteRemoteSearchEntry(item.uuid);
         },
       );
     }

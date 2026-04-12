@@ -89,10 +89,9 @@ class SearchHistoryList extends StatelessWidget {
             children: [
               Text(
                 _relativeTime(item.searchedAt),
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: cs.onSurfaceVariant),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
               ),
               const SizedBox(width: 4),
               IconButton(

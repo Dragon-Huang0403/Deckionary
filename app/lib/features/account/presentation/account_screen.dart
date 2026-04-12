@@ -87,6 +87,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       await syncService.syncSearchHistory();
       await syncService.syncReviewData();
       final settingsPulled = await syncService.pullSettings();
+      await syncService.cleanupSoftDeletes();
 
       // Refresh UI providers with synced data
       ref.invalidate(reviewSummaryProvider);

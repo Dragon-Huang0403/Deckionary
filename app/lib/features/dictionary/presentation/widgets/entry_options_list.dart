@@ -55,7 +55,9 @@ class EntryOptionsList extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          r.source == SearchMatchSource.definition ? 'def' : 'ex',
+                          r.source == SearchMatchSource.definition
+                              ? 'def'
+                              : 'ex',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,

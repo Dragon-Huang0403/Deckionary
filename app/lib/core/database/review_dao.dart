@@ -16,7 +16,9 @@ class ReviewDao {
   Future<List<ReviewCard>> getDueCards({int limit = 200}) async {
     final now = DateTime.now().toUtc().toIso8601String();
     return (_db.select(_db.reviewCards)
-          ..where((t) => t.due.isSmallerOrEqualValue(now))
+          ..where(
+            (t) => t.deletedAt.isNull() & t.due.isSmallerOrEqualValue(now),
+          )
           ..orderBy([(t) => OrderingTerm.asc(t.due)])
           ..limit(limit))
         .get();
@@ -24,16 +26,16 @@ class ReviewDao {
 
   /// Get a single review card by entry ID.
   Future<ReviewCard?> getCardByEntryId(int entryId) async {
-    return (_db.select(
-      _db.reviewCards,
-    )..where((t) => t.entryId.equals(entryId))).getSingleOrNull();
+    return (_db.select(_db.reviewCards)
+          ..where((t) => t.deletedAt.isNull() & t.entryId.equals(entryId)))
+        .getSingleOrNull();
   }
 
   /// Get all existing review card entry IDs (for filtering new cards).
   Future<Set<int>> getAllReviewedEntryIds() async {
     final rows = await _db
         .customSelect(
-          'SELECT entry_id FROM review_cards',
+          'SELECT entry_id FROM review_cards WHERE deleted_at IS NULL',
           readsFrom: {_db.reviewCards},
         )
         .get();
@@ -88,7 +90,7 @@ class ReviewDao {
     final now = DateTime.now().toUtc().toIso8601String();
     final result = await _db
         .customSelect(
-          'SELECT COUNT(*) as cnt FROM review_cards WHERE due <= ?',
+          'SELECT COUNT(*) as cnt FROM review_cards WHERE deleted_at IS NULL AND due <= ?',
           variables: [Variable.withString(now)],
           readsFrom: {_db.reviewCards},
         )
@@ -106,7 +108,7 @@ class ReviewDao {
     ).toUtc().toIso8601String();
     final result = await _db
         .customSelect(
-          'SELECT COUNT(*) as cnt FROM review_logs WHERE reviewed_at >= ?',
+          'SELECT COUNT(*) as cnt FROM review_logs WHERE deleted_at IS NULL AND reviewed_at >= ?',
           variables: [Variable.withString(startOfDay)],
           readsFrom: {_db.reviewLogs},
         )
@@ -125,9 +127,10 @@ class ReviewDao {
     final result = await _db
         .customSelect(
           '''SELECT COUNT(DISTINCT card_id) as cnt FROM review_logs
-         WHERE reviewed_at >= ?
+         WHERE deleted_at IS NULL AND reviewed_at >= ?
          AND card_id IN (
            SELECT card_id FROM review_logs
+           WHERE deleted_at IS NULL
            GROUP BY card_id
            HAVING MIN(reviewed_at) >= ?
          )''',
@@ -145,7 +148,7 @@ class ReviewDao {
   Future<int> countTotalCards() async {
     final result = await _db
         .customSelect(
-          'SELECT COUNT(*) as cnt FROM review_cards',
+          'SELECT COUNT(*) as cnt FROM review_cards WHERE deleted_at IS NULL',
           readsFrom: {_db.reviewCards},
         )
         .getSingle();
@@ -157,7 +160,7 @@ class ReviewDao {
     final now = DateTime.now().toUtc().toIso8601String();
     return _db
         .customSelect(
-          'SELECT COUNT(*) as cnt FROM review_cards WHERE due <= ?',
+          'SELECT COUNT(*) as cnt FROM review_cards WHERE deleted_at IS NULL AND due <= ?',
           variables: [Variable.withString(now)],
           readsFrom: {_db.reviewCards},
         )
@@ -165,10 +168,21 @@ class ReviewDao {
         .map((row) => row.data['cnt'] as int);
   }
 
-  /// Delete all review cards and logs, resetting progress.
+  /// Soft-delete all review cards and logs, resetting progress.
   Future<void> clearAllProgress() async {
-    await _db.delete(_db.reviewLogs).go();
-    await _db.delete(_db.reviewCards).go();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _db.customUpdate(
+      '''UPDATE review_logs SET deleted_at = ?, updated_at = ?, synced = 0
+         WHERE deleted_at IS NULL''',
+      variables: [Variable.withString(now), Variable.withString(now)],
+      updates: {_db.reviewLogs},
+    );
+    await _db.customUpdate(
+      '''UPDATE review_cards SET deleted_at = ?, updated_at = ?, synced = 0
+         WHERE deleted_at IS NULL''',
+      variables: [Variable.withString(now), Variable.withString(now)],
+      updates: {_db.reviewCards},
+    );
   }
 
   /// Look up dictionary entry data for a list of entry IDs.

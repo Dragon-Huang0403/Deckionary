@@ -17,6 +17,7 @@ class SearchHistoryDao {
     String? headword,
     String pos = '',
   }) async {
+    final now = DateTime.now().toIso8601String();
     await _db
         .into(_db.searchHistory)
         .insert(
@@ -27,22 +28,30 @@ class SearchHistoryDao {
           ).copyWith(
             uuid: Value(_uuid.v4()),
             pos: Value(pos),
-            searchedAt: Value(DateTime.now().toIso8601String()),
+            searchedAt: Value(now),
+            updatedAt: Value(now),
           ),
         );
 
-    // Keep only last 100 entries
-    await _db.customStatement('''
-      DELETE FROM search_history WHERE id NOT IN (
-        SELECT id FROM search_history ORDER BY searched_at DESC LIMIT 100
-      )
-    ''');
+    // Soft-delete entries beyond 100 active ones
+    final now2 = DateTime.now().toUtc().toIso8601String();
+    await _db.customUpdate(
+      '''UPDATE search_history SET deleted_at = ?, updated_at = ?, synced = 0
+         WHERE deleted_at IS NULL AND id NOT IN (
+           SELECT id FROM search_history
+           WHERE deleted_at IS NULL
+           ORDER BY searched_at DESC LIMIT 100
+         )''',
+      variables: [Variable.withString(now2), Variable.withString(now2)],
+      updates: {_db.searchHistory},
+    );
   }
 
   /// Get recent searches (most recent first)
   Future<List<SearchHistoryData>> getRecent({int limit = 50}) async {
     final rows =
         await (_db.select(_db.searchHistory)
+              ..where((t) => t.deletedAt.isNull())
               ..orderBy([(t) => OrderingTerm.desc(t.searchedAt)])
               ..limit(limit))
             .get();
@@ -54,13 +63,14 @@ class SearchHistoryDao {
     final rows = await _db
         .customSelect(
           '''SELECT * FROM search_history
-         WHERE id IN (
+         WHERE deleted_at IS NULL AND id IN (
            SELECT id FROM (
              SELECT id, ROW_NUMBER() OVER (
                PARTITION BY COALESCE(headword, query), pos
                ORDER BY searched_at DESC
              ) AS rn
              FROM search_history
+             WHERE deleted_at IS NULL
            ) WHERE rn = 1
          )
          ORDER BY searched_at DESC
@@ -77,13 +87,14 @@ class SearchHistoryDao {
     return _db
         .customSelect(
           '''SELECT * FROM search_history
-         WHERE id IN (
+         WHERE deleted_at IS NULL AND id IN (
            SELECT id FROM (
              SELECT id, ROW_NUMBER() OVER (
                PARTITION BY COALESCE(headword, query), pos
                ORDER BY searched_at DESC
              ) AS rn
              FROM search_history
+             WHERE deleted_at IS NULL
            ) WHERE rn = 1
          )
          ORDER BY searched_at DESC
@@ -97,23 +108,43 @@ class SearchHistoryDao {
         );
   }
 
-  /// Delete a single history entry by its local ID.
+  /// Soft-delete a single history entry by its local ID.
   Future<void> deleteById(int id) async {
-    await (_db.delete(_db.searchHistory)..where((t) => t.id.equals(id))).go();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await (_db.update(_db.searchHistory)..where((t) => t.id.equals(id))).write(
+      SearchHistoryCompanion(
+        deletedAt: Value(now),
+        updatedAt: Value(now),
+        synced: const Value(0),
+      ),
+    );
   }
 
-  /// Delete all history entries for a given headword (or query if no headword)
+  /// Soft-delete all history entries for a given headword (or query if no headword)
   Future<void> deleteByHeadword(String headword) async {
-    await (_db.delete(_db.searchHistory)..where(
-          (t) =>
-              t.headword.equals(headword) |
-              (t.headword.isNull() & t.query.equals(headword)),
-        ))
-        .go();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _db.customUpdate(
+      '''UPDATE search_history SET deleted_at = ?, updated_at = ?, synced = 0
+         WHERE deleted_at IS NULL
+         AND (headword = ? OR (headword IS NULL AND query = ?))''',
+      variables: [
+        Variable.withString(now),
+        Variable.withString(now),
+        Variable.withString(headword),
+        Variable.withString(headword),
+      ],
+      updates: {_db.searchHistory},
+    );
   }
 
-  /// Clear all search history
+  /// Soft-delete all search history
   Future<void> clearAll() async {
-    await _db.delete(_db.searchHistory).go();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await _db.customUpdate(
+      '''UPDATE search_history SET deleted_at = ?, updated_at = ?, synced = 0
+         WHERE deleted_at IS NULL''',
+      variables: [Variable.withString(now), Variable.withString(now)],
+      updates: {_db.searchHistory},
+    );
   }
 }

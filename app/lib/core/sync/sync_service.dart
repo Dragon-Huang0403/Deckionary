@@ -37,12 +37,6 @@ class SyncService {
   Future<({int pushed, int pulled})> syncSearchHistory() =>
       _searchHistorySync.syncSearchHistory();
 
-  Future<void> deleteRemoteSearchEntry(String uuid) =>
-      _searchHistorySync.deleteRemoteEntry(uuid);
-
-  Future<void> clearRemoteSearchHistory() =>
-      _searchHistorySync.clearRemoteSearchHistory();
-
   // ── Review ──────────────────────────────────────────────────────────────
 
   Future<void> pushLatestReviewCard(String cardId) =>
@@ -52,8 +46,6 @@ class SyncService {
       _reviewSync.pushLatestReviewLog(logId);
 
   Future<void> syncReviewData() => _reviewSync.syncReviewData();
-
-  Future<void> clearRemoteReviewData() => _reviewSync.clearRemoteReviewData();
 
   // ── Settings ────────────────────────────────────────────────────────────
 
@@ -65,4 +57,12 @@ class SyncService {
   Future<int> pullSettings() => _settingsSync.pullSettings();
 
   Future<int> pushAllSettings() => _settingsSync.pushAllSettings();
+
+  // ── Cleanup ─────────────────────────────────────────────────────────────
+
+  /// Hard-delete old soft-deleted records that have already been synced.
+  Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
+    await _searchHistorySync.cleanupSoftDeletes(retentionDays: retentionDays);
+    await _reviewSync.cleanupSoftDeletes(retentionDays: retentionDays);
+  }
 }

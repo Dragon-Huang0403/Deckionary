@@ -48,6 +48,7 @@ class ReviewSync {
         'last_review': row['last_review'],
         'created_at': row['created_at'],
         'updated_at': row['updated_at'],
+        'deleted_at': row['deleted_at'],
       });
 
       await _db.customUpdate(
@@ -88,6 +89,8 @@ class ReviewSync {
         'reviewed_at': (row['reviewed_at'] as String?)?.isNotEmpty == true
             ? row['reviewed_at']
             : DateTime.now().toUtc().toIso8601String(),
+        'updated_at': row['updated_at'] ?? row['reviewed_at'],
+        'deleted_at': row['deleted_at'],
       });
 
       await _db.customUpdate(
@@ -133,6 +136,7 @@ class ReviewSync {
           'last_review': data['last_review'],
           'created_at': data['created_at'],
           'updated_at': data['updated_at'],
+          'deleted_at': data['deleted_at'],
         });
 
         await _db.customUpdate(
@@ -178,6 +182,8 @@ class ReviewSync {
           'reviewed_at': (data['reviewed_at'] as String?)?.isNotEmpty == true
               ? data['reviewed_at']
               : DateTime.now().toUtc().toIso8601String(),
+          'updated_at': data['updated_at'] ?? data['reviewed_at'],
+          'deleted_at': data['deleted_at'],
         });
 
         await _db.customUpdate(
@@ -214,6 +220,7 @@ class ReviewSync {
     for (final row in rows) {
       final id = row['id'] as String;
       final remoteUpdatedAt = row['updated_at'] as String;
+      final remoteDeletedAt = row['deleted_at'] as String?;
 
       final existing = await _db
           .customSelect(
@@ -224,6 +231,9 @@ class ReviewSync {
           .get();
 
       if (existing.isEmpty) {
+        // Don't insert records that are already deleted remotely
+        if (remoteDeletedAt != null) continue;
+
         await _db.customInsert(
           '''INSERT INTO review_cards
              (id, entry_id, headword, pos, due, stability, difficulty,
@@ -260,38 +270,51 @@ class ReviewSync {
       } else {
         final localUpdatedAt = existing.first.data['updated_at'] as String;
         if (remoteUpdatedAt.compareTo(localUpdatedAt) > 0) {
-          await _db.customUpdate(
-            '''UPDATE review_cards SET
-               entry_id = ?, headword = ?, pos = ?, due = ?,
-               stability = ?, difficulty = ?, elapsed_days = ?,
-               scheduled_days = ?, reps = ?, lapses = ?, state = ?,
-               step = ?, last_review = ?, updated_at = ?, synced = 1
-               WHERE id = ?''',
-            variables: [
-              Variable.withInt(row['entry_id'] as int),
-              Variable.withString(row['headword'] as String),
-              Variable.withString((row['pos'] as String?) ?? ''),
-              Variable.withString(row['due'] as String),
-              Variable.withReal((row['stability'] as num).toDouble()),
-              Variable.withReal((row['difficulty'] as num).toDouble()),
-              Variable.withInt(row['elapsed_days'] as int),
-              Variable.withInt(row['scheduled_days'] as int),
-              Variable.withInt(row['reps'] as int),
-              Variable.withInt(row['lapses'] as int),
-              Variable.withInt(row['state'] as int),
-              if (row['step'] != null)
-                Variable.withInt(row['step'] as int)
-              else
-                const Variable(null),
-              if (row['last_review'] != null)
-                Variable.withString(row['last_review'] as String)
-              else
-                const Variable(null),
-              Variable.withString(remoteUpdatedAt),
-              Variable.withString(id),
-            ],
-            updates: {_db.reviewCards},
-          );
+          if (remoteDeletedAt != null) {
+            // Remote is deleted — soft-delete locally
+            await _db.customUpdate(
+              'UPDATE review_cards SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
+              variables: [
+                Variable.withString(remoteDeletedAt),
+                Variable.withString(remoteUpdatedAt),
+                Variable.withString(id),
+              ],
+              updates: {_db.reviewCards},
+            );
+          } else {
+            await _db.customUpdate(
+              '''UPDATE review_cards SET
+                 entry_id = ?, headword = ?, pos = ?, due = ?,
+                 stability = ?, difficulty = ?, elapsed_days = ?,
+                 scheduled_days = ?, reps = ?, lapses = ?, state = ?,
+                 step = ?, last_review = ?, updated_at = ?, synced = 1
+                 WHERE id = ?''',
+              variables: [
+                Variable.withInt(row['entry_id'] as int),
+                Variable.withString(row['headword'] as String),
+                Variable.withString((row['pos'] as String?) ?? ''),
+                Variable.withString(row['due'] as String),
+                Variable.withReal((row['stability'] as num).toDouble()),
+                Variable.withReal((row['difficulty'] as num).toDouble()),
+                Variable.withInt(row['elapsed_days'] as int),
+                Variable.withInt(row['scheduled_days'] as int),
+                Variable.withInt(row['reps'] as int),
+                Variable.withInt(row['lapses'] as int),
+                Variable.withInt(row['state'] as int),
+                if (row['step'] != null)
+                  Variable.withInt(row['step'] as int)
+                else
+                  const Variable(null),
+                if (row['last_review'] != null)
+                  Variable.withString(row['last_review'] as String)
+                else
+                  const Variable(null),
+                Variable.withString(remoteUpdatedAt),
+                Variable.withString(id),
+              ],
+              updates: {_db.reviewCards},
+            );
+          }
           pulled++;
         }
       }
@@ -319,30 +342,35 @@ class ReviewSync {
         .eq('user_id', _getUserId()!);
 
     if (lastSyncAt != null) {
-      filter = filter.gt('reviewed_at', lastSyncAt);
+      filter = filter.gt('updated_at', lastSyncAt);
     }
 
-    final rows = await filter.order('reviewed_at', ascending: false);
+    final rows = await filter.order('updated_at', ascending: false);
     if (rows.isEmpty) return 0;
 
     var pulled = 0;
     for (final row in rows) {
       final id = row['id'] as String;
+      final remoteDeletedAt = row['deleted_at'] as String?;
 
       final existing = await _db
           .customSelect(
-            'SELECT id FROM review_logs WHERE id = ?',
+            'SELECT id, deleted_at FROM review_logs WHERE id = ?',
             variables: [Variable.withString(id)],
             readsFrom: {_db.reviewLogs},
           )
           .get();
 
       if (existing.isEmpty) {
+        // Don't insert records that are already deleted remotely
+        if (remoteDeletedAt != null) continue;
+
         await _db.customInsert(
           '''INSERT INTO review_logs
              (id, card_id, rating, state, due, stability, difficulty,
-              elapsed_days, scheduled_days, review_duration, reviewed_at, synced)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
+              elapsed_days, scheduled_days, review_duration, reviewed_at,
+              updated_at, synced)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
           variables: [
             Variable.withString(id),
             Variable.withString(row['card_id'] as String),
@@ -358,10 +386,26 @@ class ReviewSync {
             else
               const Variable(null),
             Variable.withString(row['reviewed_at'] as String),
+            Variable.withString(row['updated_at'] as String),
           ],
           updates: {_db.reviewLogs},
         );
         pulled++;
+      } else if (remoteDeletedAt != null) {
+        // Remote is deleted — soft-delete locally if still active
+        final localDeletedAt = existing.first.data['deleted_at'] as String?;
+        if (localDeletedAt == null) {
+          await _db.customUpdate(
+            'UPDATE review_logs SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
+            variables: [
+              Variable.withString(remoteDeletedAt),
+              Variable.withString(row['updated_at'] as String),
+              Variable.withString(id),
+            ],
+            updates: {_db.reviewLogs},
+          );
+          pulled++;
+        }
       }
     }
 
@@ -369,70 +413,38 @@ class ReviewSync {
       await setLastSyncAt(
         _db,
         'review_logs',
-        rows.first['reviewed_at'] as String,
+        rows.first['updated_at'] as String,
       );
     }
 
     return pulled;
   }
 
+  /// Pull first, then push — so deletions from other devices are learned
+  /// before stale data gets re-pushed.
   Future<void> syncReviewData() async {
-    if (await _hasPendingReviewClear()) {
-      try {
-        await _executeClearRemoteReviewData();
-        return;
-      } catch (_) {
-        return;
-      }
-    }
-    await pushAllUnsyncedReviewCards();
-    await pushAllUnsyncedReviewLogs();
     await pullReviewCards();
     await pullReviewLogs();
+    await pushAllUnsyncedReviewCards();
+    await pushAllUnsyncedReviewLogs();
   }
 
-  Future<void> clearRemoteReviewData() async {
-    if (_getUserId() == null) return;
-    try {
-      await _executeClearRemoteReviewData();
-    } catch (e) {
-      debugPrint('Clear remote failed, will retry on next sync: $e');
-      await _setPendingReviewClear(true);
-    }
-  }
-
-  Future<void> _executeClearRemoteReviewData() async {
-    if (_getUserId() == null) return;
-    await _supabase.from('review_logs').delete().eq('user_id', _getUserId()!);
-    await _supabase.from('review_cards').delete().eq('user_id', _getUserId()!);
-    await setLastSyncAt(_db, 'review_cards', '');
-    await setLastSyncAt(_db, 'review_logs', '');
-    await _setPendingReviewClear(false);
-  }
-
-  // ── Pending review clear tracking ───────────────────────────────────────
-
-  static const _pendingReviewClearKey = 'pending_review_clear';
-
-  Future<bool> _hasPendingReviewClear() async {
-    final rows = await _db
-        .customSelect(
-          'SELECT value FROM sync_meta WHERE key = ?',
-          variables: [Variable.withString(_pendingReviewClearKey)],
-          readsFrom: {_db.syncMeta},
-        )
-        .get();
-    return rows.isNotEmpty && rows.first.data['value'] == 'true';
-  }
-
-  Future<void> _setPendingReviewClear(bool pending) async {
-    await _db
-        .into(_db.syncMeta)
-        .insertOnConflictUpdate(
-          SyncMetaCompanion.insert(
-            key: _pendingReviewClearKey,
-            value: pending ? 'true' : '',
-          ),
-        );
+  /// Hard-delete soft-deleted records that have been synced and are older than
+  /// [retentionDays].
+  Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: retentionDays))
+        .toUtc()
+        .toIso8601String();
+    await _db.customUpdate(
+      'DELETE FROM review_logs WHERE deleted_at IS NOT NULL AND synced = 1 AND deleted_at < ?',
+      variables: [Variable.withString(cutoff)],
+      updates: {_db.reviewLogs},
+    );
+    await _db.customUpdate(
+      'DELETE FROM review_cards WHERE deleted_at IS NOT NULL AND synced = 1 AND deleted_at < ?',
+      variables: [Variable.withString(cutoff)],
+      updates: {_db.reviewCards},
+    );
   }
 }

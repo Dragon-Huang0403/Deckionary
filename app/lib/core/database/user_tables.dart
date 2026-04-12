@@ -25,6 +25,7 @@ class ReviewCards extends Table {
   TextColumn get updatedAt => text()
       .named('updated_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get deletedAt => text().named('deleted_at').nullable()();
   IntColumn get synced => integer().withDefault(const Constant(0))();
 
   @override
@@ -49,6 +50,8 @@ class ReviewLogs extends Table {
   TextColumn get reviewedAt => text()
       .named('reviewed_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get updatedAt => text().named('updated_at').nullable()();
+  TextColumn get deletedAt => text().named('deleted_at').nullable()();
   IntColumn get synced => integer().withDefault(const Constant(0))();
 
   @override
@@ -106,6 +109,8 @@ class SearchHistory extends Table {
   TextColumn get searchedAt => text()
       .named('searched_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get updatedAt => text().named('updated_at').nullable()();
+  TextColumn get deletedAt => text().named('deleted_at').nullable()();
   IntColumn get synced => integer().withDefault(const Constant(0))();
 
   @override
