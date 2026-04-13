@@ -1190,7 +1190,7 @@ packages:
     source: hosted
     version: "1.4.1"
   supabase:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: supabase
       sha256: "89b190b585f8609fe1537cbf53eae0c9fda9b777591b064d1150c6f26e607a84"

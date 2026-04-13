@@ -2,20 +2,23 @@ import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
-import 'sync_meta_helpers.dart';
+import 'table_sync.dart';
 
 class SettingsSync {
   final UserDatabase _db;
   final SupabaseClient _supabase;
   final String? Function() _getUserId;
+  final TableSync _tableSync;
 
   SettingsSync({
     required UserDatabase db,
     required SupabaseClient supabase,
     required String? Function() getUserId,
+    required TableSync tableSync,
   }) : _db = db,
        _supabase = supabase,
-       _getUserId = getUserId;
+       _getUserId = getUserId,
+       _tableSync = tableSync;
 
   static const _syncedSettingKeys = [
     'new_cards_per_day',
@@ -44,6 +47,7 @@ class SettingsSync {
     }
   }
 
+  /// Push all dirty settings. Continues on error (was previously break).
   Future<void> pushDirtySettings() async {
     if (_getUserId() == null) return;
     final dirty = await _getDirtySettings();
@@ -67,51 +71,34 @@ class SettingsSync {
         });
         await _removeDirtySetting(key);
       } catch (e) {
-        break;
+        continue; // was: break — now continues to attempt remaining keys
       }
     }
   }
 
-  Future<int> pullSettings() async {
-    if (_getUserId() == null) return 0;
+  /// Pull all settings (no watermark — only 8 keys, always fetch all).
+  /// Skips keys that are locally dirty (local change takes priority).
+  Future<int> pullSettings() => _tableSync.pull(
+    remoteTable: 'user_settings',
+    watermarkKey: null, // always fetch all — small table, no watermark needed
+    processRow: _processSettingRow,
+  );
 
-    final lastSyncAt = await getLastSyncAt(_db, 'user_settings');
+  Future<bool> _processSettingRow(Map<String, dynamic> row) async {
+    final key = row['key'] as String;
+    final value = row['value'] as String;
+    if (!_syncedSettingKeys.contains(key)) return false;
 
-    var filter = _supabase
-        .from('user_settings')
-        .select()
-        .eq('user_id', _getUserId()!);
+    // Don't overwrite locally-dirty settings — they'll be pushed next.
+    final dirty = await _getDirtySettings();
+    if (dirty.contains(key)) return false;
 
-    if (lastSyncAt != null) {
-      filter = filter.gt('updated_at', lastSyncAt);
-    }
-
-    final rows = await filter.order('updated_at', ascending: false);
-    if (rows.isEmpty) return 0;
-
-    var pulled = 0;
-    for (final row in rows) {
-      final key = row['key'] as String;
-      final value = row['value'] as String;
-      if (!_syncedSettingKeys.contains(key)) continue;
-
-      await _db
-          .into(_db.settings)
-          .insertOnConflictUpdate(
-            SettingsCompanion.insert(key: key, value: value),
-          );
-      pulled++;
-    }
-
-    if (rows.isNotEmpty) {
-      await setLastSyncAt(
-        _db,
-        'user_settings',
-        rows.first['updated_at'] as String,
-      );
-    }
-
-    return pulled;
+    await _db
+        .into(_db.settings)
+        .insertOnConflictUpdate(
+          SettingsCompanion.insert(key: key, value: value),
+        );
+    return true;
   }
 
   Future<int> pushAllSettings() async {

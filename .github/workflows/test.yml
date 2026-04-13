@@ -1,0 +1,46 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'supabase/migrations/**'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'supabase/migrations/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze --fatal-warnings
+
+      - name: Run all tests
+        working-directory: app
+        run: flutter test
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop

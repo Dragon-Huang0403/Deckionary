@@ -82,11 +82,11 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       _syncResult = null;
     });
     try {
-      // Push local data first, then pull remote
-      await syncService.pushAllSettings();
+      // Pull remote first, then push local
       await syncService.syncSearchHistory();
       await syncService.syncReviewData();
       final settingsPulled = await syncService.pullSettings();
+      await syncService.pushDirtySettings();
       await syncService.cleanupSoftDeletes();
 
       // Refresh UI providers with synced data

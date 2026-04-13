@@ -38,6 +38,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   int _currentTab = 0;
   HotKey? _registeredHotKey;
   DateTime? _lastSyncAt;
+  bool _syncInitialized = false;
   bool _settingsOpen = false;
   bool _showInDock = true;
   bool _windowTransitioning = false;
@@ -393,7 +394,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
   /// Pull remote data and refresh UI providers. Debounced to avoid
   /// duplicate syncs when both onWindowFocus and resumed fire together.
-  void _pullAndRefreshIfNeeded() {
+  Future<void> _pullAndRefreshIfNeeded() async {
     final now = DateTime.now();
     if (_lastSyncAt != null && now.difference(_lastSyncAt!).inSeconds < 30) {
       return;
@@ -403,19 +404,24 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     final sync = ref.read(syncServiceProvider);
     if (sync == null) return;
 
+    // One-time: auto-clear watermarks after sync bug fix.
+    if (!_syncInitialized) {
+      await sync.init();
+      _syncInitialized = true;
+    }
+
     sync.syncSearchHistory();
     sync.syncReviewData().then((_) {
       ref.invalidate(reviewSummaryProvider);
     });
-    // Push any settings that failed to sync while offline, then pull
-    sync.pushDirtySettings().then((_) {
-      sync.pullSettings().then((pulled) {
-        if (pulled > 0) {
-          ref.invalidate(themeModeProvider);
-          ref.invalidate(reviewFilterProvider);
-          ref.invalidate(reviewSummaryProvider);
-        }
-      });
+    // Pull settings first, then push dirty (was push→pull, now pull→push).
+    sync.pullSettings().then((pulled) {
+      if (pulled > 0) {
+        ref.invalidate(themeModeProvider);
+        ref.invalidate(reviewFilterProvider);
+        ref.invalidate(reviewSummaryProvider);
+      }
+      sync.pushDirtySettings();
     });
   }
 

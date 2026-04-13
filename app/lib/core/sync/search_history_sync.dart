@@ -2,20 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
-import 'sync_meta_helpers.dart';
+import 'table_sync.dart';
 
 class SearchHistorySync {
   final UserDatabase _db;
   final SupabaseClient _supabase;
   final String? Function() _getUserId;
+  final TableSync _tableSync;
 
   SearchHistorySync({
     required UserDatabase db,
     required SupabaseClient supabase,
     required String? Function() getUserId,
+    required TableSync tableSync,
   }) : _db = db,
        _supabase = supabase,
-       _getUserId = getUserId;
+       _getUserId = getUserId,
+       _tableSync = tableSync;
+
+  // ── Push (unchanged) ───────────────────────────────────────────────────────
 
   Future<void> pushLatestSearch() async {
     if (_getUserId() == null) return;
@@ -75,7 +80,8 @@ class SearchHistorySync {
           'deleted_at': row.deletedAt,
         });
 
-        await (_db.update(_db.searchHistory)..where((t) => t.id.equals(row.id)))
+        await (_db.update(_db.searchHistory)
+              ..where((t) => t.id.equals(row.id)))
             .write(const SearchHistoryCompanion(synced: Value(1)));
         pushed++;
       } catch (e) {
@@ -85,96 +91,74 @@ class SearchHistorySync {
     return pushed;
   }
 
-  Future<int> pullSearchHistory() async {
-    if (_getUserId() == null) return 0;
+  // ── Pull (delegated to TableSync) ──────────────────────────────────────────
 
-    final lastSyncAt = await getLastSyncAt(_db, 'search_history');
+  Future<int> pullSearchHistory() => _tableSync.pull(
+    remoteTable: 'search_history',
+    watermarkKey: 'search_history',
+    processRow: _processSearchHistoryRow,
+  );
 
-    var filter = _supabase
-        .from('search_history')
-        .select()
-        .eq('user_id', _getUserId()!);
+  Future<bool> _processSearchHistoryRow(Map<String, dynamic> row) async {
+    final uuid = row['id'] as String;
+    final remoteDeletedAt = row['deleted_at'] as String?;
 
-    if (lastSyncAt != null) {
-      filter = filter.gt('updated_at', lastSyncAt);
+    final existing = await _db
+        .customSelect(
+          'SELECT id, deleted_at FROM search_history WHERE uuid = ?',
+          variables: [Variable.withString(uuid)],
+          readsFrom: {_db.searchHistory},
+        )
+        .get();
+
+    if (existing.isEmpty) {
+      if (remoteDeletedAt != null) return false;
+
+      await _db
+          .into(_db.searchHistory)
+          .insert(
+            SearchHistoryCompanion.insert(
+              query: row['query'] as String,
+              entryId: Value(row['entry_id'] as int?),
+              headword: Value(row['headword'] as String?),
+            ).copyWith(
+              uuid: Value(uuid),
+              pos: Value(row['pos'] as String? ?? ''),
+              searchedAt: Value(row['searched_at'] as String),
+              updatedAt: Value(row['updated_at'] as String),
+              synced: const Value(1),
+            ),
+          );
+      return true;
     }
 
-    final rows = await filter.order('updated_at', ascending: false);
-    if (rows.isEmpty) return 0;
-
-    var pulled = 0;
-    for (final row in rows) {
-      final uuid = row['id'] as String;
-      final remoteDeletedAt = row['deleted_at'] as String?;
-
-      final existing = await _db
-          .customSelect(
-            'SELECT id, deleted_at FROM search_history WHERE uuid = ?',
-            variables: [Variable.withString(uuid)],
-            readsFrom: {_db.searchHistory},
-          )
-          .get();
-
-      if (existing.isEmpty) {
-        // Don't insert records that are already deleted remotely
-        if (remoteDeletedAt != null) continue;
-
-        await _db
-            .into(_db.searchHistory)
-            .insert(
-              SearchHistoryCompanion.insert(
-                query: row['query'] as String,
-                entryId: Value(row['entry_id'] as int?),
-                headword: Value(row['headword'] as String?),
-              ).copyWith(
-                uuid: Value(uuid),
-                pos: Value(row['pos'] as String? ?? ''),
-                searchedAt: Value(row['searched_at'] as String),
-                updatedAt: Value(row['updated_at'] as String),
-                synced: const Value(1),
-              ),
-            );
-        pulled++;
-      } else if (remoteDeletedAt != null) {
-        // Remote is deleted — soft-delete locally if still active
-        final localDeletedAt = existing.first.data['deleted_at'] as String?;
-        if (localDeletedAt == null) {
-          final localId = existing.first.data['id'] as int;
-          await _db.customUpdate(
-            'UPDATE search_history SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
-            variables: [
-              Variable.withString(remoteDeletedAt),
-              Variable.withString(row['updated_at'] as String),
-              Variable.withInt(localId),
-            ],
-            updates: {_db.searchHistory},
-          );
-          pulled++;
-        }
+    if (remoteDeletedAt != null) {
+      final localDeletedAt = existing.first.data['deleted_at'] as String?;
+      if (localDeletedAt == null) {
+        final localId = existing.first.data['id'] as int;
+        await _db.customUpdate(
+          'UPDATE search_history SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
+          variables: [
+            Variable.withString(remoteDeletedAt),
+            Variable.withString(row['updated_at'] as String),
+            Variable.withInt(localId),
+          ],
+          updates: {_db.searchHistory},
+        );
+        return true;
       }
     }
-
-    if (rows.isNotEmpty) {
-      await setLastSyncAt(
-        _db,
-        'search_history',
-        rows.first['updated_at'] as String,
-      );
-    }
-
-    return pulled;
+    return false;
   }
 
-  /// Pull first, then push — so deletions from other devices are learned
-  /// before stale data gets re-pushed.
+  // ── Orchestration ──────────────────────────────────────────────────────────
+
   Future<({int pushed, int pulled})> syncSearchHistory() async {
     final pulled = await pullSearchHistory();
     final pushed = await pushAllUnsynced();
     return (pushed: pushed, pulled: pulled);
   }
 
-  /// Hard-delete soft-deleted records that have been synced and are older than
-  /// [retentionDays].
   Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
     final cutoff = DateTime.now()
         .subtract(Duration(days: retentionDays))

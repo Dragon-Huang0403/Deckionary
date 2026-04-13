@@ -2,20 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
-import 'sync_meta_helpers.dart';
+import 'table_sync.dart';
 
 class ReviewSync {
   final UserDatabase _db;
   final SupabaseClient _supabase;
   final String? Function() _getUserId;
+  final TableSync _tableSync;
 
   ReviewSync({
     required UserDatabase db,
     required SupabaseClient supabase,
     required String? Function() getUserId,
+    required TableSync tableSync,
   }) : _db = db,
        _supabase = supabase,
-       _getUserId = getUserId;
+       _getUserId = getUserId,
+       _tableSync = tableSync;
+
+  // ── Push (unchanged) ───────────────────────────────────────────────────────
 
   Future<void> pushLatestReviewCard(String cardId) async {
     if (_getUserId() == null) return;
@@ -199,49 +204,92 @@ class ReviewSync {
     return pushed;
   }
 
-  Future<int> pullReviewCards() async {
-    if (_getUserId() == null) return 0;
+  // ── Pull (delegated to TableSync) ──────────────────────────────────────────
 
-    final lastSyncAt = await getLastSyncAt(_db, 'review_cards');
+  Future<int> pullReviewCards() => _tableSync.pull(
+    remoteTable: 'review_cards',
+    watermarkKey: 'review_cards',
+    processRow: _processReviewCardRow,
+  );
 
-    var filter = _supabase
-        .from('review_cards')
-        .select()
-        .eq('user_id', _getUserId()!);
+  Future<int> pullReviewLogs() => _tableSync.pull(
+    remoteTable: 'review_logs',
+    watermarkKey: 'review_logs',
+    processRow: _processReviewLogRow,
+  );
 
-    if (lastSyncAt != null) {
-      filter = filter.gt('updated_at', lastSyncAt);
+  Future<bool> _processReviewCardRow(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final remoteUpdatedAt = row['updated_at'] as String;
+    final remoteDeletedAt = row['deleted_at'] as String?;
+
+    final existing = await _db
+        .customSelect(
+          'SELECT id, updated_at FROM review_cards WHERE id = ?',
+          variables: [Variable.withString(id)],
+          readsFrom: {_db.reviewCards},
+        )
+        .get();
+
+    if (existing.isEmpty) {
+      if (remoteDeletedAt != null) return false;
+
+      await _db.customInsert(
+        '''INSERT INTO review_cards
+           (id, entry_id, headword, pos, due, stability, difficulty,
+            elapsed_days, scheduled_days, reps, lapses, state, step,
+            last_review, created_at, updated_at, synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
+        variables: [
+          Variable.withString(id),
+          Variable.withInt(row['entry_id'] as int),
+          Variable.withString(row['headword'] as String),
+          Variable.withString((row['pos'] as String?) ?? ''),
+          Variable.withString(row['due'] as String),
+          Variable.withReal((row['stability'] as num).toDouble()),
+          Variable.withReal((row['difficulty'] as num).toDouble()),
+          Variable.withInt(row['elapsed_days'] as int),
+          Variable.withInt(row['scheduled_days'] as int),
+          Variable.withInt(row['reps'] as int),
+          Variable.withInt(row['lapses'] as int),
+          Variable.withInt(row['state'] as int),
+          if (row['step'] != null)
+            Variable.withInt(row['step'] as int)
+          else
+            const Variable(null),
+          if (row['last_review'] != null)
+            Variable.withString(row['last_review'] as String)
+          else
+            const Variable(null),
+          Variable.withString(row['created_at'] as String),
+          Variable.withString(remoteUpdatedAt),
+        ],
+        updates: {_db.reviewCards},
+      );
+      return true;
     }
 
-    final rows = await filter.order('updated_at', ascending: false);
-    if (rows.isEmpty) return 0;
-
-    var pulled = 0;
-    for (final row in rows) {
-      final id = row['id'] as String;
-      final remoteUpdatedAt = row['updated_at'] as String;
-      final remoteDeletedAt = row['deleted_at'] as String?;
-
-      final existing = await _db
-          .customSelect(
-            'SELECT id, updated_at FROM review_cards WHERE id = ?',
-            variables: [Variable.withString(id)],
-            readsFrom: {_db.reviewCards},
-          )
-          .get();
-
-      if (existing.isEmpty) {
-        // Don't insert records that are already deleted remotely
-        if (remoteDeletedAt != null) continue;
-
-        await _db.customInsert(
-          '''INSERT INTO review_cards
-             (id, entry_id, headword, pos, due, stability, difficulty,
-              elapsed_days, scheduled_days, reps, lapses, state, step,
-              last_review, created_at, updated_at, synced)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
+    final localUpdatedAt = existing.first.data['updated_at'] as String;
+    if (remoteUpdatedAt.compareTo(localUpdatedAt) > 0) {
+      if (remoteDeletedAt != null) {
+        await _db.customUpdate(
+          'UPDATE review_cards SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
           variables: [
+            Variable.withString(remoteDeletedAt),
+            Variable.withString(remoteUpdatedAt),
             Variable.withString(id),
+          ],
+          updates: {_db.reviewCards},
+        );
+      } else {
+        await _db.customUpdate(
+          '''UPDATE review_cards SET
+             entry_id = ?, headword = ?, pos = ?, due = ?,
+             stability = ?, difficulty = ?, elapsed_days = ?,
+             scheduled_days = ?, reps = ?, lapses = ?, state = ?,
+             step = ?, last_review = ?, updated_at = ?, synced = 1
+             WHERE id = ?''',
+          variables: [
             Variable.withInt(row['entry_id'] as int),
             Variable.withString(row['headword'] as String),
             Variable.withString((row['pos'] as String?) ?? ''),
@@ -261,167 +309,80 @@ class ReviewSync {
               Variable.withString(row['last_review'] as String)
             else
               const Variable(null),
-            Variable.withString(row['created_at'] as String),
             Variable.withString(remoteUpdatedAt),
+            Variable.withString(id),
           ],
           updates: {_db.reviewCards},
         );
-        pulled++;
-      } else {
-        final localUpdatedAt = existing.first.data['updated_at'] as String;
-        if (remoteUpdatedAt.compareTo(localUpdatedAt) > 0) {
-          if (remoteDeletedAt != null) {
-            // Remote is deleted — soft-delete locally
-            await _db.customUpdate(
-              'UPDATE review_cards SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
-              variables: [
-                Variable.withString(remoteDeletedAt),
-                Variable.withString(remoteUpdatedAt),
-                Variable.withString(id),
-              ],
-              updates: {_db.reviewCards},
-            );
-          } else {
-            await _db.customUpdate(
-              '''UPDATE review_cards SET
-                 entry_id = ?, headword = ?, pos = ?, due = ?,
-                 stability = ?, difficulty = ?, elapsed_days = ?,
-                 scheduled_days = ?, reps = ?, lapses = ?, state = ?,
-                 step = ?, last_review = ?, updated_at = ?, synced = 1
-                 WHERE id = ?''',
-              variables: [
-                Variable.withInt(row['entry_id'] as int),
-                Variable.withString(row['headword'] as String),
-                Variable.withString((row['pos'] as String?) ?? ''),
-                Variable.withString(row['due'] as String),
-                Variable.withReal((row['stability'] as num).toDouble()),
-                Variable.withReal((row['difficulty'] as num).toDouble()),
-                Variable.withInt(row['elapsed_days'] as int),
-                Variable.withInt(row['scheduled_days'] as int),
-                Variable.withInt(row['reps'] as int),
-                Variable.withInt(row['lapses'] as int),
-                Variable.withInt(row['state'] as int),
-                if (row['step'] != null)
-                  Variable.withInt(row['step'] as int)
-                else
-                  const Variable(null),
-                if (row['last_review'] != null)
-                  Variable.withString(row['last_review'] as String)
-                else
-                  const Variable(null),
-                Variable.withString(remoteUpdatedAt),
-                Variable.withString(id),
-              ],
-              updates: {_db.reviewCards},
-            );
-          }
-          pulled++;
-        }
       }
+      return true;
     }
-
-    if (rows.isNotEmpty) {
-      await setLastSyncAt(
-        _db,
-        'review_cards',
-        rows.first['updated_at'] as String,
-      );
-    }
-
-    return pulled;
+    return false;
   }
 
-  Future<int> pullReviewLogs() async {
-    if (_getUserId() == null) return 0;
+  Future<bool> _processReviewLogRow(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final remoteDeletedAt = row['deleted_at'] as String?;
 
-    final lastSyncAt = await getLastSyncAt(_db, 'review_logs');
+    final existing = await _db
+        .customSelect(
+          'SELECT id, deleted_at FROM review_logs WHERE id = ?',
+          variables: [Variable.withString(id)],
+          readsFrom: {_db.reviewLogs},
+        )
+        .get();
 
-    var filter = _supabase
-        .from('review_logs')
-        .select()
-        .eq('user_id', _getUserId()!);
+    if (existing.isEmpty) {
+      if (remoteDeletedAt != null) return false;
 
-    if (lastSyncAt != null) {
-      filter = filter.gt('updated_at', lastSyncAt);
+      await _db.customInsert(
+        '''INSERT INTO review_logs
+           (id, card_id, rating, state, due, stability, difficulty,
+            elapsed_days, scheduled_days, review_duration, reviewed_at,
+            updated_at, synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
+        variables: [
+          Variable.withString(id),
+          Variable.withString(row['card_id'] as String),
+          Variable.withInt(row['rating'] as int),
+          Variable.withInt(row['state'] as int),
+          Variable.withString(row['due'] as String),
+          Variable.withReal((row['stability'] as num).toDouble()),
+          Variable.withReal((row['difficulty'] as num).toDouble()),
+          Variable.withInt(row['elapsed_days'] as int),
+          Variable.withInt(row['scheduled_days'] as int),
+          if (row['review_duration'] != null)
+            Variable.withInt(row['review_duration'] as int)
+          else
+            const Variable(null),
+          Variable.withString(row['reviewed_at'] as String),
+          Variable.withString(row['updated_at'] as String),
+        ],
+        updates: {_db.reviewLogs},
+      );
+      return true;
     }
 
-    final rows = await filter.order('updated_at', ascending: false);
-    if (rows.isEmpty) return 0;
-
-    var pulled = 0;
-    for (final row in rows) {
-      final id = row['id'] as String;
-      final remoteDeletedAt = row['deleted_at'] as String?;
-
-      final existing = await _db
-          .customSelect(
-            'SELECT id, deleted_at FROM review_logs WHERE id = ?',
-            variables: [Variable.withString(id)],
-            readsFrom: {_db.reviewLogs},
-          )
-          .get();
-
-      if (existing.isEmpty) {
-        // Don't insert records that are already deleted remotely
-        if (remoteDeletedAt != null) continue;
-
-        await _db.customInsert(
-          '''INSERT INTO review_logs
-             (id, card_id, rating, state, due, stability, difficulty,
-              elapsed_days, scheduled_days, review_duration, reviewed_at,
-              updated_at, synced)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
+    if (remoteDeletedAt != null) {
+      final localDeletedAt = existing.first.data['deleted_at'] as String?;
+      if (localDeletedAt == null) {
+        await _db.customUpdate(
+          'UPDATE review_logs SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
           variables: [
-            Variable.withString(id),
-            Variable.withString(row['card_id'] as String),
-            Variable.withInt(row['rating'] as int),
-            Variable.withInt(row['state'] as int),
-            Variable.withString(row['due'] as String),
-            Variable.withReal((row['stability'] as num).toDouble()),
-            Variable.withReal((row['difficulty'] as num).toDouble()),
-            Variable.withInt(row['elapsed_days'] as int),
-            Variable.withInt(row['scheduled_days'] as int),
-            if (row['review_duration'] != null)
-              Variable.withInt(row['review_duration'] as int)
-            else
-              const Variable(null),
-            Variable.withString(row['reviewed_at'] as String),
+            Variable.withString(remoteDeletedAt),
             Variable.withString(row['updated_at'] as String),
+            Variable.withString(id),
           ],
           updates: {_db.reviewLogs},
         );
-        pulled++;
-      } else if (remoteDeletedAt != null) {
-        // Remote is deleted — soft-delete locally if still active
-        final localDeletedAt = existing.first.data['deleted_at'] as String?;
-        if (localDeletedAt == null) {
-          await _db.customUpdate(
-            'UPDATE review_logs SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
-            variables: [
-              Variable.withString(remoteDeletedAt),
-              Variable.withString(row['updated_at'] as String),
-              Variable.withString(id),
-            ],
-            updates: {_db.reviewLogs},
-          );
-          pulled++;
-        }
+        return true;
       }
     }
-
-    if (rows.isNotEmpty) {
-      await setLastSyncAt(
-        _db,
-        'review_logs',
-        rows.first['updated_at'] as String,
-      );
-    }
-
-    return pulled;
+    return false;
   }
 
-  /// Pull first, then push — so deletions from other devices are learned
-  /// before stale data gets re-pushed.
+  // ── Orchestration ──────────────────────────────────────────────────────────
+
   Future<void> syncReviewData() async {
     await pullReviewCards();
     await pullReviewLogs();
@@ -429,8 +390,6 @@ class ReviewSync {
     await pushAllUnsyncedReviewLogs();
   }
 
-  /// Hard-delete soft-deleted records that have been synced and are older than
-  /// [retentionDays].
   Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
     final cutoff = DateTime.now()
         .subtract(Duration(days: retentionDays))

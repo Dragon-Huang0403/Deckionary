@@ -29,6 +29,20 @@ python build_db.py                  # Build oald10.db from macOS dictionary bund
 
 Pre-commit hook auto-formats and lints. Install with: `git config core.hooksPath .githooks`
 
+### Testing
+
+Integration tests run against a local Supabase instance (requires Docker + [Supabase CLI](https://supabase.com/docs/guides/cli)):
+
+```bash
+supabase start                          # Start local Supabase (applies migrations)
+cd app && flutter test                  # Run all tests
+supabase stop                           # Stop when done
+```
+
+- Tests use the default local Supabase demo keys (no secrets needed)
+- Override with env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- After schema changes, run `supabase db reset` to reapply all migrations
+
 ## Architecture
 
 ### Two-part project
