@@ -39,11 +39,6 @@ class _LookupSheetState extends ConsumerState<LookupSheet> {
         TextPosition(offset: widget.controller.query.length),
       );
     }
-    // Handle dismiss signal
-    if (widget.controller.shouldDismiss) {
-      Navigator.of(context).pop();
-      return;
-    }
     setState(() {});
   }
 
@@ -60,45 +55,39 @@ class _LookupSheetState extends ConsumerState<LookupSheet> {
     final ctrl = widget.controller;
     final cs = Theme.of(context).colorScheme;
 
-    return PopScope(
-      canPop: !ctrl.canGoBack(),
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) ctrl.goBack();
-      },
-      child: Column(
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: cs.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
+    return Column(
+      children: [
+        // Drag handle
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(top: 8),
+            width: 32,
+            height: 4,
+            decoration: BoxDecoration(
+              color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
-          // Search bar
-          DictionarySearchBar(
-            controller: _textController,
-            focusNode: _focusNode,
-            onChanged: ctrl.search,
-            onSubmitted: ctrl.commitSearch,
-            canGoBack: ctrl.canGoBack(),
-            onBack: ctrl.goBack,
-            onClear: () {
-              _textController.clear();
-              ctrl.clear();
-              _focusNode.requestFocus();
-            },
-            isOverlay: true,
-            autofocus: widget.autofocusSearch,
-          ),
-          // Content
-          Expanded(child: _buildContent(ctrl, cs)),
-        ],
-      ),
+        ),
+        // Search bar
+        DictionarySearchBar(
+          controller: _textController,
+          focusNode: _focusNode,
+          onChanged: ctrl.search,
+          onSubmitted: ctrl.commitSearch,
+          canGoBack: ctrl.canGoBack(),
+          onBack: ctrl.goBack,
+          onClear: () {
+            _textController.clear();
+            ctrl.clear();
+            _focusNode.requestFocus();
+          },
+          isOverlay: true,
+          autofocus: widget.autofocusSearch,
+        ),
+        // Content
+        Expanded(child: _buildContent(ctrl, cs)),
+      ],
     );
   }
 

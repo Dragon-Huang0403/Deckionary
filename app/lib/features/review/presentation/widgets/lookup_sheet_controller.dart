@@ -12,8 +12,6 @@ class LookupSheetController extends ChangeNotifier {
   int? selectedEntryIndex;
   DictEntry? selectedEntry;
   bool isLoading = false;
-  bool shouldDismiss = false;
-
   final List<String> _history = [];
   Timer? _debounce;
 
@@ -104,9 +102,8 @@ class LookupSheetController extends ChangeNotifier {
       return;
     }
 
-    // Nothing to go back to — signal dismiss
-    shouldDismiss = true;
-    notifyListeners();
+    // Nothing to go back to — no-op (barrier tap or swipe dismisses the sheet)
+    return;
   }
 
   void clear() {
