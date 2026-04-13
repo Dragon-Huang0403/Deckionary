@@ -16,13 +16,13 @@ Raw HTML and audio files from the dictionary are static and never change. Instea
 oald10/
   html/         # 76,210 HTML files (raw, uncompressed)
   audio/        # 217,191 MP3 files (for on-demand playback)
-  audio-packs/  # ~55 tar archives + manifest.json (for bulk download)
+  audio-packs/  # 65 tar archives + manifest.json (for bulk download)
   db/           # oald10.db (SQLite dictionary database)
 ```
 
 ### Audio packs
 
-The export script bundles audio files into tar archives of 4,000 files each for fast bulk download. The Flutter app downloads these packs (~35 MB each, ~55 total) instead of 217K individual files, reducing download time from hours to minutes.
+The export script bundles audio files into tar archives of 4,000 files each for fast bulk download. The Flutter app downloads these packs (~35 MB each, 65 total) instead of 217K individual files, reducing download time from hours to minutes.
 
 `manifest.json` lists each pack's name, file count, and byte size. The app tracks completed packs and resumes from where it left off.
 

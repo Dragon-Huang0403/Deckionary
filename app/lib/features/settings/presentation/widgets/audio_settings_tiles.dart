@@ -105,6 +105,9 @@ class AudioDownloadSection extends ConsumerWidget {
       data: (s) {
         // Downloading
         if (s.downloading) {
+          final packsText = s.retryRound > 0
+              ? '${s.completedPacks} / ${s.totalPacks} packs \u00b7 retrying (round ${s.retryRound})'
+              : '${s.completedPacks} / ${s.totalPacks} packs';
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Column(
@@ -125,11 +128,24 @@ class AudioDownloadSection extends ConsumerWidget {
                         color: cs.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        padding: EdgeInsets.zero,
+                        onPressed: () => ref
+                            .read(offlineAudioProvider.notifier)
+                            .cancelDownload(),
+                        tooltip: 'Cancel download',
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${s.completedPacks} / ${s.totalPacks} packs',
+                  packsText,
                   style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
                 ),
               ],

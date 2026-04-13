@@ -128,6 +128,27 @@ class AudioDb {
     );
   }
 
+  Future<String?> getMeta(String key) async {
+    await init();
+    final rows = await _db
+        .customSelect(
+          'SELECT value FROM meta WHERE key = ?',
+          variables: [Variable.withString(key)],
+        )
+        .get();
+    if (rows.isEmpty) return null;
+    return rows.first.data['value'] as String;
+  }
+
+  Future<void> deleteMeta(String key) async {
+    await init();
+    await _db.customUpdate(
+      'DELETE FROM meta WHERE key = ?',
+      variables: [Variable.withString(key)],
+      updates: {},
+    );
+  }
+
   Future<void> clear() async {
     await init();
     await _db.customStatement('DELETE FROM audio_files');
@@ -157,6 +178,10 @@ class AudioService {
   final AudioDb audioDB = AudioDb();
 
   static const _r2AudioUrl = '$r2BaseUrl/audio';
+
+  bool _downloadCancelled = false;
+
+  void cancelDownload() => _downloadCancelled = true;
 
   AudioService();
 
@@ -207,22 +232,27 @@ class AudioService {
   }
 
   /// Download all audio via pre-built tar packs from R2.
-  /// Fetches manifest, skips completed packs, downloads remaining in parallel,
-  /// extracts tar contents into audio.db.
+  /// Fetches manifest, skips completed packs, downloads remaining in parallel.
+  /// Retries failed packs across multiple rounds with increasing backoff.
   Future<void> downloadAll({
     required void Function(
       int completedPacks,
       int totalPacks,
       int filesExtracted,
       int bytesDownloaded,
+      int retryRound,
+      int failedThisRound,
     )
     onProgress,
+    bool Function()? isCancelled,
   }) async {
+    _downloadCancelled = false;
     const packsUrl = '$r2BaseUrl/audio-packs';
     final client = http.Client();
 
+    bool cancelled() => _downloadCancelled || (isCancelled?.call() ?? false);
+
     try {
-      // Fetch manifest with retry
       final manifestRes = await httpGetWithRetry(
         client,
         Uri.parse('$packsUrl/manifest.json'),
@@ -236,61 +266,109 @@ class AudioService {
           .cast<Map<String, dynamic>>();
 
       await audioDB.setMeta('total_packs', manifest.length.toString());
-      final completed = await audioDB.getCompletedPacks();
-      final remaining = manifest
-          .where((p) => !completed.contains(p['name']))
-          .toList();
 
-      if (remaining.isEmpty) {
-        onProgress(manifest.length, manifest.length, 0, 0);
-        return;
+      const maxRounds = 10;
+      const roundDelays = [0, 10, 30, 60, 120]; // seconds
+      const concurrency = 6;
+      var totalFilesExtracted = 0;
+      var totalBytesDownloaded = 0;
+
+      for (var round = 0; round < maxRounds; round++) {
+        if (cancelled()) return;
+
+        final completed = await audioDB.getCompletedPacks();
+        final remaining = manifest
+            .where((p) => !completed.contains(p['name']))
+            .toList();
+
+        if (remaining.isEmpty) {
+          onProgress(
+            manifest.length,
+            manifest.length,
+            totalFilesExtracted,
+            totalBytesDownloaded,
+            round,
+            0,
+          );
+          return;
+        }
+
+        // Backoff between retry rounds
+        if (round > 0) {
+          final delay = roundDelays[round.clamp(0, roundDelays.length - 1)];
+          debugPrint(
+            'AudioService: round $round, ${remaining.length} packs remaining, '
+            'waiting ${delay}s before retry',
+          );
+          await Future.delayed(Duration(seconds: delay));
+          if (cancelled()) return;
+        }
+
+        var packsCompleted = completed.length;
+        var failedThisRound = 0;
+
+        for (var i = 0; i < remaining.length; i += concurrency) {
+          if (cancelled()) return;
+          final end = (i + concurrency).clamp(0, remaining.length);
+          final batch = remaining.sublist(i, end);
+
+          final futures = batch.map((pack) async {
+            final packName = pack['name'] as String;
+            try {
+              final res = await httpGetWithRetry(
+                client,
+                Uri.parse('$packsUrl/$packName'),
+                maxAttempts: 3,
+                timeout: const Duration(seconds: 120),
+                baseDelay: const Duration(seconds: 2),
+              );
+              if (res.statusCode != 200) {
+                debugPrint(
+                  'AudioService: pack $packName failed ${res.statusCode}',
+                );
+                return (0, 0, false);
+              }
+              final extracted = await _extractTar(res.bodyBytes);
+              await audioDB.markPackComplete(packName);
+              return (extracted, res.bodyBytes.length, true);
+            } catch (e) {
+              debugPrint('AudioService: pack $packName error: $e');
+              return (0, 0, false);
+            }
+          });
+
+          final results = await Future.wait(futures);
+          for (final (files, bytes, success) in results) {
+            if (success) {
+              packsCompleted++;
+            } else {
+              failedThisRound++;
+            }
+            totalFilesExtracted += files;
+            totalBytesDownloaded += bytes;
+          }
+          onProgress(
+            packsCompleted,
+            manifest.length,
+            totalFilesExtracted,
+            totalBytesDownloaded,
+            round,
+            failedThisRound,
+          );
+        }
+
+        if (failedThisRound == 0) return; // all succeeded this round
+        debugPrint(
+          'AudioService: round $round done, $failedThisRound packs failed',
+        );
       }
 
-      var packsCompleted = completed.length;
-      var filesExtracted = 0;
-      var bytesDownloaded = 0;
-      const concurrency = 3;
-
-      for (var i = 0; i < remaining.length; i += concurrency) {
-        final end = (i + concurrency).clamp(0, remaining.length);
-        final batch = remaining.sublist(i, end);
-
-        final futures = batch.map((pack) async {
-          final packName = pack['name'] as String;
-          try {
-            final res = await httpGetWithRetry(
-              client,
-              Uri.parse('$packsUrl/$packName'),
-              maxAttempts: 3,
-              timeout: const Duration(seconds: 120),
-              baseDelay: const Duration(seconds: 2),
-            );
-            if (res.statusCode != 200) {
-              debugPrint(
-                'AudioService: pack $packName failed ${res.statusCode}',
-              );
-              return (0, 0);
-            }
-            final extracted = await _extractTar(res.bodyBytes);
-            await audioDB.markPackComplete(packName);
-            return (extracted, res.bodyBytes.length);
-          } catch (e) {
-            debugPrint('AudioService: pack $packName error after retries: $e');
-            return (0, 0);
-          }
-        });
-
-        final results = await Future.wait(futures);
-        for (final (files, bytes) in results) {
-          if (files > 0) packsCompleted++;
-          filesExtracted += files;
-          bytesDownloaded += bytes;
-        }
-        onProgress(
-          packsCompleted,
-          manifest.length,
-          filesExtracted,
-          bytesDownloaded,
+      // Still incomplete after all rounds
+      final finalCompleted = await audioDB.getCompletedPacks();
+      final remaining = manifest.length - finalCompleted.length;
+      if (remaining > 0) {
+        throw Exception(
+          '$remaining packs failed after $maxRounds retry rounds',
         );
       }
     } finally {

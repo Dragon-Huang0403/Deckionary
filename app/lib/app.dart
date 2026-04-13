@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'core/audio/audio_provider.dart';
 import 'core/database/database_provider.dart';
 import 'core/sync/sync_provider.dart';
 import 'core/update/update_provider.dart';
@@ -459,6 +460,9 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         next.whenData((val) => _showInDock = val);
       });
     }
+
+    // Keep audio download provider alive across navigation.
+    ref.listen(offlineAudioProvider, (_, _) {});
 
     final themeMode = ref
         .watch(themeModeProvider)
