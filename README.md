@@ -47,7 +47,7 @@ Tap to hear US or British pronunciation for headwords, verb forms, and example s
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/XuanLongHuang/oxford-5000-to-anki/releases):
+Get the latest release from [GitHub Releases](https://github.com/Dragon-Huang0403/Deckionary/releases):
 
 - **macOS** — `.zip` (universal binary)
 - **Android** — `.apk`

@@ -46,7 +46,7 @@
 
 ## 下載
 
-前往 [GitHub Releases](https://github.com/XuanLongHuang/oxford-5000-to-anki/releases) 取得最新版本：
+前往 [GitHub Releases](https://github.com/Dragon-Huang0403/Deckionary/releases) 取得最新版本：
 
 - **macOS** — `.zip`（通用二進位）
 - **Android** — `.apk`
