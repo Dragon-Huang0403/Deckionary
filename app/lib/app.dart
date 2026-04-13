@@ -41,6 +41,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   bool _settingsOpen = false;
   bool _showInDock = true;
   bool _windowTransitioning = false;
+  String? _lastSeenClipText;
 
   @override
   void initState() {
@@ -71,6 +72,12 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         await _showNormalMode();
       }
     });
+
+    // Snapshot clipboard so pre-existing content is treated as stale
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      _lastSeenClipText = data?.text?.trim();
+    } catch (_) {}
 
     // Show window in normal mode on startup
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -256,7 +263,10 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text?.trim();
-      if (text != null && text.isNotEmpty && looksLikeSearchQuery(text)) {
+      if (text != null &&
+          text.isNotEmpty &&
+          looksLikeSearchQuery(text) &&
+          text != _lastSeenClipText) {
         clipText = text;
       }
     } catch (_) {}
@@ -265,6 +275,11 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   }
 
   Future<void> _hideWindow() async {
+    // Snapshot clipboard so next overlay open only pastes new content
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      _lastSeenClipText = data?.text?.trim();
+    } catch (_) {}
     ref.read(isOverlayModeProvider.notifier).set(false);
     await _windowChannel.invokeMethod('setNormalMode');
     await _windowChannel.invokeMethod('resetLevel', _showInDock);

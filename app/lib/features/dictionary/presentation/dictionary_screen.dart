@@ -33,6 +33,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
   Timer? _debounce;
   String? _lastAutoPronouncedQuery;
   bool _committed = false;
+  bool _suppressAutoPronounce = false;
   final _history = <String>[]; // navigation history stack
 
   // Two-step search: null = show options list, int = show that entry
@@ -317,6 +318,10 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
   }
 
   void _autoPronounce(List<SearchResult> results, String query) async {
+    if (_suppressAutoPronounce) {
+      _suppressAutoPronounce = false;
+      return;
+    }
     if (results.isEmpty || !_committed || query == _lastAutoPronouncedQuery) {
       return;
     }
@@ -372,6 +377,7 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
       final clipText = ref.read(clipboardSearchText);
       if (clipText != null) {
         ref.read(clipboardSearchText.notifier).set(null);
+        _suppressAutoPronounce = true;
         _commitSearch(clipText);
       }
       _focusSearchBar();
