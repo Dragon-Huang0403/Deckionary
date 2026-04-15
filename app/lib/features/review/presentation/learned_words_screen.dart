@@ -231,6 +231,12 @@ String _formatDate(String? isoDate) {
   final now = DateTime.now();
   final diff = now.difference(date);
   if (diff.inDays == 0 && date.day == now.day) return 'Today';
+  if (diff.isNegative) {
+    // Future date
+    final futureDays = date.difference(now).inDays + 1;
+    if (futureDays == 1) return 'Tomorrow';
+    return 'in ${futureDays}d';
+  }
   if (diff.inDays <= 1 && now.day - date.day == 1) return 'Yesterday';
   if (diff.inDays < 7) return '${diff.inDays}d ago';
   return '${date.month}/${date.day}/${date.year}';
