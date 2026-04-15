@@ -32,6 +32,9 @@ dependencies:
   # HTTP
   http: any
 
+  # Background downloads
+  background_downloader: ^8.0.0
+
   # Auth & Sync
   supabase_flutter: any
   firebase_core: any

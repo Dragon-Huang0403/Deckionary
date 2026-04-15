@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -36,30 +35,6 @@ Uint8List buildTar(Map<String, Uint8List> files) {
 
 String buildManifest(List<String> packNames) =>
     jsonEncode(packNames.map((n) => {'name': n}).toList());
-
-/// Mock HTTP client serving a manifest + pack tars with optional timing gates.
-http.Client createFakeClient({
-  required List<String> packNames,
-  required Map<String, Uint8List> packContents,
-  Map<String, Completer<void>>? packGates,
-}) {
-  final manifest = buildManifest(packNames);
-  return http_testing.MockClient((request) async {
-    final path = request.url.path;
-    if (path.endsWith('manifest.json')) {
-      return http.Response(manifest, 200);
-    }
-    final packName = path.split('/').last;
-    final content = packContents[packName];
-    if (content == null) return http.Response('Not found', 404);
-    if (packGates != null && packGates.containsKey(packName)) {
-      await packGates[packName]!.future;
-    }
-    return http.Response.bytes(content, 200);
-  });
-}
-
-void _noop(int a, int b, int c, int d, int e, int f) {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -145,282 +120,74 @@ void main() {
     });
   });
 
-  // ---- Bug 6: pack with 0 files not marked complete ----
+  // ---- extractTarFile ----
 
-  group('Bug 6: extraction validation', () {
+  group('extractTarFile', () {
     late AudioDb db;
     late AudioService service;
+    late Directory tmpDir;
 
     setUp(() async {
       db = createTestAudioDb();
       await db.init();
       service = AudioService(db: db);
+      tmpDir = await Directory.systemTemp.createTemp('audio_test_');
     });
 
-    tearDown(() => db.close());
-
-    test('pack with invalid content is not marked complete', () async {
-      final badContent = Uint8List.fromList(utf8.encode('<html>Error</html>'));
-      final client = createFakeClient(
-        packNames: ['pack_00.tar'],
-        packContents: {'pack_00.tar': badContent},
-      );
-
-      var gotProgress = false;
-      // Cancel after first progress to avoid retry delays
-      await service.downloadAll(
-        client: client,
-        onProgress: (a, b, c, d, e, failed) {
-          gotProgress = true;
-        },
-        isCancelled: () => gotProgress,
-      );
-
-      expect(await db.getCompletedPacks(), isEmpty);
+    tearDown(() async {
+      await db.close();
+      if (tmpDir.existsSync()) tmpDir.deleteSync(recursive: true);
     });
 
-    test('pack with valid tar content is marked complete', () async {
+    test('extracts valid tar and inserts into AudioDb', () async {
       final tar = buildTar({
         'hello.mp3': Uint8List.fromList([1, 2, 3]),
+        'world.mp3': Uint8List.fromList([4, 5]),
       });
-      final client = createFakeClient(
-        packNames: ['pack_00.tar'],
-        packContents: {'pack_00.tar': tar},
-      );
+      final tarFile = File('${tmpDir.path}/pack_00.tar');
+      await tarFile.writeAsBytes(tar);
 
-      await service.downloadAll(client: client, onProgress: _noop);
+      final count = await service.extractTarFile(tarFile.path);
 
-      expect(await db.getCompletedPacks(), {'pack_00.tar'});
+      expect(count, 2);
       expect(await db.get('hello.mp3'), Uint8List.fromList([1, 2, 3]));
+      expect(await db.get('world.mp3'), Uint8List.fromList([4, 5]));
+      expect(
+        tarFile.existsSync(),
+        isFalse,
+        reason: 'tar file should be deleted after extraction',
+      );
     });
-  });
 
-  // ---- Bug 1: stale download skips DB writes after clear ----
+    test('returns 0 for invalid tar content', () async {
+      final badContent = Uint8List.fromList(utf8.encode('<html>Error</html>'));
+      final tarFile = File('${tmpDir.path}/bad.tar');
+      await tarFile.writeAsBytes(badContent);
 
-  group('Bug 1: clear during download', () {
-    test('in-flight downloads do not write after clearCache', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
+      final count = await service.extractTarFile(tarFile.path);
 
-      final tar = buildTar({
-        'audio.mp3': Uint8List.fromList([1, 2, 3]),
-      });
-      final gate = Completer<void>();
-      final client = createFakeClient(
-        packNames: ['pack_00.tar', 'pack_01.tar'],
-        packContents: {'pack_00.tar': tar, 'pack_01.tar': tar},
-        packGates: {'pack_01.tar': gate},
-      );
-
-      final downloadFuture = service.downloadAll(
-        client: client,
-        onProgress: _noop,
-      );
-
-      // Wait for pack_00 to complete, pack_01 blocked at gate
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      // Clear while pack_01 is in-flight — increments generation
-      await service.clearCache();
-
-      // Release pack_01
-      gate.complete();
-      await downloadFuture;
-
-      // DB should be empty — pack_01's write skipped due to stale generation
+      expect(count, 0);
       expect(await db.fileCount(), 0);
-      expect(await db.getCompletedPacks(), isEmpty);
+      expect(
+        tarFile.existsSync(),
+        isFalse,
+        reason: 'tar file should be deleted even on failure',
+      );
+    });
 
-      await db.close();
+    test('returns 0 for empty tar', () async {
+      final emptyTar = Uint8List(1024); // just end-of-archive marker
+      final tarFile = File('${tmpDir.path}/empty.tar');
+      await tarFile.writeAsBytes(emptyTar);
+
+      final count = await service.extractTarFile(tarFile.path);
+
+      expect(count, 0);
+      expect(await db.fileCount(), 0);
     });
   });
 
-  // ---- Bug 4: cancel + re-download race ----
-
-  group('Bug 4: cancel + re-download', () {
-    test('old download stops when generation changes', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
-
-      final tar = buildTar({
-        'a.mp3': Uint8List.fromList([1]),
-      });
-      final gate = Completer<void>();
-      final client = createFakeClient(
-        packNames: ['pack_00.tar'],
-        packContents: {'pack_00.tar': tar},
-        packGates: {'pack_00.tar': gate},
-      );
-
-      final first = service.downloadAll(client: client, onProgress: _noop);
-      await Future.delayed(const Duration(milliseconds: 20));
-
-      // Cancel — increments generation
-      service.cancelDownload();
-      gate.complete();
-      await first;
-
-      // Pack should NOT be marked complete — generation changed
-      expect(await db.getCompletedPacks(), isEmpty);
-
-      await db.close();
-    });
-
-    test('new download completes independently after cancel', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
-
-      final tar = buildTar({
-        'a.mp3': Uint8List.fromList([1]),
-      });
-
-      // First download: cancelled mid-flight
-      final gate = Completer<void>();
-      final client1 = createFakeClient(
-        packNames: ['pack_00.tar'],
-        packContents: {'pack_00.tar': tar},
-        packGates: {'pack_00.tar': gate},
-      );
-      final first = service.downloadAll(client: client1, onProgress: _noop);
-      await Future.delayed(const Duration(milliseconds: 20));
-      service.cancelDownload();
-      gate.complete();
-      await first;
-
-      // Second download: should complete normally
-      final client2 = createFakeClient(
-        packNames: ['pack_00.tar'],
-        packContents: {'pack_00.tar': tar},
-      );
-      await service.downloadAll(client: client2, onProgress: _noop);
-
-      expect(await db.getCompletedPacks(), {'pack_00.tar'});
-      expect(await db.get('a.mp3'), isNotNull);
-
-      await db.close();
-    });
-  });
-
-  // ---- Bug 7: sliding window pool ----
-
-  group('Bug 7: sliding window pool', () {
-    test('pool fills idle slots immediately', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
-
-      final tar = buildTar({
-        'x.mp3': Uint8List.fromList([1]),
-      });
-      final slowGate = Completer<void>();
-      final completionOrder = <String>[];
-
-      final client = http_testing.MockClient((request) async {
-        final path = request.url.path;
-        if (path.endsWith('manifest.json')) {
-          return http.Response(
-            buildManifest(['pack_00.tar', 'pack_01.tar', 'pack_02.tar']),
-            200,
-          );
-        }
-        final packName = path.split('/').last;
-        if (packName == 'pack_00.tar') await slowGate.future;
-        completionOrder.add(packName);
-        return http.Response.bytes(tar, 200);
-      });
-
-      final downloadFuture = service.downloadAll(
-        client: client,
-        onProgress: _noop,
-      );
-
-      // Let fast packs complete
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      // pack_01 and pack_02 completed before pack_00 (no idle waiting)
-      expect(completionOrder, containsAll(['pack_01.tar', 'pack_02.tar']));
-      expect(completionOrder, isNot(contains('pack_00.tar')));
-
-      slowGate.complete();
-      await downloadFuture;
-
-      expect(completionOrder, contains('pack_00.tar'));
-      expect(await db.getCompletedPacks(), hasLength(3));
-
-      await db.close();
-    });
-  });
-
-  // ---- Initial progress fires immediately ----
-
-  group('Initial progress', () {
-    test('onProgress fires with totalPacks before any pack completes',
-        () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
-
-      final tar = buildTar({'a.mp3': Uint8List.fromList([1])});
-      final gate = Completer<void>();
-      final client = createFakeClient(
-        packNames: ['pack_00.tar'],
-        packContents: {'pack_00.tar': tar},
-        packGates: {'pack_00.tar': gate},
-      );
-
-      final progressCalls = <(int, int)>[];
-      final downloadFuture = service.downloadAll(
-        client: client,
-        onProgress: (completed, total, _, _, _, _) {
-          progressCalls.add((completed, total));
-        },
-      );
-
-      // Wait for manifest fetch + initial progress, but pack is still blocked
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      // Should have initial progress with totalPacks before any pack completes
-      expect(progressCalls, isNotEmpty);
-      expect(progressCalls.first.$1, 0); // 0 completed
-      expect(progressCalls.first.$2, 1); // 1 total pack
-
-      gate.complete();
-      await downloadFuture;
-      await db.close();
-    });
-
-    test('initial progress shows already-completed pack count', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      // Pre-mark one pack as complete
-      await db.markPackComplete('pack_00.tar');
-      final service = AudioService(db: db);
-
-      final tar = buildTar({'b.mp3': Uint8List.fromList([2])});
-      final client = createFakeClient(
-        packNames: ['pack_00.tar', 'pack_01.tar'],
-        packContents: {'pack_00.tar': tar, 'pack_01.tar': tar},
-      );
-
-      final progressCalls = <(int, int)>[];
-      await service.downloadAll(
-        client: client,
-        onProgress: (completed, total, _, _, _, _) {
-          progressCalls.add((completed, total));
-        },
-      );
-
-      // First progress call should show 1 already completed out of 2
-      expect(progressCalls.first.$1, 1);
-      expect(progressCalls.first.$2, 2);
-      await db.close();
-    });
-  });
-
-  // ---- httpGetWithRetry cancellation ----
+  // ---- httpGetWithRetry ----
 
   group('httpGetWithRetry', () {
     test('throws CancelledException when cancelled before attempt', () async {
@@ -521,127 +288,6 @@ void main() {
       );
       // Should have only made 1 attempt, then cancelled before attempt 2
       expect(attempts, 1);
-    });
-  });
-
-  // ---- Circuit breaker ----
-
-  group('Circuit breaker', () {
-    test('stops pool after 5 consecutive failures', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
-
-      // 20 packs, all fail instantly with 404 (no retries for 4xx)
-      final packNames = List.generate(
-        20,
-        (i) => 'pack_${i.toString().padLeft(2, '0')}.tar',
-      );
-      final attemptedPacks = <String>[];
-      final client = http_testing.MockClient((request) async {
-        if (request.url.path.endsWith('manifest.json')) {
-          return http.Response(buildManifest(packNames), 200);
-        }
-        attemptedPacks.add(request.url.path.split('/').last);
-        // 404 = no retries, fails fast
-        return http.Response('not found', 404);
-      });
-
-      // Cancel after first round to avoid retry delays
-      var roundSeen = false;
-      await service.downloadAll(
-        client: client,
-        onProgress: (_, _, _, _, round, _) {
-          if (round > 0) roundSeen = true;
-        },
-        isCancelled: () => roundSeen,
-      );
-
-      // Circuit breaker trips at 5 consecutive failures. With concurrency and
-      // instant mock responses, some extra packs may be dispatched before the
-      // stale check runs. Without the circuit breaker, all 20 would be attempted.
-      expect(attemptedPacks.length, greaterThanOrEqualTo(5));
-      expect(attemptedPacks.length, lessThan(15));
-      await db.close();
-    });
-
-    test('circuit breaker resets on success', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      final service = AudioService(db: db);
-
-      final tar = buildTar({'a.mp3': Uint8List.fromList([1])});
-      // 12 packs, all fail with 404 (fast, no retries) except pack_04
-      // which succeeds. With concurrency 3, pack_04 resets the counter.
-      // Without the reset, 5 consecutive failures would trip the breaker
-      // and later packs would never be attempted.
-      final packNames = List.generate(
-        12,
-        (i) => 'pack_${i.toString().padLeft(2, '0')}.tar',
-      );
-      final attemptedPacks = <String>[];
-      final client = http_testing.MockClient((request) async {
-        if (request.url.path.endsWith('manifest.json')) {
-          return http.Response(buildManifest(packNames), 200);
-        }
-        final name = request.url.path.split('/').last;
-        attemptedPacks.add(name);
-        if (name == 'pack_04.tar') {
-          return http.Response.bytes(tar, 200);
-        }
-        return http.Response('not found', 404);
-      });
-
-      var cancelAfterRound0 = false;
-      await service.downloadAll(
-        client: client,
-        onProgress: (_, _, _, _, round, _) {
-          if (round > 0) cancelAfterRound0 = true;
-        },
-        isCancelled: () => cancelAfterRound0,
-      );
-
-      // pack_04 succeeded — if the reset works, packs after pack_04 are
-      // also attempted. Without reset, circuit would trip at pack_04's
-      // neighbors and later packs would be skipped.
-      expect(await db.getCompletedPacks(), contains('pack_04.tar'));
-      // At least some packs after pack_04 were attempted (proves reset worked)
-      expect(
-        attemptedPacks.where((p) => int.parse(p.substring(5, 7)) > 4),
-        isNotEmpty,
-      );
-      await db.close();
-    });
-  });
-
-  // ---- Resume download ----
-
-  group('Resume download', () {
-    test('skips already-completed packs', () async {
-      final db = createTestAudioDb();
-      await db.init();
-      await db.markPackComplete('pack_00.tar');
-      final service = AudioService(db: db);
-
-      final tar = buildTar({'b.mp3': Uint8List.fromList([2])});
-      final downloadedPacks = <String>[];
-      final client = http_testing.MockClient((request) async {
-        if (request.url.path.endsWith('manifest.json')) {
-          return http.Response(
-            buildManifest(['pack_00.tar', 'pack_01.tar']),
-            200,
-          );
-        }
-        downloadedPacks.add(request.url.path.split('/').last);
-        return http.Response.bytes(tar, 200);
-      });
-
-      await service.downloadAll(client: client, onProgress: _noop);
-
-      // Only pack_01 should have been downloaded
-      expect(downloadedPacks, ['pack_01.tar']);
-      expect(await db.getCompletedPacks(), {'pack_00.tar', 'pack_01.tar'});
-      await db.close();
     });
   });
 }

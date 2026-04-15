@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -9,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:sqlite3/sqlite3.dart' as raw;
 import '../config.dart';
-import '../network/http_retry.dart';
 
 /// Top-level function for compute() — parses a tar archive into filename→bytes
 /// pairs. Must be top-level (not a method/closure) to run in a separate isolate.
@@ -34,18 +31,21 @@ List<MapEntry<String, Uint8List>> _parseTar(Uint8List tarBytes) {
     final sizeStr = String.fromCharCodes(
       Uint8List.sublistView(header, 124, 136),
     ).replaceAll(RegExp(r'[\x00 ]'), '');
-    final fileSize =
-        sizeStr.isNotEmpty ? int.tryParse(sizeStr, radix: 8) ?? 0 : 0;
+    final fileSize = sizeStr.isNotEmpty
+        ? int.tryParse(sizeStr, radix: 8) ?? 0
+        : 0;
 
     pos += 512;
 
     if (filename.isNotEmpty &&
         fileSize > 0 &&
         pos + fileSize <= tarBytes.length) {
-      files.add(MapEntry(
-        filename,
-        Uint8List.sublistView(tarBytes, pos, pos + fileSize),
-      ));
+      files.add(
+        MapEntry(
+          filename,
+          Uint8List.sublistView(tarBytes, pos, pos + fileSize),
+        ),
+      );
     }
 
     // Advance to next 512-byte boundary
@@ -55,10 +55,11 @@ List<MapEntry<String, Uint8List>> _parseTar(Uint8List tarBytes) {
   return files;
 }
 
-/// Top-level function for compute() — parses tar AND inserts into SQLite,
-/// all in one background isolate. Avoids inter-isolate round-trips for each row.
-int _parseTarAndInsert((Uint8List, String) args) {
-  final (tarBytes, dbPath) = args;
+/// Top-level function for compute() — reads tar from a file path on disk,
+/// parses and inserts into SQLite, then deletes the tar file.
+int _parseTarFileAndInsert((String, String) args) {
+  final (tarFilePath, dbPath) = args;
+  final tarBytes = File(tarFilePath).readAsBytesSync();
   final db = raw.sqlite3.open(dbPath);
   try {
     final files = _parseTar(tarBytes);
@@ -74,6 +75,7 @@ int _parseTarAndInsert((Uint8List, String) args) {
     return files.length;
   } finally {
     db.close();
+    File(tarFilePath).deleteSync();
   }
 }
 
@@ -259,23 +261,17 @@ class _RawDb extends GeneratedDatabase {
 }
 
 /// Audio service: plays from local audio.db, fetches from R2 on cache miss.
+/// Download orchestration is handled by [AudioDownloadManager].
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
   final AudioDb _audioDB;
 
   static const _r2AudioUrl = '$r2BaseUrl/audio';
 
-  /// Incremented on cancel/clear. Each downloadAll captures its value at start
-  /// and stops when stale. Replaces the old boolean flag to prevent race
-  /// conditions between cancel, clear, and re-download.
-  int _generation = 0;
-
-  void cancelDownload() {
-    _generation++;
-    debugPrint('[AudioDL] cancel requested, generation=$_generation');
-  }
-
   AudioService({AudioDb? db}) : _audioDB = db ?? AudioDb();
+
+  /// Expose AudioDb for AudioDownloadManager to use directly.
+  AudioDb get audioDB => _audioDB;
 
   /// Play audio by filename. Checks local DB first, fetches from API if missing.
   Future<void> play(String filename) async {
@@ -337,253 +333,19 @@ class AudioService {
   Future<int> getCompletedPackCount() async =>
       (await _audioDB.getCompletedPacks()).length;
 
-  /// Download all audio via pre-built tar packs from R2.
-  /// Fetches manifest, skips completed packs, downloads remaining with a
-  /// sliding-window pool. Retries failed packs across multiple rounds.
-  Future<void> downloadAll({
-    required void Function(
-      int completedPacks,
-      int totalPacks,
-      int filesExtracted,
-      int bytesDownloaded,
-      int retryRound,
-      int failedThisRound,
-    )
-    onProgress,
-    bool Function()? isCancelled,
-    http.Client? client,
-  }) async {
-    final gen = _generation;
-    bool stale() => _generation != gen || (isCancelled?.call() ?? false);
-
-    const packsUrl = '$r2BaseUrl/audio-packs';
-    final ownClient = client == null;
-    final c = client ?? http.Client();
-
-    try {
-      final manifestRes = await httpGetWithRetry(
-        c,
-        Uri.parse('$packsUrl/manifest.json'),
-        maxAttempts: 3,
-        timeout: const Duration(seconds: 15),
-        isCancelled: stale,
-      );
-      if (manifestRes.statusCode != 200) {
-        throw Exception('Failed to fetch manifest: ${manifestRes.statusCode}');
-      }
-      final manifest = (jsonDecode(manifestRes.body) as List)
-          .cast<Map<String, dynamic>>();
-
-      await _audioDB.setMeta('total_packs', manifest.length.toString());
-
-      final initialCompleted = await _audioDB.getCompletedPacks();
-      debugPrint(
-        '[AudioDL] manifest: ${manifest.length} packs, '
-        '${initialCompleted.length} already completed',
-      );
-
-      // Fire initial progress so UI shows total packs immediately
-      onProgress(initialCompleted.length, manifest.length, 0, 0, 0, 0);
-
-      const maxRounds = 10;
-      const roundDelays = [0, 10, 30, 60, 120]; // seconds
-      const concurrency = 3;
-      var totalFilesExtracted = 0;
-      var totalBytesDownloaded = 0;
-      var packsCompleted = 0;
-
-      for (var round = 0; round < maxRounds; round++) {
-        if (stale()) return;
-
-        final completed = await _audioDB.getCompletedPacks();
-        packsCompleted = completed.length;
-        final remaining = manifest
-            .where((p) => !completed.contains(p['name']))
-            .toList();
-
-        debugPrint(
-          '[AudioDL] round $round: ${remaining.length} remaining, '
-          '$packsCompleted completed',
-        );
-
-        if (remaining.isEmpty) {
-          onProgress(
-            manifest.length,
-            manifest.length,
-            totalFilesExtracted,
-            totalBytesDownloaded,
-            round,
-            0,
-          );
-          return;
-        }
-
-        // Backoff between retry rounds
-        if (round > 0) {
-          final delay = roundDelays[round.clamp(0, roundDelays.length - 1)];
-          debugPrint(
-            'AudioService: round $round, ${remaining.length} packs remaining, '
-            'waiting ${delay}s before retry',
-          );
-          await Future.delayed(Duration(seconds: delay));
-          if (stale()) return;
-        }
-
-        var failedThisRound = 0;
-        var consecutiveFailures = 0;
-        var circuitOpen = false;
-        bool poolStale() => stale() || circuitOpen;
-
-        await _runPool(
-          items: remaining,
-          concurrency: concurrency,
-          stale: poolStale,
-          process: (pack) async {
-            if (poolStale()) {
-              debugPrint('[AudioDL] stale before pack start');
-              return;
-            }
-            final packName = pack['name'] as String;
-            final packSw = Stopwatch()..start();
-            debugPrint('[AudioDL] pack $packName: downloading...');
-            try {
-              final res = await httpGetWithRetry(
-                c,
-                Uri.parse('$packsUrl/$packName'),
-                maxAttempts: 3,
-                timeout: const Duration(seconds: 120),
-                baseDelay: const Duration(seconds: 2),
-                isCancelled: stale,
-              );
-              if (stale()) {
-                debugPrint('[AudioDL] pack $packName: stale after download');
-                return;
-              }
-              if (res.statusCode != 200) {
-                debugPrint(
-                  '[AudioDL] pack $packName: HTTP ${res.statusCode} '
-                  '(${packSw.elapsedMilliseconds}ms)',
-                );
-                failedThisRound++;
-                consecutiveFailures++;
-              } else {
-                debugPrint(
-                  '[AudioDL] pack $packName: downloaded '
-                  '${res.bodyBytes.length} bytes '
-                  '(${packSw.elapsedMilliseconds}ms), extracting...',
-                );
-                final extractSw = Stopwatch()..start();
-                final extracted = await _extractTar(res.bodyBytes);
-                extractSw.stop();
-                if (stale()) {
-                  debugPrint('[AudioDL] pack $packName: stale after extract');
-                  return;
-                }
-                if (extracted == 0) {
-                  debugPrint(
-                    '[AudioDL] pack $packName: extracted 0 files, skipping',
-                  );
-                  failedThisRound++;
-                  consecutiveFailures++;
-                } else {
-                  debugPrint(
-                    '[AudioDL] pack $packName: extracted $extracted files '
-                    '(${extractSw.elapsedMilliseconds}ms)',
-                  );
-                  await _audioDB.markPackComplete(packName);
-                  packsCompleted++;
-                  totalFilesExtracted += extracted;
-                  totalBytesDownloaded += res.bodyBytes.length;
-                  consecutiveFailures = 0;
-                }
-              }
-            } catch (e) {
-              debugPrint(
-                '[AudioDL] pack $packName: error after '
-                '${packSw.elapsedMilliseconds}ms: $e',
-              );
-              failedThisRound++;
-              consecutiveFailures++;
-            }
-            if (consecutiveFailures >= 5 && !circuitOpen) {
-              debugPrint(
-                '[AudioDL] circuit breaker: $consecutiveFailures consecutive '
-                'failures, pausing round',
-              );
-              circuitOpen = true;
-            }
-            if (!stale()) {
-              onProgress(
-                packsCompleted,
-                manifest.length,
-                totalFilesExtracted,
-                totalBytesDownloaded,
-                round,
-                failedThisRound,
-              );
-            }
-          },
-        );
-
-        if (stale()) {
-          debugPrint('[AudioDL] stale after round $round pool');
-          return;
-        }
-        if (failedThisRound == 0) {
-          debugPrint('[AudioDL] round $round: all packs succeeded');
-          return;
-        }
-        debugPrint(
-          '[AudioDL] round $round done: $failedThisRound failed, '
-          '$packsCompleted/${manifest.length} total completed',
-        );
-      }
-
-      // Still incomplete after all rounds
-      final finalCompleted = await _audioDB.getCompletedPacks();
-      final remaining = manifest.length - finalCompleted.length;
-      if (remaining > 0) {
-        throw Exception(
-          '$remaining packs failed after $maxRounds retry rounds',
-        );
-      }
-    } finally {
-      if (ownClient) c.close();
-    }
-  }
-
-  /// Sliding-window concurrency pool. Keeps [concurrency] tasks active at all
-  /// times — as soon as one finishes, the next starts. No idle slots.
-  static Future<void> _runPool<T>({
-    required List<T> items,
-    required Future<void> Function(T) process,
-    required int concurrency,
-    required bool Function() stale,
-  }) async {
-    final running = <Future<void>>{};
-    for (final item in items) {
-      if (stale()) return;
-      final f = process(item);
-      running.add(f);
-      f.whenComplete(() => running.remove(f));
-      if (running.length >= concurrency) {
-        await Future.any(running);
-      }
-    }
-    if (running.isNotEmpty) await Future.wait(running);
-  }
-
-  /// Parse tar and insert into audio.db entirely on a background isolate.
+  /// Extract a tar file from disk into audio.db. Deletes the tar file after.
   /// Falls back to main-thread putBatch for in-memory test databases.
-  Future<int> _extractTar(Uint8List tarBytes) async {
+  Future<int> extractTarFile(String tarFilePath) async {
     final dbPath = await _audioDB.getDbPath();
     if (dbPath != null) {
-      return compute(_parseTarAndInsert, (tarBytes, dbPath));
+      return compute(_parseTarFileAndInsert, (tarFilePath, dbPath));
     }
     // In-memory test DB — can't open a second connection, use Drift path
+    final tarBytes = File(tarFilePath).readAsBytesSync();
     final entries = _parseTar(tarBytes);
     final files = entries.map((e) => (e.key, e.value)).toList(growable: false);
     await _audioDB.putBatch(files);
+    File(tarFilePath).deleteSync();
     return files.length;
   }
 
@@ -594,10 +356,7 @@ class AudioService {
   Future<bool> isDownloadComplete() => _audioDB.isDownloadComplete();
 
   /// Clear all cached audio.
-  Future<void> clearCache() async {
-    _generation++;
-    await _audioDB.clear();
-  }
+  Future<void> clearCache() => _audioDB.clear();
 
   Future<void> stop() async => await _player.stop();
 
