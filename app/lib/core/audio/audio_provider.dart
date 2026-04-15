@@ -18,10 +18,12 @@ class OfflineAudioState {
   final bool allPacksComplete;
   final int retryRound;
   final int failedPacks;
+  final bool clearing;
   final String? error;
 
   const OfflineAudioState({
     this.cachedFiles = 0,
+    this.clearing = false,
     this.downloading = false,
     this.completedPacks = 0,
     this.totalPacks = 0,
@@ -139,6 +141,7 @@ class OfflineAudioNotifier extends AsyncNotifier<OfflineAudioState> {
   }
 
   Future<void> clearCache() async {
+    state = const AsyncData(OfflineAudioState(clearing: true));
     final audio = ref.read(audioServiceProvider);
     try {
       await audio.clearCache(); // increments generation + deletes all data

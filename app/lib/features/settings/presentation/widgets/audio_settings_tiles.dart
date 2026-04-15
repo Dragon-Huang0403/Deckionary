@@ -103,6 +103,18 @@ class AudioDownloadSection extends ConsumerWidget {
         subtitle: Text('$e'),
       ),
       data: (s) {
+        // Clearing cache
+        if (s.clearing) {
+          return const ListTile(
+            leading: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            title: Text('Clearing audio...'),
+          );
+        }
+
         // Downloading
         if (s.downloading) {
           final packsText = s.retryRound > 0
