@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:drift/drift.dart';
 import 'app_database.dart';
 
 /// Callback to push a setting change to remote sync.
@@ -110,6 +112,33 @@ class SettingsDao {
 
   Future<void> setLaunchOnStartup(bool enabled) =>
       set('launch_on_startup', enabled.toString());
+
+  // ── New cards queue persistence ─────────────────────────────────────────
+
+  static const _newCardsQueueKey = 'new_cards_queue';
+
+  Future<Map<String, dynamic>?> getNewCardsQueue() async {
+    final json = await get(_newCardsQueueKey);
+    if (json == null) return null;
+    return jsonDecode(json) as Map<String, dynamic>;
+  }
+
+  Future<void> setNewCardsQueue(
+    List<int> ids,
+    int position,
+    String hash,
+  ) async {
+    final json = jsonEncode({'ids': ids, 'position': position, 'hash': hash});
+    await set(_newCardsQueueKey, json);
+  }
+
+  Future<void> clearNewCardsQueue() async {
+    await _db.customUpdate(
+      "DELETE FROM settings WHERE key = ?",
+      variables: [Variable.withString(_newCardsQueueKey)],
+      updates: {_db.settings},
+    );
+  }
 
   // ── App update ──────────────────────────────────────────────────────────
 

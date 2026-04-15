@@ -30,6 +30,14 @@ class ReviewFilter {
     );
   }
 
+  /// Deterministic hash including filter + review settings for queue invalidation.
+  String queueHash({required int newCardsPerDay, required String cardOrder}) {
+    final cefr = cefrLevels.toList()..sort();
+    return '${cefr.join(",")}'
+        '|ox3000=$ox3000|ox5000=$ox5000'
+        '|new=$newCardsPerDay|order=$cardOrder';
+  }
+
   ReviewFilter copyWith({Set<String>? cefrLevels, bool? ox3000, bool? ox5000}) {
     return ReviewFilter(
       cefrLevels: cefrLevels ?? this.cefrLevels,

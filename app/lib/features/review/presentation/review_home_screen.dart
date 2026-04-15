@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../providers/review_providers.dart';
+import 'learned_words_screen.dart';
 import 'review_session_screen.dart';
 import 'study_words_screen.dart';
 import 'widgets/filter_selector.dart';
@@ -246,6 +247,14 @@ class ReviewHomeScreen extends ConsumerWidget {
                     'Total Cards',
                     summary.totalCards,
                     color: cs.onSurfaceVariant,
+                    onTap: summary.totalCards > 0
+                        ? () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LearnedWordsScreen(),
+                              ),
+                            )
+                        : null,
                   ),
                 ],
               ),
@@ -283,11 +292,12 @@ class _CountColumn extends StatelessWidget {
   final String label;
   final int count;
   final Color color;
-  const _CountColumn(this.label, this.count, {required this.color});
+  final VoidCallback? onTap;
+  const _CountColumn(this.label, this.count, {required this.color, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final content = Column(
       children: [
         Text(
           '$count',
@@ -306,6 +316,15 @@ class _CountColumn extends StatelessWidget {
           ),
         ),
       ],
+    );
+    if (onTap == null) return content;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: content,
+      ),
     );
   }
 }

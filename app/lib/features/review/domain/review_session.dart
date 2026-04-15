@@ -1,6 +1,7 @@
 import 'package:fsrs/fsrs.dart' as fsrs;
 import '../../../core/database/app_database.dart';
 import '../../../core/database/review_dao.dart';
+import '../../../core/database/settings_dao.dart';
 import '../../../core/sync/sync_service.dart';
 import 'review_filter.dart';
 import 'review_service.dart';
@@ -39,6 +40,7 @@ class ReviewSession {
   final ReviewDao _dao;
   final ReviewService _service;
   final SyncService? _syncService;
+  final SettingsDao _settingsDao;
   final List<QueueCard> _queue = [];
   int _currentIndex = 0;
   final SessionStats stats = SessionStats();
@@ -47,9 +49,11 @@ class ReviewSession {
   ReviewSession({
     required ReviewDao dao,
     required ReviewService service,
+    required SettingsDao settingsDao,
     SyncService? syncService,
   }) : _dao = dao,
        _service = service,
+       _settingsDao = settingsDao,
        _syncService = syncService;
 
   bool get isLoaded => _isLoaded;
@@ -67,6 +71,7 @@ class ReviewSession {
     required ReviewFilter filter,
     required int newCardsPerDay,
     required int maxReviewsPerDay,
+    required String cardOrder,
     bool randomOrder = false,
   }) async {
     _queue.clear();
@@ -94,11 +99,11 @@ class ReviewSession {
     );
 
     if (newLimit > 0 && !filter.isEmpty) {
-      final newIds = await _dao.getNewEntryIds(
-        cefrLevels: filter.cefrLevels.toList(),
-        ox3000: filter.ox3000,
-        ox5000: filter.ox5000,
-        limit: newLimit,
+      final newIds = await _resolveNewCardIds(
+        filter: filter,
+        newCardsPerDay: newCardsPerDay,
+        cardOrder: cardOrder,
+        newLimit: newLimit,
         randomOrder: randomOrder,
       );
 
@@ -120,6 +125,62 @@ class ReviewSession {
     _isLoaded = true;
   }
 
+  /// Try to resume from persisted queue, otherwise generate fresh.
+  Future<List<int>> _resolveNewCardIds({
+    required ReviewFilter filter,
+    required int newCardsPerDay,
+    required String cardOrder,
+    required int newLimit,
+    required bool randomOrder,
+  }) async {
+    final currentHash = filter.queueHash(
+      newCardsPerDay: newCardsPerDay,
+      cardOrder: cardOrder,
+    );
+
+    // Try persisted queue
+    final persisted = await _settingsDao.getNewCardsQueue();
+    if (persisted != null && persisted['hash'] == currentHash) {
+      final allIds = (persisted['ids'] as List).cast<int>();
+      final position = persisted['position'] as int;
+      var resumeIds = allIds.skip(position).take(newLimit).toList();
+
+      // Remove IDs that have since been reviewed
+      if (resumeIds.isNotEmpty) {
+        final existing = await _dao.getAllReviewedEntryIds();
+        resumeIds.removeWhere((id) => existing.contains(id));
+      }
+
+      if (resumeIds.isNotEmpty) return resumeIds;
+    }
+
+    // Generate fresh queue
+    final newIds = await _dao.getNewEntryIds(
+      cefrLevels: filter.cefrLevels.toList(),
+      ox3000: filter.ox3000,
+      ox5000: filter.ox5000,
+      limit: newLimit,
+      randomOrder: randomOrder,
+    );
+
+    // Persist for session resumption
+    if (newIds.isNotEmpty) {
+      await _settingsDao.setNewCardsQueue(newIds, 0, currentHash);
+    }
+
+    return newIds;
+  }
+
+  /// Advance the persisted queue position after a new card is reviewed.
+  Future<void> _advanceQueuePosition() async {
+    final persisted = await _settingsDao.getNewCardsQueue();
+    if (persisted == null) return;
+    final allIds = (persisted['ids'] as List).cast<int>();
+    final position = (persisted['position'] as int) + 1;
+    final hash = persisted['hash'] as String;
+    await _settingsDao.setNewCardsQueue(allIds, position, hash);
+  }
+
   /// Rate the current card and advance. Returns the updated/created ReviewCard.
   Future<void> rateCurrentCard(fsrs.Rating rating) async {
     final card = currentCard;
@@ -139,6 +200,7 @@ class ReviewSession {
       _syncService?.pushLatestReviewCard(result.card.id.value);
       _syncService?.pushLatestReviewLog(result.log.id.value);
       stats.newLearned++;
+      await _advanceQueuePosition();
     } else {
       // Existing card
       final result = _service.reviewCard(dbCard: card.dbCard!, rating: rating);

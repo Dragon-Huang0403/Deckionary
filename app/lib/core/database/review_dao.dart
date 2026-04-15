@@ -144,6 +144,37 @@ class ReviewDao {
     return result.data['cnt'] as int;
   }
 
+  /// Get all review cards, paginated, sorted by last reviewed (most recent first).
+  /// [stateFilter]: null=all, 1=learning (state 0 or 1), 2=review, 3=relearning.
+  Future<List<ReviewCard>> getAllReviewCards({
+    int? stateFilter,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    var where = 'deleted_at IS NULL';
+    final vars = <Variable>[];
+
+    if (stateFilter != null) {
+      if (stateFilter == 1) {
+        where += ' AND (state = 0 OR state = 1)';
+      } else {
+        where += ' AND state = ?';
+        vars.add(Variable.withInt(stateFilter));
+      }
+    }
+
+    final rows = await _db
+        .customSelect(
+          'SELECT * FROM review_cards WHERE $where '
+          'ORDER BY last_review IS NULL, last_review DESC '
+          'LIMIT ? OFFSET ?',
+          variables: [...vars, Variable.withInt(limit), Variable.withInt(offset)],
+          readsFrom: {_db.reviewCards},
+        )
+        .get();
+    return rows.map((row) => _db.reviewCards.map(row.data)).toList();
+  }
+
   /// Total review cards in the system.
   Future<int> countTotalCards() async {
     final result = await _db

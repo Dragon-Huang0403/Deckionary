@@ -28,6 +28,7 @@ class ReviewFilterNotifier extends AsyncNotifier<ReviewFilter> {
   Future<void> setFilter(ReviewFilter filter) async {
     final dao = ref.read(settingsDaoProvider);
     await dao.setReviewFilter(filter.toJson());
+    await dao.clearNewCardsQueue();
     state = AsyncData(filter);
   }
 }
@@ -116,12 +117,14 @@ class ReviewSessionNotifier extends AsyncNotifier<ReviewSession?> {
     final session = ReviewSession(
       dao: dao,
       service: service,
+      settingsDao: settingsDao,
       syncService: syncService,
     );
     await session.loadQueue(
       filter: filter,
       newCardsPerDay: newCardsPerDay,
       maxReviewsPerDay: maxReviewsPerDay,
+      cardOrder: cardOrder,
       randomOrder: cardOrder == 'random',
     );
 
@@ -131,6 +134,10 @@ class ReviewSessionNotifier extends AsyncNotifier<ReviewSession?> {
 
   /// End the current session.
   void endSession() {
+    final session = state.value;
+    if (session != null && session.isComplete) {
+      ref.read(settingsDaoProvider).clearNewCardsQueue();
+    }
     state = const AsyncData(null);
     // Refresh summary counts
     ref.invalidate(reviewSummaryProvider);
