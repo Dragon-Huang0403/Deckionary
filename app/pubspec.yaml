@@ -54,7 +54,7 @@ dependencies:
   # Logging & monitoring
   talker_flutter: any
   talker_riverpod_logger: any
-  sentry_flutter: any
+  sentry_flutter: ^9.17.0
 
   # macOS quick search (global hotkey + window + tray)
   hotkey_manager: any
