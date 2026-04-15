@@ -32,26 +32,6 @@ extension DictionaryEntryDetail on DictionaryDatabase {
     return results.map((r) => r.data).toList();
   }
 
-  Future<List<Map<String, dynamic>>> getSenses(int senseGroupId) async {
-    final results = await db
-        .customSelect(
-          'SELECT * FROM senses WHERE sense_group_id = ? ORDER BY sort_order',
-          variables: [Variable.withInt(senseGroupId)],
-        )
-        .get();
-    return results.map((r) => r.data).toList();
-  }
-
-  Future<List<Map<String, dynamic>>> getExamples(int senseId) async {
-    final results = await db
-        .customSelect(
-          'SELECT * FROM examples WHERE sense_id = ? ORDER BY sort_order',
-          variables: [Variable.withInt(senseId)],
-        )
-        .get();
-    return results.map((r) => r.data).toList();
-  }
-
   Future<List<Map<String, dynamic>>> getAllSensesForEntry(int entryId) async {
     final results = await db
         .customSelect(
