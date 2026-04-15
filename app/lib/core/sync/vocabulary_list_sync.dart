@@ -51,17 +51,42 @@ class VocabularyListSync {
           updates: {_db.vocabularyLists},
         );
         pushed++;
-      } catch (e) {
-        globalTalker.error('[Sync] Push vocabulary list failed: $e');
-        // A soft-deleted list that was never on the remote will always fail
-        // the UNIQUE(user_id, name) constraint. Stop retrying.
-        if (data['deleted_at'] != null) {
-          await _db.customUpdate(
-            'UPDATE vocabulary_lists SET synced = 1 WHERE id = ?',
-            variables: [Variable.withString(data['id'] as String)],
-            updates: {_db.vocabularyLists},
+      } on PostgrestException catch (e) {
+        if (e.code == '23505') {
+          // Remote already has a list with the same (user_id, name).
+          // Merge local entries into the remote list and delete the duplicate.
+          try {
+            final remote = await _supabase
+                .from('vocabulary_lists')
+                .select('id')
+                .eq('name', data['name'] as String)
+                .limit(1);
+            if (remote.isNotEmpty) {
+              await _mergeAndReplace(
+                  data['id'] as String, remote[0]['id'] as String);
+            }
+          } catch (mergeErr) {
+            globalTalker.error(
+              '[Sync] Push list "${data['name']}": merge failed: $mergeErr',
+            );
+          }
+        } else {
+          globalTalker.error(
+            '[Sync] Push list "${data['name']}" failed: $e',
           );
+          // Soft-deleted list that can't be pushed — stop retrying.
+          if (data['deleted_at'] != null) {
+            await _db.customUpdate(
+              'UPDATE vocabulary_lists SET synced = 1 WHERE id = ?',
+              variables: [Variable.withString(data['id'] as String)],
+              updates: {_db.vocabularyLists},
+            );
+          }
         }
+      } catch (e) {
+        globalTalker.error(
+          '[Sync] Push list "${data['name']}" failed: $e',
+        );
       }
     }
     return pushed;
@@ -99,7 +124,9 @@ class VocabularyListSync {
         );
         pushed++;
       } catch (e) {
-        globalTalker.error('[Sync] Push vocabulary list entry failed: $e');
+        globalTalker.error(
+          '[Sync] Push entry "${data['headword']}" (list=${data['list_id']}) failed: $e',
+        );
       }
     }
     return pushed;
