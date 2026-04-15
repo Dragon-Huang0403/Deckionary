@@ -47,7 +47,7 @@ class OxBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        'Oxford $label',
+        label,
         style: const TextStyle(
           color: Colors.white,
           fontSize: 11,
@@ -99,8 +99,8 @@ class EntryCardHeader extends StatelessWidget {
             ),
           ),
         if (cefrLevel.isNotEmpty) CefrBadge(cefrLevel),
-        if (ox3000) OxBadge('3000', cs),
-        if (ox5000 && !ox3000) OxBadge('5000', cs),
+        if (ox3000) OxBadge('Oxford 3000', cs),
+        if (ox5000 && !ox3000) OxBadge('Oxford 5000', cs),
       ],
     );
   }
