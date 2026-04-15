@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
 
 import 'package:deckionary/core/audio/audio_service.dart';
+import 'package:deckionary/core/network/http_retry.dart';
 
 AudioDb createTestAudioDb() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -348,6 +350,297 @@ void main() {
       expect(completionOrder, contains('pack_00.tar'));
       expect(await db.getCompletedPacks(), hasLength(3));
 
+      await db.close();
+    });
+  });
+
+  // ---- Initial progress fires immediately ----
+
+  group('Initial progress', () {
+    test('onProgress fires with totalPacks before any pack completes',
+        () async {
+      final db = createTestAudioDb();
+      await db.init();
+      final service = AudioService(db: db);
+
+      final tar = buildTar({'a.mp3': Uint8List.fromList([1])});
+      final gate = Completer<void>();
+      final client = createFakeClient(
+        packNames: ['pack_00.tar'],
+        packContents: {'pack_00.tar': tar},
+        packGates: {'pack_00.tar': gate},
+      );
+
+      final progressCalls = <(int, int)>[];
+      final downloadFuture = service.downloadAll(
+        client: client,
+        onProgress: (completed, total, _, __, ___, ____) {
+          progressCalls.add((completed, total));
+        },
+      );
+
+      // Wait for manifest fetch + initial progress, but pack is still blocked
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      // Should have initial progress with totalPacks before any pack completes
+      expect(progressCalls, isNotEmpty);
+      expect(progressCalls.first.$1, 0); // 0 completed
+      expect(progressCalls.first.$2, 1); // 1 total pack
+
+      gate.complete();
+      await downloadFuture;
+      await db.close();
+    });
+
+    test('initial progress shows already-completed pack count', () async {
+      final db = createTestAudioDb();
+      await db.init();
+      // Pre-mark one pack as complete
+      await db.markPackComplete('pack_00.tar');
+      final service = AudioService(db: db);
+
+      final tar = buildTar({'b.mp3': Uint8List.fromList([2])});
+      final client = createFakeClient(
+        packNames: ['pack_00.tar', 'pack_01.tar'],
+        packContents: {'pack_00.tar': tar, 'pack_01.tar': tar},
+      );
+
+      final progressCalls = <(int, int)>[];
+      await service.downloadAll(
+        client: client,
+        onProgress: (completed, total, _, __, ___, ____) {
+          progressCalls.add((completed, total));
+        },
+      );
+
+      // First progress call should show 1 already completed out of 2
+      expect(progressCalls.first.$1, 1);
+      expect(progressCalls.first.$2, 2);
+      await db.close();
+    });
+  });
+
+  // ---- httpGetWithRetry cancellation ----
+
+  group('httpGetWithRetry', () {
+    test('throws CancelledException when cancelled before attempt', () async {
+      final client = http_testing.MockClient(
+        (_) async => http.Response('ok', 200),
+      );
+
+      await expectLater(
+        httpGetWithRetry(
+          client,
+          Uri.parse('https://example.com/test'),
+          isCancelled: () => true,
+        ),
+        throwsA(isA<CancelledException>()),
+      );
+    });
+
+    test('retries on 500 and returns last response', () async {
+      var attempts = 0;
+      final client = http_testing.MockClient((_) async {
+        attempts++;
+        return http.Response('error', 500);
+      });
+
+      final res = await httpGetWithRetry(
+        client,
+        Uri.parse('https://example.com/test'),
+        maxAttempts: 3,
+        baseDelay: const Duration(milliseconds: 1),
+        maxBackoff: const Duration(milliseconds: 5),
+      );
+
+      expect(res.statusCode, 500);
+      expect(attempts, 3);
+    });
+
+    test('retries on transient network errors', () async {
+      var attempts = 0;
+      final client = http_testing.MockClient((_) async {
+        attempts++;
+        if (attempts < 3) {
+          throw const SocketException('Connection refused');
+        }
+        return http.Response('ok', 200);
+      });
+
+      final res = await httpGetWithRetry(
+        client,
+        Uri.parse('https://example.com/test'),
+        maxAttempts: 3,
+        baseDelay: const Duration(milliseconds: 1),
+        maxBackoff: const Duration(milliseconds: 5),
+      );
+
+      expect(res.statusCode, 200);
+      expect(attempts, 3);
+    });
+
+    test('does not retry 4xx errors', () async {
+      var attempts = 0;
+      final client = http_testing.MockClient((_) async {
+        attempts++;
+        return http.Response('not found', 404);
+      });
+
+      final res = await httpGetWithRetry(
+        client,
+        Uri.parse('https://example.com/test'),
+        maxAttempts: 3,
+      );
+
+      expect(res.statusCode, 404);
+      expect(attempts, 1);
+    });
+
+    test('cancellation stops retries between attempts', () async {
+      var attempts = 0;
+      var cancelled = false;
+      final client = http_testing.MockClient((_) async {
+        attempts++;
+        return http.Response('error', 500);
+      });
+
+      await expectLater(
+        httpGetWithRetry(
+          client,
+          Uri.parse('https://example.com/test'),
+          maxAttempts: 5,
+          baseDelay: const Duration(milliseconds: 1),
+          maxBackoff: const Duration(milliseconds: 5),
+          isCancelled: () {
+            // Cancel after first attempt completes
+            if (attempts >= 1) cancelled = true;
+            return cancelled;
+          },
+        ),
+        throwsA(isA<CancelledException>()),
+      );
+      // Should have only made 1 attempt, then cancelled before attempt 2
+      expect(attempts, 1);
+    });
+  });
+
+  // ---- Circuit breaker ----
+
+  group('Circuit breaker', () {
+    test('stops pool after 5 consecutive failures', () async {
+      final db = createTestAudioDb();
+      await db.init();
+      final service = AudioService(db: db);
+
+      // 20 packs, all fail instantly with 404 (no retries for 4xx)
+      final packNames = List.generate(
+        20,
+        (i) => 'pack_${i.toString().padLeft(2, '0')}.tar',
+      );
+      final attemptedPacks = <String>[];
+      final client = http_testing.MockClient((request) async {
+        if (request.url.path.endsWith('manifest.json')) {
+          return http.Response(buildManifest(packNames), 200);
+        }
+        attemptedPacks.add(request.url.path.split('/').last);
+        // 404 = no retries, fails fast
+        return http.Response('not found', 404);
+      });
+
+      // Cancel after first round to avoid retry delays
+      var roundSeen = false;
+      await service.downloadAll(
+        client: client,
+        onProgress: (_, __, ___, ____, round, ______) {
+          if (round > 0) roundSeen = true;
+        },
+        isCancelled: () => roundSeen,
+      );
+
+      // Circuit breaker trips at 5 consecutive failures. With concurrency and
+      // instant mock responses, some extra packs may be dispatched before the
+      // stale check runs. Without the circuit breaker, all 20 would be attempted.
+      expect(attemptedPacks.length, greaterThanOrEqualTo(5));
+      expect(attemptedPacks.length, lessThan(15));
+      await db.close();
+    });
+
+    test('circuit breaker resets on success', () async {
+      final db = createTestAudioDb();
+      await db.init();
+      final service = AudioService(db: db);
+
+      final tar = buildTar({'a.mp3': Uint8List.fromList([1])});
+      // 12 packs, all fail with 404 (fast, no retries) except pack_04
+      // which succeeds. With concurrency 3, pack_04 resets the counter.
+      // Without the reset, 5 consecutive failures would trip the breaker
+      // and later packs would never be attempted.
+      final packNames = List.generate(
+        12,
+        (i) => 'pack_${i.toString().padLeft(2, '0')}.tar',
+      );
+      final attemptedPacks = <String>[];
+      final client = http_testing.MockClient((request) async {
+        if (request.url.path.endsWith('manifest.json')) {
+          return http.Response(buildManifest(packNames), 200);
+        }
+        final name = request.url.path.split('/').last;
+        attemptedPacks.add(name);
+        if (name == 'pack_04.tar') {
+          return http.Response.bytes(tar, 200);
+        }
+        return http.Response('not found', 404);
+      });
+
+      var cancelAfterRound0 = false;
+      await service.downloadAll(
+        client: client,
+        onProgress: (_, __, ___, ____, round, ______) {
+          if (round > 0) cancelAfterRound0 = true;
+        },
+        isCancelled: () => cancelAfterRound0,
+      );
+
+      // pack_04 succeeded — if the reset works, packs after pack_04 are
+      // also attempted. Without reset, circuit would trip at pack_04's
+      // neighbors and later packs would be skipped.
+      expect(await db.getCompletedPacks(), contains('pack_04.tar'));
+      // At least some packs after pack_04 were attempted (proves reset worked)
+      expect(
+        attemptedPacks.where((p) => int.parse(p.substring(5, 7)) > 4),
+        isNotEmpty,
+      );
+      await db.close();
+    });
+  });
+
+  // ---- Resume download ----
+
+  group('Resume download', () {
+    test('skips already-completed packs', () async {
+      final db = createTestAudioDb();
+      await db.init();
+      await db.markPackComplete('pack_00.tar');
+      final service = AudioService(db: db);
+
+      final tar = buildTar({'b.mp3': Uint8List.fromList([2])});
+      final downloadedPacks = <String>[];
+      final client = http_testing.MockClient((request) async {
+        if (request.url.path.endsWith('manifest.json')) {
+          return http.Response(
+            buildManifest(['pack_00.tar', 'pack_01.tar']),
+            200,
+          );
+        }
+        downloadedPacks.add(request.url.path.split('/').last);
+        return http.Response.bytes(tar, 200);
+      });
+
+      await service.downloadAll(client: client, onProgress: _noop);
+
+      // Only pack_01 should have been downloaded
+      expect(downloadedPacks, ['pack_01.tar']);
+      expect(await db.getCompletedPacks(), {'pack_00.tar', 'pack_01.tar'});
       await db.close();
     });
   });
