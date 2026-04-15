@@ -59,6 +59,18 @@ Get the latest release from [GitHub Releases](https://github.com/Dragon-Huang040
 - **Android** — `.apk`
 - **iOS** — coming soon
 
+### macOS Installation
+
+The app is not code-signed, so macOS will block it on first launch:
+
+1. Download **Deckionary-macOS.zip** from the [latest release](https://github.com/Dragon-Huang0403/Deckionary/releases/latest)
+2. Extract and move **Deckionary.app** to `/Applications`
+3. Double-click to open — a warning will appear saying the app can't be opened. Click **Done** (do not move to Trash)
+4. Go to **System Settings > Privacy & Security**, scroll down to find the blocked message for **Deckionary**, and click **Open Anyway**
+5. A confirmation dialog will appear — click **Open**
+
+You only need to do this once. Future launches will open normally.
+
 ---
 
 ## Development
