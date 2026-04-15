@@ -39,7 +39,7 @@ EXPORT_DIR = Path("export")
 HTML_DIR = EXPORT_DIR / "html"
 PACKS_DIR = EXPORT_DIR / "audio-packs"
 AUDIO_SOURCE = Path("oxford.dictionary/Contents")
-PACK_SIZE = 4000  # files per tar archive
+PACK_SIZE = 1000  # files per tar archive
 
 
 def sanitize_filename(text: str) -> str:

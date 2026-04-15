@@ -10,6 +10,50 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../network/http_retry.dart';
 
+/// Top-level function for compute() — parses a tar archive into filename→bytes
+/// pairs. Must be top-level (not a method/closure) to run in a separate isolate.
+/// Uses MapEntry instead of records for isolate transferability.
+List<MapEntry<String, Uint8List>> _parseTar(Uint8List tarBytes) {
+  final files = <MapEntry<String, Uint8List>>[];
+  var pos = 0;
+
+  while (pos + 512 <= tarBytes.length) {
+    final header = Uint8List.sublistView(tarBytes, pos, pos + 512);
+    if (header.every((b) => b == 0)) break;
+
+    // Filename: first 100 bytes, null-terminated
+    final nameBytes = Uint8List.sublistView(header, 0, 100);
+    var nameEnd = nameBytes.indexOf(0);
+    if (nameEnd == -1) nameEnd = 100;
+    final filename = String.fromCharCodes(
+      Uint8List.sublistView(nameBytes, 0, nameEnd),
+    ).trim();
+
+    // File size: bytes 124-136, octal
+    final sizeStr = String.fromCharCodes(
+      Uint8List.sublistView(header, 124, 136),
+    ).replaceAll(RegExp(r'[\x00 ]'), '');
+    final fileSize =
+        sizeStr.isNotEmpty ? int.tryParse(sizeStr, radix: 8) ?? 0 : 0;
+
+    pos += 512;
+
+    if (filename.isNotEmpty &&
+        fileSize > 0 &&
+        pos + fileSize <= tarBytes.length) {
+      files.add(MapEntry(
+        filename,
+        Uint8List.sublistView(tarBytes, pos, pos + fileSize),
+      ));
+    }
+
+    // Advance to next 512-byte boundary
+    pos += (fileSize + 511) & ~511;
+  }
+
+  return files;
+}
+
 /// Local SQLite database for cached audio BLOBs.
 /// Same schema as the server's audio_files table.
 class AudioDb {
@@ -119,8 +163,8 @@ class AudioDb {
   }
 
   // Hardcoded pack count — must match scripts/export_for_r2.py output.
-  // PACK_SIZE=4000, ~260K audio files → 65 tar packs.
-  static const totalPacks = 65;
+  // PACK_SIZE=1000, ~257K audio files → 257 tar packs.
+  static const totalPacks = 257;
 
   /// Returns true if all audio packs have been downloaded.
   Future<bool> isDownloadComplete() async {
@@ -195,7 +239,10 @@ class AudioService {
   /// conditions between cancel, clear, and re-download.
   int _generation = 0;
 
-  void cancelDownload() => _generation++;
+  void cancelDownload() {
+    _generation++;
+    debugPrint('[AudioDL] cancel requested, generation=$_generation');
+  }
 
   AudioService({AudioDb? db}) : _audioDB = db ?? AudioDb();
 
@@ -288,6 +335,7 @@ class AudioService {
         Uri.parse('$packsUrl/manifest.json'),
         maxAttempts: 3,
         timeout: const Duration(seconds: 15),
+        isCancelled: stale,
       );
       if (manifestRes.statusCode != 200) {
         throw Exception('Failed to fetch manifest: ${manifestRes.statusCode}');
@@ -297,9 +345,18 @@ class AudioService {
 
       await _audioDB.setMeta('total_packs', manifest.length.toString());
 
+      final initialCompleted = await _audioDB.getCompletedPacks();
+      debugPrint(
+        '[AudioDL] manifest: ${manifest.length} packs, '
+        '${initialCompleted.length} already completed',
+      );
+
+      // Fire initial progress so UI shows total packs immediately
+      onProgress(initialCompleted.length, manifest.length, 0, 0, 0, 0);
+
       const maxRounds = 10;
       const roundDelays = [0, 10, 30, 60, 120]; // seconds
-      const concurrency = 6;
+      const concurrency = 3;
       var totalFilesExtracted = 0;
       var totalBytesDownloaded = 0;
       var packsCompleted = 0;
@@ -312,6 +369,11 @@ class AudioService {
         final remaining = manifest
             .where((p) => !completed.contains(p['name']))
             .toList();
+
+        debugPrint(
+          '[AudioDL] round $round: ${remaining.length} remaining, '
+          '$packsCompleted completed',
+        );
 
         if (remaining.isEmpty) {
           onProgress(
@@ -343,8 +405,13 @@ class AudioService {
           concurrency: concurrency,
           stale: stale,
           process: (pack) async {
-            if (stale()) return;
+            if (stale()) {
+              debugPrint('[AudioDL] stale before pack start');
+              return;
+            }
             final packName = pack['name'] as String;
+            final packSw = Stopwatch()..start();
+            debugPrint('[AudioDL] pack $packName: downloading...');
             try {
               final res = await httpGetWithRetry(
                 c,
@@ -352,22 +419,41 @@ class AudioService {
                 maxAttempts: 3,
                 timeout: const Duration(seconds: 120),
                 baseDelay: const Duration(seconds: 2),
+                isCancelled: stale,
               );
-              if (stale()) return;
+              if (stale()) {
+                debugPrint('[AudioDL] pack $packName: stale after download');
+                return;
+              }
               if (res.statusCode != 200) {
                 debugPrint(
-                  'AudioService: pack $packName failed ${res.statusCode}',
+                  '[AudioDL] pack $packName: HTTP ${res.statusCode} '
+                  '(${packSw.elapsedMilliseconds}ms)',
                 );
                 failedThisRound++;
               } else {
+                debugPrint(
+                  '[AudioDL] pack $packName: downloaded '
+                  '${res.bodyBytes.length} bytes '
+                  '(${packSw.elapsedMilliseconds}ms), extracting...',
+                );
+                final extractSw = Stopwatch()..start();
                 final extracted = await _extractTar(res.bodyBytes);
-                if (stale()) return;
+                extractSw.stop();
+                if (stale()) {
+                  debugPrint('[AudioDL] pack $packName: stale after extract');
+                  return;
+                }
                 if (extracted == 0) {
                   debugPrint(
-                    'AudioService: pack $packName extracted 0 files, skipping',
+                    '[AudioDL] pack $packName: extracted 0 files, skipping',
                   );
                   failedThisRound++;
                 } else {
+                  debugPrint(
+                    '[AudioDL] pack $packName: extracted $extracted files '
+                    '(${extractSw.elapsedMilliseconds}ms)',
+                  );
                   await _audioDB.markPackComplete(packName);
                   packsCompleted++;
                   totalFilesExtracted += extracted;
@@ -375,7 +461,10 @@ class AudioService {
                 }
               }
             } catch (e) {
-              debugPrint('AudioService: pack $packName error: $e');
+              debugPrint(
+                '[AudioDL] pack $packName: error after '
+                '${packSw.elapsedMilliseconds}ms: $e',
+              );
               failedThisRound++;
             }
             if (!stale()) {
@@ -391,10 +480,17 @@ class AudioService {
           },
         );
 
-        if (stale()) return;
-        if (failedThisRound == 0) return; // all succeeded this round
+        if (stale()) {
+          debugPrint('[AudioDL] stale after round $round pool');
+          return;
+        }
+        if (failedThisRound == 0) {
+          debugPrint('[AudioDL] round $round: all packs succeeded');
+          return;
+        }
         debugPrint(
-          'AudioService: round $round done, $failedThisRound packs failed',
+          '[AudioDL] round $round done: $failedThisRound failed, '
+          '$packsCompleted/${manifest.length} total completed',
         );
       }
 
@@ -432,46 +528,12 @@ class AudioService {
     if (running.isNotEmpty) await Future.wait(running);
   }
 
-  /// Parse tar archive and insert all files into audio.db in a single transaction.
+  /// Parse tar archive on a background isolate, then batch-insert into audio.db.
   Future<int> _extractTar(Uint8List tarBytes) async {
-    final files = <(String, Uint8List)>[];
-    var pos = 0;
-
-    while (pos + 512 <= tarBytes.length) {
-      final header = tarBytes.sublist(pos, pos + 512);
-      if (header.every((b) => b == 0)) break;
-
-      // Filename: first 100 bytes, null-terminated
-      final nameBytes = header.sublist(0, 100);
-      var nameEnd = nameBytes.indexOf(0);
-      if (nameEnd == -1) nameEnd = 100;
-      final filename = String.fromCharCodes(
-        nameBytes.sublist(0, nameEnd),
-      ).trim();
-
-      // File size: bytes 124-136, octal
-      final sizeStr = String.fromCharCodes(
-        header.sublist(124, 136),
-      ).replaceAll(RegExp(r'[\x00 ]'), '');
-      final fileSize = sizeStr.isNotEmpty
-          ? int.tryParse(sizeStr, radix: 8) ?? 0
-          : 0;
-
-      pos += 512;
-
-      if (filename.isNotEmpty &&
-          fileSize > 0 &&
-          pos + fileSize <= tarBytes.length) {
-        files.add((
-          filename,
-          Uint8List.sublistView(tarBytes, pos, pos + fileSize),
-        ));
-      }
-
-      // Advance to next 512-byte boundary
-      pos += (fileSize + 511) & ~511;
-    }
-
+    final entries = await compute(_parseTar, tarBytes);
+    final files = entries
+        .map((e) => (e.key, e.value))
+        .toList(growable: false);
     await _audioDB.putBatch(files);
     return files.length;
   }
