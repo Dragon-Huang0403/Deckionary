@@ -7,3 +7,4 @@ oxford.dictionary
 __pycache__/
 *.pyc
 export/
+.worktrees/
