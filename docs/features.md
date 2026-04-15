@@ -46,7 +46,7 @@ On-demand playback with optional bulk offline download.
 
 **On-demand**: checks local audio.db cache first, fetches from Cloudflare R2 on miss, caches BLOB for future hits. Plays via temp file + just_audio.
 
-**Bulk download**: 65 tar packs (~4,000 files each, ~217K total audio files). 6 concurrent downloads with exponential backoff retry (up to 10 rounds). Completed packs tracked for resume on restart. Tar parsed in pure Dart.
+**Bulk download**: 257 tar packs (~1,000 files each, ~257K total audio files) via `background_downloader`. Downloads continue natively in the background on Android (WorkManager) and iOS (NSURLSession). Two-phase pipeline: native download to staging dir, then Dart-side tar extraction into SQLite. Progress shown in Android notification bar. Exponential backoff retry (up to 10 rounds), circuit breaker on 5 consecutive failures. Completed packs tracked for resume; recovery sweep on app restart extracts any staged tars from a previous session.
 
 **Dialects**: GB and US pronunciations for words, verb forms, and example sentences.
 

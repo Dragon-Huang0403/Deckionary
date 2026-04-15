@@ -101,13 +101,22 @@ Key architectural decisions in Deckionary and the reasoning behind them.
 
 ## Tar Pack Audio Downloads
 
-**Decision**: bundle audio files into 65 tar archives (~4,000 files each) on Cloudflare R2 instead of serving 217K individual files.
+**Decision**: bundle audio files into 257 tar archives (~1,000 files each) on Cloudflare R2, downloaded via `background_downloader` with a two-phase pipeline.
 
-**Why**:
-- HTTP request overhead dominates per-file download. 217K requests would take hours even on fast connections.
-- Tar packs reduce connections to 65. Each pack is ~35MB — reasonable for mobile networks.
+**Why tar packs**:
+- HTTP request overhead dominates per-file download. 257K requests would take hours even on fast connections.
+- Tar packs reduce connections to 257. Each pack is ~6-7 MB — reasonable for mobile networks.
 - Resume on failure: completed packs tracked in audio.db. App restarts from next incomplete pack.
 - Tar parsing in pure Dart avoids native dependencies.
+
+**Why background_downloader** (replacing custom foreground-only pool):
+- Downloads continue natively when app is backgrounded (Android WorkManager, iOS NSURLSession).
+- Android notification bar shows download progress automatically.
+- Native retry and resume handled by the OS network stack.
+
+**Two-phase pipeline**: `background_downloader` downloads tar files to a staging directory (`getApplicationSupportDirectory()/audio-staging/`). On download completion, a Dart isolate reads the tar, parses it, inserts audio blobs into SQLite, marks the pack complete, and deletes the tar. This split is necessary because the extraction step requires app-process access to SQLite.
+
+**Recovery sweep**: on app restart, scans the staging directory for `.tar` files whose pack is not yet marked complete — extracts them before re-enqueuing any remaining packs. Handles the edge case where the app was killed between download and extraction.
 
 **Trade-off**: can't download individual files on-demand from packs. Mitigated by the separate on-demand single-file fetch path for immediate playback.
 

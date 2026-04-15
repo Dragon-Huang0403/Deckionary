@@ -65,7 +65,7 @@ supabase stop                           # Stop when done
 
 **Core services** (`core/`):
 - `database/` — Drift schema, DAOs (ReviewDao, SearchHistoryDao, SettingsDao), database providers
-- `audio/` — pronunciation playback from R2 CDN with SQLite caching
+- `audio/` — pronunciation playback from R2 CDN with SQLite caching, background download via `background_downloader`
 - `sync/` — offline-first Supabase sync (debounced pull on resume, fire-and-forget push)
 - `auth/` — Google Sign-In via Firebase, token exchange with Supabase
 - `update/` — GitHub Releases version check
