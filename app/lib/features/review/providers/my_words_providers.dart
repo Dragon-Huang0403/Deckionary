@@ -12,8 +12,9 @@ final myWordsEntriesProvider = StreamProvider<List<VocabularyListEntry>>((
   ref,
 ) async* {
   final list = await ref.watch(myWordsListProvider.future);
+  final order = await ref.watch(myWordsOrderProvider.future);
   final dao = ref.read(vocabularyListDaoProvider);
-  yield* dao.watchEntries(list.id);
+  yield* dao.watchEntries(list.id, order: order);
 });
 
 /// Check if a dictionary entry is in My Words. Family provider keyed by entryId.
@@ -34,7 +35,7 @@ final myWordsCountProvider = Provider<int>((ref) {
   return entries.value?.length ?? 0;
 });
 
-/// My Words ordering: 'fifo', 'lifo', or 'random'.
+/// My Words ordering: 'oldest', 'newest', or 'random'.
 final myWordsOrderProvider =
     AsyncNotifierProvider<MyWordsOrderNotifier, String>(
       MyWordsOrderNotifier.new,

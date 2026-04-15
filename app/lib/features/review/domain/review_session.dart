@@ -79,7 +79,7 @@ class ReviewSession {
     required String cardOrder,
     bool randomOrder = false,
     String? myWordsListId,
-    String myWordsOrder = 'fifo',
+    String myWordsOrder = 'oldest',
   }) async {
     _queue.clear();
     _currentIndex = 0;
@@ -148,7 +148,7 @@ class ReviewSession {
     required int newLimit,
     required bool randomOrder,
     String? myWordsListId,
-    String myWordsOrder = 'fifo',
+    String myWordsOrder = 'oldest',
   }) async {
     final currentHash = filter.queueHash(
       newCardsPerDay: newCardsPerDay,

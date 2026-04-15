@@ -120,9 +120,16 @@ class SettingsDao {
 
   // ── My Words settings ───────────────────────────────────────────────────
 
-  /// My Words ordering: 'fifo' (default), 'lifo', or 'random'
-  Future<String> getMyWordsOrder() async =>
-      await get('my_words_order') ?? 'fifo';
+  /// My Words ordering: 'oldest' (default), 'newest', or 'random'
+  Future<String> getMyWordsOrder() async {
+    final raw = await get('my_words_order');
+    // Backwards compat: map old values
+    return switch (raw) {
+      'fifo' => 'oldest',
+      'lifo' => 'newest',
+      _ => raw ?? 'oldest',
+    };
+  }
   Future<void> setMyWordsOrder(String order) => set('my_words_order', order);
 
   // ── New cards queue persistence ─────────────────────────────────────────

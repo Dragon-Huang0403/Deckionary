@@ -184,14 +184,18 @@ class _MyWordsScreenState extends ConsumerState<MyWordsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  ...['fifo', 'lifo', 'random'].map(
-                    (o) => Padding(
+                  ...{
+                    'oldest': 'Oldest',
+                    'newest': 'Newest',
+                    'random': 'Random',
+                  }.entries.map(
+                    (e) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(o.toUpperCase()),
-                        selected: order.value == o,
+                        label: Text(e.value),
+                        selected: order.value == e.key,
                         onSelected: (_) =>
-                            ref.read(myWordsOrderProvider.notifier).setOrder(o),
+                            ref.read(myWordsOrderProvider.notifier).setOrder(e.key),
                       ),
                     ),
                   ),

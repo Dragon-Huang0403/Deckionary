@@ -130,12 +130,12 @@ class VocabularyListDao {
   /// Get all active entries in a list, ordered by the given mode.
   Future<List<VocabularyListEntry>> getEntries(
     String listId, {
-    String order = 'fifo',
+    String order = 'oldest',
   }) async {
     final orderClause = switch (order) {
-      'lifo' => 'ORDER BY added_at DESC',
+      'newest' => 'ORDER BY added_at DESC',
       'random' => 'ORDER BY RANDOM()',
-      _ => 'ORDER BY added_at ASC', // fifo
+      _ => 'ORDER BY added_at ASC', // oldest (default)
     };
     final rows = await _db
         .customSelect(
@@ -149,14 +149,22 @@ class VocabularyListDao {
     return rows.map((r) => _db.vocabularyListEntries.map(r.data)).toList();
   }
 
-  /// Watch all active entries (for reactive UI). Always ordered by added_at DESC
-  /// (newest first for display).
-  Stream<List<VocabularyListEntry>> watchEntries(String listId) {
+  /// Watch all active entries (for reactive UI).
+  /// Display order follows setting: oldest = ASC, newest = DESC.
+  /// Random keeps oldest-first display (randomness only in queue selection).
+  Stream<List<VocabularyListEntry>> watchEntries(
+    String listId, {
+    String order = 'oldest',
+  }) {
+    final orderClause = switch (order) {
+      'newest' => 'ORDER BY added_at DESC',
+      _ => 'ORDER BY added_at ASC', // oldest + random both show oldest-first
+    };
     return _db
         .customSelect(
           '''SELECT * FROM vocabulary_list_entries
              WHERE list_id = ? AND deleted_at IS NULL
-             ORDER BY added_at DESC''',
+             $orderClause''',
           variables: [Variable.withString(listId)],
           readsFrom: {_db.vocabularyListEntries},
         )
@@ -186,12 +194,12 @@ class VocabularyListDao {
     required String listId,
     required int limit,
     required Set<int> excludeIds,
-    String order = 'fifo',
+    String order = 'oldest',
   }) async {
     final orderClause = switch (order) {
-      'lifo' => 'ORDER BY vle.added_at DESC',
+      'newest' => 'ORDER BY vle.added_at DESC',
       'random' => 'ORDER BY RANDOM()',
-      _ => 'ORDER BY vle.added_at ASC', // fifo
+      _ => 'ORDER BY vle.added_at ASC', // oldest (default)
     };
     final rows = await _db
         .customSelect(
