@@ -55,15 +55,6 @@ Tip: max reviews should be ~7-10x new cards to avoid backlog.
 
 ## Architecture
 
-### Database
-
-Two separate databases (can't JOIN across them):
-
-- **DictionaryDatabase** (read-only) — word data with CEFR/Oxford flags
-- **UserDatabase** (read-write) — `review_cards`, `review_logs`, `settings`
-
-Cross-database queries done in Dart: fetch candidate IDs from dict DB, subtract existing card IDs from user DB.
-
 ### Key Files
 
 ```
@@ -95,22 +86,8 @@ scheduler.reviewCard(card, rating) → ({Card card, ReviewLog reviewLog})
 
 Card states: `learning(1)`, `review(2)`, `relearning(3)` — no `new(0)` state.
 
-## Cross-Device Sync
+## See Also
 
-Review progress syncs to Supabase so it works across devices.
-
-### What syncs
-- **review_cards** — mutable card state (due date, stability, difficulty, reps, etc.)
-- **review_logs** — append-only audit trail of each review action
-
-### Sync strategy
-- **Push**: fire-and-forget after each review (`pushLatestReviewCard` / `pushLatestReviewLog`)
-- **Pull**: on app resume, `syncReviewData()` pushes all unsynced rows then pulls remote changes
-- **Conflict resolution**: ReviewCards use last-write-wins by `updated_at`; ReviewLogs deduplicate by UUID (append-only, no conflicts)
-- **Offline-first**: local `synced` column (0/1) tracks push state; unsynced rows retry on next sync cycle
-
-### Supabase tables
-- `review_cards` — mirrors local schema + `user_id`, RLS enforced
-- `review_logs` — mirrors local schema + `user_id`, RLS enforced
-
-Migration: `supabase/migrations/20260410160000_create_review_tables.sql`
+- [features.md](features.md) — feature-level summary of FSRS review, filters, and settings
+- [design-decisions.md](design-decisions.md#lazy-card-creation) — why cards are created lazily
+- [design-decisions.md](design-decisions.md#offline-first-sync) — sync architecture and conflict resolution

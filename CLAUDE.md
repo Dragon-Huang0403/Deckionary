@@ -85,4 +85,12 @@ supabase stop                           # Stop when done
 - `app/assets/oald10.db` (gitignored, ~93MB) — must be placed before building
 
 ### Documentation
-Detailed guides in `docs/`: `database.md` (schema, build pipeline), `review.md` (FSRS logic, sync), `r2-export.md`.
+See [`docs/README.md`](docs/README.md) for full index. Key docs:
+- `docs/features.md` — feature catalog (what the app does)
+- `docs/design-decisions.md` — architectural decisions and rationale
+- `docs/review.md` — FSRS deep-dive (card model, scheduling, queue logic)
+- `docs/database.md` — dictionary schema and build pipeline
+- `docs/r2-export.md` — Cloudflare R2 export and upload
+- `docs/release.md` — versioning and CI release workflow
+
+When adding features or making architectural changes, update `docs/features.md` and `docs/design-decisions.md` accordingly.
