@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../settings/presentation/settings_screen.dart';
 
 class DictionarySearchBar extends StatelessWidget {
   final TextEditingController controller;
@@ -9,7 +8,7 @@ class DictionarySearchBar extends StatelessWidget {
   final bool canGoBack;
   final VoidCallback onBack;
   final VoidCallback onClear;
-  final bool isOverlay;
+  final VoidCallback onSettingsTap;
   final bool autofocus;
 
   const DictionarySearchBar({
@@ -21,7 +20,7 @@ class DictionarySearchBar extends StatelessWidget {
     required this.canGoBack,
     required this.onBack,
     required this.onClear,
-    this.isOverlay = false,
+    required this.onSettingsTap,
     this.autofocus = true,
   });
 
@@ -61,18 +60,11 @@ class DictionarySearchBar extends StatelessWidget {
               ),
             ),
           ),
-          if (!isOverlay) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              },
-            ),
-          ],
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: onSettingsTap,
+          ),
         ],
       ),
     );

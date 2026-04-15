@@ -215,12 +215,18 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent &&
         event.logicalKey == LogicalKeyboardKey.comma &&
-        HardwareKeyboard.instance.isMetaPressed &&
-        !ref.read(isOverlayModeProvider)) {
-      _openSettings();
+        HardwareKeyboard.instance.isMetaPressed) {
+      _openSettingsFromAnywhere();
       return true;
     }
     return false;
+  }
+
+  Future<void> _openSettingsFromAnywhere() async {
+    if (ref.read(isOverlayModeProvider)) {
+      await _showNormalMode();
+    }
+    _openSettings();
   }
 
   void _openSettings() {
@@ -490,6 +496,9 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         next.whenData((val) => _showInDock = val);
       });
     }
+
+    // Open settings from overlay or normal mode (triggered by search bar icon).
+    ref.listen(openSettingsTrigger, (_, _) => _openSettingsFromAnywhere());
 
     // Keep audio download provider alive across navigation.
     ref.listen(offlineAudioProvider, (_, _) {});

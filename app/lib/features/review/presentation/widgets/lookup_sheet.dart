@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../app.dart' show openSettingsTrigger;
 import '../../../dictionary/presentation/widgets/dictionary_search_bar.dart';
 import '../../../dictionary/presentation/widgets/entry_card.dart';
 import '../../../dictionary/presentation/widgets/entry_options_list.dart';
@@ -82,7 +83,8 @@ class _LookupSheetState extends ConsumerState<LookupSheet> {
             ctrl.clear();
             _focusNode.requestFocus();
           },
-          isOverlay: true,
+          onSettingsTap: () =>
+              ref.read(openSettingsTrigger.notifier).fire(),
           autofocus: widget.autofocusSearch,
         ),
         // Content

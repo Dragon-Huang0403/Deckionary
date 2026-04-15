@@ -69,6 +69,17 @@ class _SignInFlagNotifier extends Notifier<bool> {
   void set(bool value) => state = value;
 }
 
+/// Fired to request opening the settings screen (from overlay or normal mode).
+final openSettingsTrigger = NotifierProvider<_OpenSettingsTrigger, int>(
+  _OpenSettingsTrigger.new,
+);
+
+class _OpenSettingsTrigger extends Notifier<int> {
+  @override
+  int build() => 0;
+  void fire() => state++;
+}
+
 /// Whether the app is currently in overlay (Raycast-style) mode.
 final isOverlayModeProvider = NotifierProvider<_OverlayModeNotifier, bool>(
   _OverlayModeNotifier.new,
