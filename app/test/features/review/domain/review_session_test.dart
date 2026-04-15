@@ -181,14 +181,6 @@ void main() {
         cardOrder: 'alphabetical',
       );
 
-      // Due cards (c1 is due now) + new cards (4 instead of 5)
-      final newCards =
-          List.generate(session.total, (i) => i)
-              .where((i) {
-                // Temporarily peek at each card
-                return true;
-              })
-              .length;
       // The due card (c1) counts as 1, new cards should be 4
       // Total = 1 due + 4 new = 5
       expect(session.total, 5);

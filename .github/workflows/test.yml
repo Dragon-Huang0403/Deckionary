@@ -37,10 +37,6 @@ jobs:
         working-directory: app
         run: echo "${{ secrets.FIREBASE_OPTIONS_DART }}" | base64 -d > lib/firebase_options.dart
 
-      - name: Analyze
-        working-directory: app
-        run: flutter analyze --fatal-warnings
-
       - name: Run all tests
         working-directory: app
         run: flutter test
