@@ -25,7 +25,7 @@ ALTER TABLE app_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow_insert" ON app_logs FOR INSERT WITH CHECK (true);
 
 -- Auto-delete logs older than 7 days (runs daily at 03:00 UTC).
-DO $$ BEGIN
+DO $outer$ BEGIN
   PERFORM cron.schedule(
     'clean-old-app-logs',
     '0 3 * * *',
@@ -33,4 +33,4 @@ DO $$ BEGIN
   );
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'pg_cron not available, skipping auto-cleanup schedule';
-END $$;
+END $outer$;
