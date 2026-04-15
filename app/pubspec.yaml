@@ -39,6 +39,7 @@ dependencies:
   # App update
   package_info_plus: any
   url_launcher: any
+  in_app_update: any
 
   # Utilities
   uuid: any
