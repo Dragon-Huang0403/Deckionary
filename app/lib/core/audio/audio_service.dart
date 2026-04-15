@@ -430,13 +430,16 @@ class AudioService {
         }
 
         var failedThisRound = 0;
+        var consecutiveFailures = 0;
+        var circuitOpen = false;
+        bool poolStale() => stale() || circuitOpen;
 
         await _runPool(
           items: remaining,
           concurrency: concurrency,
-          stale: stale,
+          stale: poolStale,
           process: (pack) async {
-            if (stale()) {
+            if (poolStale()) {
               debugPrint('[AudioDL] stale before pack start');
               return;
             }
@@ -462,6 +465,7 @@ class AudioService {
                   '(${packSw.elapsedMilliseconds}ms)',
                 );
                 failedThisRound++;
+                consecutiveFailures++;
               } else {
                 debugPrint(
                   '[AudioDL] pack $packName: downloaded '
@@ -480,6 +484,7 @@ class AudioService {
                     '[AudioDL] pack $packName: extracted 0 files, skipping',
                   );
                   failedThisRound++;
+                  consecutiveFailures++;
                 } else {
                   debugPrint(
                     '[AudioDL] pack $packName: extracted $extracted files '
@@ -489,6 +494,7 @@ class AudioService {
                   packsCompleted++;
                   totalFilesExtracted += extracted;
                   totalBytesDownloaded += res.bodyBytes.length;
+                  consecutiveFailures = 0;
                 }
               }
             } catch (e) {
@@ -497,6 +503,14 @@ class AudioService {
                 '${packSw.elapsedMilliseconds}ms: $e',
               );
               failedThisRound++;
+              consecutiveFailures++;
+            }
+            if (consecutiveFailures >= 5 && !circuitOpen) {
+              debugPrint(
+                '[AudioDL] circuit breaker: $consecutiveFailures consecutive '
+                'failures, pausing round',
+              );
+              circuitOpen = true;
             }
             if (!stale()) {
               onProgress(
