@@ -119,7 +119,7 @@ class SyncService {
   /// Auto-clear watermarks on first run after a sync bug fix.
   /// Bump [_currentSyncVersion] whenever a fix requires full resync.
   Future<void> init() async {
-    const currentSyncVersion = 1;
+    const currentSyncVersion = 2;
 
     final stored = await _db
         .customSelect(

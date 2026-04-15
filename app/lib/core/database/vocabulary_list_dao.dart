@@ -15,11 +15,14 @@ class VocabularyListDao {
 
   /// Get or lazily create the single "My Words" list.
   Future<VocabularyList> getOrCreateMyWordsList() async {
-    final existing =
-        await (_db.select(_db.vocabularyLists)
-              ..where((t) => t.deletedAt.isNull() & t.name.equals(myWordsName)))
-            .getSingleOrNull();
-    if (existing != null) return existing;
+    final existing = await (_db.select(_db.vocabularyLists)
+          ..where((t) => t.deletedAt.isNull() & t.name.equals(myWordsName))
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.synced, mode: OrderingMode.desc),
+          ])
+          ..limit(1))
+        .get();
+    if (existing.isNotEmpty) return existing.first;
 
     final now = DateTime.now().toUtc().toIso8601String();
     final companion = VocabularyListsCompanion.insert(
@@ -31,7 +34,8 @@ class VocabularyListDao {
     );
     await _db.into(_db.vocabularyLists).insert(companion);
     return (_db.select(_db.vocabularyLists)
-          ..where((t) => t.name.equals(myWordsName) & t.deletedAt.isNull()))
+          ..where((t) => t.name.equals(myWordsName) & t.deletedAt.isNull())
+          ..limit(1))
         .getSingle();
   }
 

@@ -40,6 +40,8 @@ Future<String> createTestUser(SupabaseClient supabase) async {
 
 /// Deletes a test auth user and all their data from sync tables.
 Future<void> deleteTestUser(SupabaseClient supabase, String userId) async {
+  await supabase.from('vocabulary_list_entries').delete().eq('user_id', userId);
+  await supabase.from('vocabulary_lists').delete().eq('user_id', userId);
   await supabase.from('review_cards').delete().eq('user_id', userId);
   await supabase.from('review_logs').delete().eq('user_id', userId);
   await supabase.from('search_history').delete().eq('user_id', userId);

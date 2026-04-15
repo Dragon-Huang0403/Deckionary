@@ -2,7 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase/supabase.dart';
 import 'package:deckionary/core/database/app_database.dart';
+import 'package:deckionary/core/database/vocabulary_list_dao.dart';
 import 'package:deckionary/core/sync/table_sync.dart';
+import 'package:deckionary/core/sync/vocabulary_list_sync.dart';
 
 import 'sync_test_helpers.dart';
 
@@ -344,6 +346,169 @@ void main() {
         processRow: pullCallback(dbB),
       );
       expect(await countLocalCards(dbB), 2); // now has both cards
+    });
+  });
+
+  group('Vocabulary list sync — duplicate "My Words"', () {
+    late VocabularyListSync vocabSyncA;
+    late VocabularyListSync vocabSyncB;
+
+    setUp(() {
+      vocabSyncA = VocabularyListSync(
+        db: dbA,
+        supabase: supabase,
+        getUserId: () => userId,
+        tableSync: syncA,
+      );
+      vocabSyncB = VocabularyListSync(
+        db: dbB,
+        supabase: supabase,
+        getUserId: () => userId,
+        tableSync: syncB,
+      );
+    });
+
+    Future<List<Map<String, dynamic>>> localLists(UserDatabase db) async {
+      final rows = await db
+          .customSelect(
+            'SELECT * FROM vocabulary_lists WHERE deleted_at IS NULL',
+            readsFrom: {db.vocabularyLists},
+          )
+          .get();
+      return rows.map((r) => r.data).toList();
+    }
+
+    Future<List<Map<String, dynamic>>> localEntries(
+      UserDatabase db,
+      String listId,
+    ) async {
+      final rows = await db
+          .customSelect(
+            'SELECT * FROM vocabulary_list_entries WHERE list_id = ? AND deleted_at IS NULL',
+            variables: [Variable.withString(listId)],
+            readsFrom: {db.vocabularyListEntries},
+          )
+          .get();
+      return rows.map((r) => r.data).toList();
+    }
+
+    Future<String> createLocalList(UserDatabase db, {required String id}) async {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await db.customInsert(
+        '''INSERT INTO vocabulary_lists (id, name, created_at, updated_at, synced)
+           VALUES (?, 'My Words', ?, ?, 0)''',
+        variables: [
+          Variable.withString(id),
+          Variable.withString(now),
+          Variable.withString(now),
+        ],
+        updates: {db.vocabularyLists},
+      );
+      return id;
+    }
+
+    Future<void> addLocalEntry(
+      UserDatabase db, {
+      required String id,
+      required String listId,
+      required int entryId,
+      required String headword,
+    }) async {
+      final now = DateTime.now().toUtc().toIso8601String();
+      await db.customInsert(
+        '''INSERT INTO vocabulary_list_entries
+           (id, list_id, entry_id, headword, pos, added_at, updated_at, synced)
+           VALUES (?, ?, ?, ?, '', ?, ?, 0)''',
+        variables: [
+          Variable.withString(id),
+          Variable.withString(listId),
+          Variable.withInt(entryId),
+          Variable.withString(headword),
+          Variable.withString(now),
+          Variable.withString(now),
+        ],
+        updates: {db.vocabularyListEntries},
+      );
+    }
+
+    test('device B merges into device A list on pull', () async {
+      final listA = await createLocalList(dbA, id: testUuid());
+      await addLocalEntry(
+        dbA,
+        id: testUuid(),
+        listId: listA,
+        entryId: 100,
+        headword: 'apple',
+      );
+
+      // Device A pushes
+      await vocabSyncA.syncVocabularyData();
+
+      // Device B independently creates its own "My Words"
+      final listB = await createLocalList(dbB, id: testUuid());
+      await addLocalEntry(
+        dbB,
+        id: testUuid(),
+        listId: listB,
+        entryId: 200,
+        headword: 'banana',
+      );
+
+      // Device B syncs — should merge
+      await vocabSyncB.syncVocabularyData();
+
+      // Only one "My Words" list on device B, with device A's ID
+      final lists = await localLists(dbB);
+      expect(lists, hasLength(1));
+      expect(lists.first['id'], listA);
+
+      // Both entries present under the canonical list
+      final entries = await localEntries(dbB, listA);
+      final headwords = entries.map((e) => e['headword']).toSet();
+      expect(headwords, containsAll(['apple', 'banana']));
+    });
+
+    test('overlapping entries are deduped during merge', () async {
+      final listA = await createLocalList(dbA, id: testUuid());
+      await addLocalEntry(
+        dbA,
+        id: testUuid(),
+        listId: listA,
+        entryId: 100,
+        headword: 'apple',
+      );
+
+      await vocabSyncA.syncVocabularyData();
+
+      // Device B has the same word under its own list
+      final listB = await createLocalList(dbB, id: testUuid());
+      await addLocalEntry(
+        dbB,
+        id: testUuid(),
+        listId: listB,
+        entryId: 100,
+        headword: 'apple',
+      );
+
+      await vocabSyncB.syncVocabularyData();
+
+      final lists = await localLists(dbB);
+      expect(lists, hasLength(1));
+
+      // Only one "apple" entry, not two
+      final entries = await localEntries(dbB, listA);
+      expect(entries, hasLength(1));
+      expect(entries.first['headword'], 'apple');
+    });
+
+    test('DAO does not crash when duplicates exist', () async {
+      // Manually create two "My Words" lists
+      await createLocalList(dbA, id: testUuid());
+      await createLocalList(dbA, id: testUuid());
+
+      final dao = VocabularyListDao(dbA);
+      final list = await dao.getOrCreateMyWordsList();
+      expect(list.name, 'My Words');
     });
   });
 }

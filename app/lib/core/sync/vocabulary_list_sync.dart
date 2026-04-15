@@ -53,6 +53,15 @@ class VocabularyListSync {
         pushed++;
       } catch (e) {
         debugPrint('Push vocabulary list failed: $e');
+        // A soft-deleted list that was never on the remote will always fail
+        // the UNIQUE(user_id, name) constraint. Stop retrying.
+        if (data['deleted_at'] != null) {
+          await _db.customUpdate(
+            'UPDATE vocabulary_lists SET synced = 1 WHERE id = ?',
+            variables: [Variable.withString(data['id'] as String)],
+            updates: {_db.vocabularyLists},
+          );
+        }
       }
     }
     return pushed;
@@ -125,13 +134,31 @@ class VocabularyListSync {
 
     if (existing.isEmpty) {
       if (remoteDeletedAt != null) return false;
+
+      // Check for a local list with the same name but different ID.
+      // Happens when two devices independently create "My Words".
+      final remoteName = row['name'] as String;
+      final duplicates = await _db
+          .customSelect(
+            'SELECT id FROM vocabulary_lists WHERE name = ? AND id != ? AND deleted_at IS NULL',
+            variables: [
+              Variable.withString(remoteName),
+              Variable.withString(id),
+            ],
+            readsFrom: {_db.vocabularyLists},
+          )
+          .get();
+      for (final dup in duplicates) {
+        await _mergeAndReplace(dup.data['id'] as String, id);
+      }
+
       await _db.customInsert(
         '''INSERT INTO vocabulary_lists
            (id, name, description, created_at, updated_at, synced)
            VALUES (?, ?, ?, ?, ?, 1)''',
         variables: [
           Variable.withString(id),
-          Variable.withString(row['name'] as String),
+          Variable.withString(remoteName),
           Variable.withString((row['description'] as String?) ?? ''),
           Variable.withString(row['created_at'] as String),
           Variable.withString(remoteUpdatedAt),
@@ -187,6 +214,19 @@ class VocabularyListSync {
 
     if (existing.isEmpty) {
       if (remoteDeletedAt != null) return false;
+
+      // Remove any reassigned local entry for the same word (from list merge).
+      // The remote entry takes precedence since it's already synced.
+      await _db.customUpdate(
+        '''DELETE FROM vocabulary_list_entries
+           WHERE list_id = ? AND entry_id = ? AND deleted_at IS NULL''',
+        variables: [
+          Variable.withString(row['list_id'] as String),
+          Variable.withInt(row['entry_id'] as int),
+        ],
+        updates: {_db.vocabularyListEntries},
+      );
+
       await _db.customInsert(
         '''INSERT INTO vocabulary_list_entries
            (id, list_id, entry_id, headword, pos, added_at, updated_at, synced)
@@ -238,6 +278,35 @@ class VocabularyListSync {
       return true;
     }
     return false;
+  }
+
+  // ── List merge ─────────────────────────────────────────────────────────────
+
+  /// Merge a local duplicate list into the canonical remote list.
+  ///
+  /// The local list was never pushed (Supabase UNIQUE(user_id, name) rejected
+  /// it), so we can hard-delete it. Entries are reassigned to [remoteId];
+  /// duplicate words are cleaned up later in [_processEntryRow] when remote
+  /// entries are pulled.
+  Future<void> _mergeAndReplace(String localId, String remoteId) async {
+    // Reassign local entries to the remote list.
+    await _db.customUpdate(
+      '''UPDATE vocabulary_list_entries
+         SET list_id = ?, synced = 0
+         WHERE list_id = ?''',
+      variables: [
+        Variable.withString(remoteId),
+        Variable.withString(localId),
+      ],
+      updates: {_db.vocabularyListEntries},
+    );
+
+    // Hard-delete the local duplicate list.
+    await _db.customUpdate(
+      'DELETE FROM vocabulary_lists WHERE id = ?',
+      variables: [Variable.withString(localId)],
+      updates: {_db.vocabularyLists},
+    );
   }
 
   // ── Orchestration ──────────────────────────────────────────────────────────
