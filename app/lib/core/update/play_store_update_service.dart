@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:in_app_update/in_app_update.dart';
+import '../logging/logging_service.dart';
 
 /// Check Google Play Store for an available update.
 /// Returns the [AppUpdateInfo] if a flexible update is available, null otherwise.
@@ -13,8 +13,8 @@ Future<AppUpdateInfo?> checkPlayStoreUpdate() async {
       return info;
     }
     return null;
-  } catch (e) {
-    debugPrint('Play Store update check failed: $e');
+  } catch (e, st) {
+    globalTalker.error('[UPDATE] Play Store update check failed', e, st);
     return null;
   }
 }
@@ -36,12 +36,12 @@ Future<bool> startFlexibleUpdate() async {
       },
       onError: (e) {
         sub.cancel();
-        debugPrint('Update listener error: $e');
+        globalTalker.error('[UPDATE] listener error: $e');
       },
     );
     return true;
-  } catch (e) {
-    debugPrint('Flexible update failed: $e');
+  } catch (e, st) {
+    globalTalker.error('[UPDATE] Flexible update failed', e, st);
     return false;
   }
 }

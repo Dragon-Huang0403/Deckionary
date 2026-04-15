@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import '../config.dart';
+import '../logging/logging_service.dart';
 
 class UpdateInfo {
   final String latestVersion;
@@ -54,8 +54,8 @@ Future<UpdateInfo?> checkForUpdate() async {
     );
 
     return info.hasUpdate ? info : null;
-  } catch (e) {
-    debugPrint('Update check failed: $e');
+  } catch (e, st) {
+    globalTalker.error('[UPDATE] Update check failed', e, st);
     return null;
   }
 }

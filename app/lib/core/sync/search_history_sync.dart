@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
+import '../logging/logging_service.dart';
 import 'table_sync.dart';
 
 class SearchHistorySync {
@@ -49,7 +49,7 @@ class SearchHistorySync {
       await (_db.update(_db.searchHistory)..where((t) => t.id.equals(row.id)))
           .write(const SearchHistoryCompanion(synced: Value(1)));
     } catch (e) {
-      debugPrint('Push search failed (will retry): $e');
+      globalTalker.error('[Sync] Push search failed (will retry): $e');
     }
   }
 

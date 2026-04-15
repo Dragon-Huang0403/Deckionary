@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
+import '../logging/logging_service.dart';
 import 'table_sync.dart';
 
 class ReviewSync {
@@ -62,7 +62,7 @@ class ReviewSync {
         updates: {_db.reviewCards},
       );
     } catch (e) {
-      debugPrint('Push review card failed (will retry): $e');
+      globalTalker.error('[Sync] Push review card failed (will retry): $e');
     }
   }
 
@@ -104,7 +104,7 @@ class ReviewSync {
         updates: {_db.reviewLogs},
       );
     } catch (e) {
-      debugPrint('Push review log failed (will retry): $e');
+      globalTalker.error('[Sync] Push review log failed (will retry): $e');
     }
   }
 

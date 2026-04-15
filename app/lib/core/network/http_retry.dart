@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../logging/logging_service.dart';
 
 /// Thrown when an HTTP request is cancelled via [isCancelled].
 class CancelledException implements Exception {
@@ -47,8 +47,8 @@ Future<http.Response> httpGetWithRetry(
       // Server error or rate-limited — retry if attempts remain
       if (attempt >= maxAttempts - 1) return response;
 
-      debugPrint(
-        'httpGetWithRetry: ${response.statusCode} for $url '
+      globalTalker.warning(
+        '[HTTP] ${response.statusCode} for $url '
         '(attempt ${attempt + 1}/$maxAttempts, retrying)',
       );
     } catch (e) {
@@ -62,8 +62,8 @@ Future<http.Response> httpGetWithRetry(
         rethrow;
       }
 
-      debugPrint(
-        'httpGetWithRetry: $e for $url '
+      globalTalker.warning(
+        '[HTTP] $e for $url '
         '(attempt ${attempt + 1}/$maxAttempts, retrying)',
       );
     }

@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
+import '../logging/logging_service.dart';
 import 'table_sync.dart';
 
 class SettingsSync {
@@ -42,7 +42,7 @@ class SettingsSync {
       });
       await _removeDirtySetting(key);
     } catch (e) {
-      debugPrint('Push setting "$key" failed, marking dirty: $e');
+      globalTalker.error('[Sync] Push setting "$key" failed, marking dirty: $e');
       await _addDirtySetting(key);
     }
   }

@@ -23,6 +23,7 @@ export 'core/hotkey/hotkey_helpers.dart';
 
 import 'app_providers.dart';
 import 'core/hotkey/hotkey_helpers.dart';
+import 'core/logging/logging_service.dart';
 import 'core/window/window_positioner.dart';
 
 class DeckionaryApp extends ConsumerStatefulWidget {
@@ -242,8 +243,8 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         keyDownHandler: (_) => _toggleWindow(),
       );
       _registeredHotKey = hotKey;
-    } catch (e) {
-      debugPrint('Failed to register hotkey: $e');
+    } catch (e, st) {
+      globalTalker.error('[App] Failed to register hotkey', e, st);
     }
   }
 
@@ -260,8 +261,8 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         ],
       );
       await trayManager.setContextMenu(menu);
-    } catch (e) {
-      debugPrint('Failed to setup tray icon: $e');
+    } catch (e, st) {
+      globalTalker.error('[App] Failed to setup tray icon', e, st);
     }
   }
 

@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../config.dart';
+import '../logging/logging_service.dart';
 import '../network/http_retry.dart';
 import 'audio_service.dart';
 import 'download_dispatcher.dart';
@@ -135,7 +136,7 @@ class AudioDownloadManager {
     _packsCompleted = completed.length;
     _totalFilesExtracted = 0;
 
-    debugPrint(
+    globalTalker.info(
       '[AudioDL] manifest: ${manifest.length} packs, '
       '${completed.length} already completed',
     );
@@ -160,7 +161,7 @@ class AudioDownloadManager {
           .where((p) => !alreadyDone.contains(p['name']))
           .toList();
 
-      debugPrint(
+      globalTalker.info(
         '[AudioDL] round $round: ${remaining.length} remaining, '
         '$_packsCompleted completed',
       );
@@ -173,7 +174,7 @@ class AudioDownloadManager {
       // Backoff between retry rounds.
       if (round > 0) {
         final delay = roundDelays[round.clamp(0, roundDelays.length - 1)];
-        debugPrint('[AudioDL] waiting ${delay}s before retry round $round');
+        globalTalker.info('[AudioDL] waiting ${delay}s before retry round $round');
         await Future.delayed(Duration(seconds: delay));
         if (stale()) return;
       }
@@ -196,10 +197,10 @@ class AudioDownloadManager {
 
       if (stale()) return;
       if (_failedThisRound == 0) {
-        debugPrint('[AudioDL] round $round: all packs succeeded');
+        globalTalker.info('[AudioDL] round $round: all packs succeeded');
         return;
       }
-      debugPrint(
+      globalTalker.info(
         '[AudioDL] round $round done: $_failedThisRound failed, '
         '$_packsCompleted/$_totalPacks total completed',
       );
@@ -219,7 +220,7 @@ class AudioDownloadManager {
   /// so callers can safely touch the database after this resolves.
   Future<void> cancelDownload() async {
     _generation++;
-    debugPrint('[AudioDL] cancel requested, generation=$_generation');
+    globalTalker.info('[AudioDL] cancel requested, generation=$_generation');
     _extractionQueue.clear();
     _pendingTasks = 0;
     // Register a no-op callback so the native side doesn't warn about
@@ -256,7 +257,7 @@ class AudioDownloadManager {
         if (stale()) return;
         final packName = file.uri.pathSegments.last;
         if (!completed.contains(packName)) {
-          debugPrint('[AudioDL] recovery: extracting staged $packName');
+          globalTalker.info('[AudioDL] recovery: extracting staged $packName');
           await _extractPack(packName, file.path, gen);
         } else {
           file.deleteSync();
@@ -267,7 +268,7 @@ class AudioDownloadManager {
     // 2. Check for in-flight tasks from a previous session.
     final activeTasks = await _dispatcher.allTasks(_group);
     if (activeTasks.isNotEmpty) {
-      debugPrint(
+      globalTalker.info(
         '[AudioDL] recovery: ${activeTasks.length} tasks still active',
       );
       _pendingTasks = activeTasks.length;
@@ -281,7 +282,7 @@ class AudioDownloadManager {
     // 3. Re-enqueue remaining packs if needed.
     final isComplete = await _audioDB.isDownloadComplete();
     if (!isComplete) {
-      debugPrint('[AudioDL] recovery: re-enqueuing remaining packs');
+      globalTalker.info('[AudioDL] recovery: re-enqueuing remaining packs');
       await startDownload();
     }
   }
@@ -353,17 +354,17 @@ class AudioDownloadManager {
     final packName = update.task.filename;
 
     if (update.status == TaskStatus.complete) {
-      debugPrint('[AudioDL] downloaded $packName, queuing extraction');
+      globalTalker.info('[AudioDL] downloaded $packName, queuing extraction');
       _consecutiveFailures = 0;
       _extractionQueue.add(packName);
       _processExtractionQueue(gen);
     } else {
-      debugPrint('[AudioDL] $packName failed: ${update.status}');
+      globalTalker.warning('[AudioDL] $packName failed: ${update.status}');
       _failedThisRound++;
       _consecutiveFailures++;
 
       if (_consecutiveFailures >= 5) {
-        debugPrint(
+        globalTalker.warning(
           '[AudioDL] circuit breaker: $_consecutiveFailures consecutive '
           'failures, cancelling remaining',
         );
@@ -402,7 +403,7 @@ class AudioDownloadManager {
         final tarPath = '$stagingPath/$packName';
 
         if (!File(tarPath).existsSync()) {
-          debugPrint('[AudioDL] $packName: tar file missing, skipping');
+          globalTalker.warning('[AudioDL] $packName: tar file missing, skipping');
           _failedThisRound++;
           _pendingTasks--;
           _fireProgress(_failedThisRound);
@@ -441,14 +442,14 @@ class AudioDownloadManager {
       final extracted = await _audioService.extractTarFile(tarPath);
       if (_generation != gen) return 0;
       if (extracted == 0) {
-        debugPrint('[AudioDL] $packName: extracted 0 files');
+        globalTalker.warning('[AudioDL] $packName: extracted 0 files');
         return 0;
       }
       await _audioDB.markPackComplete(packName);
-      debugPrint('[AudioDL] $packName: extracted $extracted files');
+      globalTalker.info('[AudioDL] $packName: extracted $extracted files');
       return extracted;
     } catch (e) {
-      debugPrint('[AudioDL] $packName: extraction error: $e');
+      globalTalker.error('[AudioDL] $packName: extraction error: $e');
       return 0;
     }
   }

@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../logging/logging_service.dart';
 import 'audio_download_manager.dart';
 import 'audio_service.dart';
 import 'download_dispatcher.dart';
@@ -171,7 +171,7 @@ class OfflineAudioNotifier extends AsyncNotifier<OfflineAudioState> {
     if (postRun != null && !postRun.downloading) return;
 
     // Don't clear download_requested — will auto-resume next launch
-    debugPrint('OfflineAudioNotifier: download failed: $e');
+    globalTalker.error('[OfflineAudio] download failed: $e');
     final count = await audio.getCachedFileCount();
     final completed = await audio.getCompletedPackCount();
     state = AsyncData(
@@ -202,7 +202,7 @@ class OfflineAudioNotifier extends AsyncNotifier<OfflineAudioState> {
       await manager.cancelDownload();
       await audio.clearCache();
     } catch (e) {
-      debugPrint('OfflineAudioNotifier: clearCache failed: $e');
+      globalTalker.error('[OfflineAudio] clearCache failed: $e');
       state = AsyncData(OfflineAudioState(error: 'Failed to clear cache: $e'));
       return;
     }

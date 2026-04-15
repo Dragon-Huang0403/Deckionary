@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:sqlite3/sqlite3.dart' as raw;
 import '../config.dart';
+import '../logging/logging_service.dart';
 
 /// Top-level function for compute() — parses a tar archive into filename→bytes
 /// pairs. Must be top-level (not a method/closure) to run in a separate isolate.
@@ -287,8 +288,8 @@ class AudioService {
           data = response.bodyBytes;
           await _audioDB.put(filename, data);
         } else {
-          debugPrint(
-            'AudioService: server returned ${response.statusCode} for $filename',
+          globalTalker.warning(
+            '[Audio] server returned ${response.statusCode} for $filename',
           );
           return;
         }
@@ -300,8 +301,8 @@ class AudioService {
       await tmpFile.writeAsBytes(data);
       await _player.setFilePath(tmpFile.path);
       await _player.play();
-    } catch (e) {
-      debugPrint('AudioService: error $filename: $e');
+    } catch (e, st) {
+      globalTalker.error('[Audio] error $filename', e, st);
     }
   }
 

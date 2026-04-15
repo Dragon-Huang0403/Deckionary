@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
+import '../logging/logging_service.dart';
 
 /// Where to show the hotkey overlay window.
 enum ShowOnScreen {
@@ -133,8 +133,8 @@ class PlatformDisplayAdapter {
         await windowManager.setSize(geom.size);
         await windowManager.setPosition(geom.position);
       }
-    } catch (e) {
-      debugPrint('Could not position window: $e');
+    } catch (e, st) {
+      globalTalker.error('[Window] Could not position window', e, st);
     }
   }
 }

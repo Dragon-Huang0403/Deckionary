@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
+import '../logging/logging_service.dart';
 import 'table_sync.dart';
 
 class VocabularyListSync {
@@ -52,7 +52,7 @@ class VocabularyListSync {
         );
         pushed++;
       } catch (e) {
-        debugPrint('Push vocabulary list failed: $e');
+        globalTalker.error('[Sync] Push vocabulary list failed: $e');
         // A soft-deleted list that was never on the remote will always fail
         // the UNIQUE(user_id, name) constraint. Stop retrying.
         if (data['deleted_at'] != null) {
@@ -99,7 +99,7 @@ class VocabularyListSync {
         );
         pushed++;
       } catch (e) {
-        debugPrint('Push vocabulary list entry failed: $e');
+        globalTalker.error('[Sync] Push vocabulary list entry failed: $e');
       }
     }
     return pushed;
