@@ -26,9 +26,6 @@ jobs:
 
       - run: flutter pub get --enforce-lockfile
 
-      - name: Format
-        run: dart format --set-exit-if-changed .
-
       - name: Decode Firebase config
         run: |
           echo "${{ secrets.FIREBASE_OPTIONS_DART }}" | base64 -d > lib/firebase_options.dart

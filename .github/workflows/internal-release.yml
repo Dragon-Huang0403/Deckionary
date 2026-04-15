@@ -1,7 +1,9 @@
 name: Internal Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -11,12 +13,15 @@ concurrency:
 
 jobs:
   upload:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: subosito/flutter-action@v2
         with:
@@ -55,7 +60,7 @@ jobs:
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           --dart-define=R2_BASE_URL=${{ secrets.R2_BASE_URL }}
-          --dart-define=BUILD_COMMIT=${{ github.sha }}
+          --dart-define=BUILD_COMMIT=${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Decode Google Play service account
         run: echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" | base64 -d > /tmp/service-account.json
