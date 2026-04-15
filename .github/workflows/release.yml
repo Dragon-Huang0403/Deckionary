@@ -138,11 +138,11 @@ jobs:
       - name: Decode Google Play service account
         run: echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" | base64 -d > /tmp/service-account.json
 
-      - name: Upload to Play Production
+      - name: Upload to Play Closed Testing
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: /tmp/service-account.json
           packageName: com.deckionary.deckionary
           releaseFiles: artifacts/android-aab/app-release.aab
-          track: production
+          track: alpha
           status: completed

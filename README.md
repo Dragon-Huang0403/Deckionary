@@ -34,9 +34,15 @@ A dictionary and vocabulary learning app powered by the Oxford Advanced Learner'
 Look up any word and get complete OALD10 entries — definitions, example sentences, pronunciations (US & GB), verb forms, collocations, synonyms, word families, and more. Oxford 3000/5000 and CEFR level badges help you focus on the words that matter.
 
 ### Learn with Spaced Repetition
+<p align="center">
+  <img src="docs/screenshots/spaced_repetition.png" width="600" alt="Hotkey instant search" />
+</p>
 Built-in FSRS flashcard system schedules your reviews at the optimal time. Rate each card (Again / Hard / Good / Easy) and the algorithm adapts to your memory. Set daily limits for new cards and reviews to match your pace.
 
 ### Instant Search on macOS
+<p align="center">
+  <img src="docs/screenshots/hotkey.png" width="600" alt="Hotkey instant search" />
+</p>
 Press **Cmd+Shift+D** from any app to pop up the dictionary — no need to switch windows. It even reads your clipboard so you can copy a word and look it up in one shortcut. Works across all desktops and displays.
 
 ### Sync Across Devices
