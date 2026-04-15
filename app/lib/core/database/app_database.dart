@@ -22,9 +22,7 @@ part 'app_database.g.dart';
     VocabularyLists,
     VocabularyListEntries,
     SearchHistory,
-    AudioCache,
     Settings,
-    SyncQueue,
     SyncMeta,
   ],
 )
@@ -33,7 +31,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -70,6 +68,10 @@ class UserDatabase extends _$UserDatabase {
         await customStatement(
           'UPDATE review_logs SET updated_at = reviewed_at',
         );
+      }
+      if (from < 7) {
+        await customStatement('DROP TABLE IF EXISTS audio_cache');
+        await customStatement('DROP TABLE IF EXISTS sync_queue');
       }
     },
   );

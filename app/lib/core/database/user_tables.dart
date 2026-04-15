@@ -117,21 +117,6 @@ class SearchHistory extends Table {
   String get tableName => 'search_history';
 }
 
-class AudioCache extends Table {
-  TextColumn get filename => text()();
-  TextColumn get filePath => text().named('file_path')();
-  IntColumn get sizeBytes => integer().named('size_bytes')();
-  TextColumn get downloadedAt => text()
-      .named('downloaded_at')
-      .withDefault(Constant(DateTime.now().toIso8601String()))();
-
-  @override
-  Set<Column> get primaryKey => {filename};
-
-  @override
-  String get tableName => 'audio_cache';
-}
-
 class Settings extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -141,21 +126,6 @@ class Settings extends Table {
 
   @override
   String get tableName => 'settings';
-}
-
-class SyncQueue extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get tableName_ => text().named('table_name')();
-  TextColumn get recordId => text().named('record_id')();
-  TextColumn get operation => text()();
-  TextColumn get payload => text()();
-  TextColumn get createdAt => text()
-      .named('created_at')
-      .withDefault(Constant(DateTime.now().toIso8601String()))();
-  IntColumn get synced => integer().withDefault(const Constant(0))();
-
-  @override
-  String get tableName => 'sync_queue';
 }
 
 class SyncMeta extends Table {
