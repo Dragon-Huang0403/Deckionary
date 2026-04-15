@@ -4,6 +4,9 @@ import ServiceManagement
 
 class MainFlutterWindow: NSPanel {
   var windowChannel: FlutterMethodChannel?
+  /// Captured before app activation so getActiveWindowScreenFrame returns
+  /// the screen of the *previously* focused app, not Deckionary's own window.
+  private var lastActiveScreen: NSScreen?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -23,6 +26,8 @@ class MainFlutterWindow: NSPanel {
     windowChannel!.setMethodCallHandler { [weak self] (call, result) in
       switch call.method {
       case "prepareForShow":
+        // Snapshot the active screen BEFORE activation changes NSScreen.main
+        self?.lastActiveScreen = NSScreen.main
         NSApp.setActivationPolicy(.regular)
         self?.isFloatingPanel = true
         self?.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
@@ -64,6 +69,25 @@ class MainFlutterWindow: NSPanel {
         self?.level = .floating
         self?.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         result(nil)
+      case "getActiveWindowScreenFrame":
+        // Use the screen captured in prepareForShow (before activation changed
+        // NSScreen.main to Deckionary's own window).
+        // Convert from macOS bottom-left origin to top-left origin to match
+        // screen_retriever's coordinate system.
+        if let screen = self?.lastActiveScreen ?? NSScreen.main,
+           let primary = NSScreen.screens.first {
+          let frame = screen.visibleFrame
+          let primaryHeight = primary.frame.height
+          let topLeftY = primaryHeight - frame.origin.y - frame.size.height
+          result([
+            "x": frame.origin.x,
+            "y": topLeftY,
+            "width": frame.size.width,
+            "height": frame.size.height,
+          ] as [String: Double])
+        } else {
+          result(nil)
+        }
       default:
         result(FlutterMethodNotImplemented)
       }

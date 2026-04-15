@@ -115,6 +115,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(),
               const SectionHeader('Quick Search'),
               HotKeyTile(settings.quickSearchHotKey, ref),
+              ShowOnScreenTile(settings.showOnScreen, ref),
               TrayIconTile(settings.showTrayIcon, ref),
               DockTile(settings.showInDock, ref),
               LaunchOnStartupTile(settings.launchOnStartup, ref),

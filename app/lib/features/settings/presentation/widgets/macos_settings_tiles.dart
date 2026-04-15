@@ -68,6 +68,37 @@ class _HotKeyTileState extends State<HotKeyTile> {
   }
 }
 
+class ShowOnScreenTile extends StatelessWidget {
+  final String value;
+  final WidgetRef ref;
+  const ShowOnScreenTile(this.value, this.ref, {super.key});
+
+  static const _options = {
+    'mouse': 'Screen containing mouse',
+    'activeWindow': 'Screen with active window',
+    'primaryScreen': 'Primary screen',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('Show window on'),
+      trailing: DropdownButton<String>(
+        value: _options.containsKey(value) ? value : 'mouse',
+        underline: const SizedBox.shrink(),
+        onChanged: (val) async {
+          if (val == null) return;
+          await ref.read(settingsDaoProvider).setShowOnScreen(val);
+          ref.invalidate(settingsStateProvider);
+        },
+        items: _options.entries
+            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+            .toList(),
+      ),
+    );
+  }
+}
+
 class TrayIconTile extends StatelessWidget {
   final bool enabled;
   final WidgetRef ref;

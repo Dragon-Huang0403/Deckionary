@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:tray_manager/tray_manager.dart';
-import 'package:screen_retriever/screen_retriever.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/audio/audio_provider.dart';
 import 'core/database/database_provider.dart';
@@ -24,6 +23,7 @@ export 'core/hotkey/hotkey_helpers.dart';
 
 import 'app_providers.dart';
 import 'core/hotkey/hotkey_helpers.dart';
+import 'core/window/window_positioner.dart';
 
 class DeckionaryApp extends ConsumerStatefulWidget {
   const DeckionaryApp({super.key});
@@ -292,7 +292,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     // 1. Configure overlay + space-jump BEFORE showing (same as original)
     await _windowChannel.invokeMethod('setOverlayMode');
     await _windowChannel.invokeMethod('prepareForShow');
-    await _positionOnMouseDisplay();
+    await _positionOnTargetDisplay();
 
     // 2. Show transparent so Flutter renders the overlay UI
     await windowManager.setOpacity(0);
@@ -349,35 +349,11 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     await windowManager.focus();
   }
 
-  Future<void> _positionOnMouseDisplay() async {
-    try {
-      final cursorPos = await screenRetriever.getCursorScreenPoint();
-      final displays = await screenRetriever.getAllDisplays();
+  late final _displayAdapter = PlatformDisplayAdapter(_windowChannel);
 
-      Display? targetDisplay;
-      for (final display in displays) {
-        final pos = display.visiblePosition ?? Offset.zero;
-        final sz = display.visibleSize ?? display.size;
-        final bounds = Rect.fromLTWH(pos.dx, pos.dy, sz.width, sz.height);
-        if (bounds.contains(Offset(cursorPos.dx, cursorPos.dy))) {
-          targetDisplay = display;
-          break;
-        }
-      }
-
-      if (targetDisplay != null) {
-        final dpos = targetDisplay.visiblePosition ?? Offset.zero;
-        final dsz = targetDisplay.visibleSize ?? targetDisplay.size;
-        final winW = 800.0;
-        final winH = (dsz.height * 0.7).clamp(400.0, 900.0);
-        final x = dpos.dx + (dsz.width - winW) / 2;
-        final y = dpos.dy + (dsz.height - winH) * 0.35;
-        await windowManager.setSize(Size(winW, winH));
-        await windowManager.setPosition(Offset(x, y));
-      }
-    } catch (e) {
-      debugPrint('Could not position window: $e');
-    }
+  Future<void> _positionOnTargetDisplay() async {
+    final setting = await ref.read(settingsDaoProvider).getShowOnScreen();
+    await _displayAdapter.positionWindow(setting);
   }
 
   @override

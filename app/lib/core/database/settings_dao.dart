@@ -110,6 +110,11 @@ class SettingsDao {
   Future<void> setShowInDock(bool enabled) =>
       set('show_in_dock', enabled.toString());
 
+  /// Which screen to show the overlay on: 'mouse' (default), 'activeWindow', 'primaryScreen'
+  Future<String> getShowOnScreen() async =>
+      await get('show_on_screen') ?? 'mouse';
+  Future<void> setShowOnScreen(String value) => set('show_on_screen', value);
+
   Future<void> setLaunchOnStartup(bool enabled) =>
       set('launch_on_startup', enabled.toString());
 

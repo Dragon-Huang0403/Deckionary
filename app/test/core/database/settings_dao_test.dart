@@ -149,16 +149,40 @@ void main() {
       expect(await dao.get('review_auto_play_mode'), 'off');
     });
 
-    test('old review_auto_pronounce=true falls back to pronunciation default',
-        () async {
-      await dao.set('review_auto_pronounce', 'true');
-      expect(await dao.getReviewAutoPlayMode(), 'pronunciation');
-    });
+    test(
+      'old review_auto_pronounce=true falls back to pronunciation default',
+      () async {
+        await dao.set('review_auto_pronounce', 'true');
+        expect(await dao.getReviewAutoPlayMode(), 'pronunciation');
+      },
+    );
 
     test('new key takes precedence over old key when both present', () async {
       await dao.set('review_auto_pronounce', 'false');
       await dao.set('review_auto_play_mode', 'sentence_pronunciation');
       expect(await dao.getReviewAutoPlayMode(), 'sentence_pronunciation');
+    });
+  });
+
+  group('showOnScreen', () {
+    test('returns mouse by default', () async {
+      expect(await dao.getShowOnScreen(), 'mouse');
+    });
+
+    test('round-trips activeWindow', () async {
+      await dao.setShowOnScreen('activeWindow');
+      expect(await dao.getShowOnScreen(), 'activeWindow');
+    });
+
+    test('round-trips primaryScreen', () async {
+      await dao.setShowOnScreen('primaryScreen');
+      expect(await dao.getShowOnScreen(), 'primaryScreen');
+    });
+
+    test('overwrite updates value', () async {
+      await dao.setShowOnScreen('activeWindow');
+      await dao.setShowOnScreen('primaryScreen');
+      expect(await dao.getShowOnScreen(), 'primaryScreen');
     });
   });
 
