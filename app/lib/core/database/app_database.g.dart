@@ -1820,30 +1820,6 @@ class $VocabularyListsTable extends VocabularyLists
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
-  static const VerificationMeta _isPresetMeta = const VerificationMeta(
-    'isPreset',
-  );
-  @override
-  late final GeneratedColumn<int> isPreset = GeneratedColumn<int>(
-    'is_preset',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _presetTypeMeta = const VerificationMeta(
-    'presetType',
-  );
-  @override
-  late final GeneratedColumn<String> presetType = GeneratedColumn<String>(
-    'preset_type',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(''),
-  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1868,15 +1844,36 @@ class $VocabularyListsTable extends VocabularyLists
     requiredDuringInsert: false,
     defaultValue: Constant(DateTime.now().toIso8601String()),
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<int> synced = GeneratedColumn<int>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
     description,
-    isPreset,
-    presetType,
     createdAt,
     updatedAt,
+    deletedAt,
+    synced,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1912,18 +1909,6 @@ class $VocabularyListsTable extends VocabularyLists
         ),
       );
     }
-    if (data.containsKey('is_preset')) {
-      context.handle(
-        _isPresetMeta,
-        isPreset.isAcceptableOrUnknown(data['is_preset']!, _isPresetMeta),
-      );
-    }
-    if (data.containsKey('preset_type')) {
-      context.handle(
-        _presetTypeMeta,
-        presetType.isAcceptableOrUnknown(data['preset_type']!, _presetTypeMeta),
-      );
-    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1934,6 +1919,18 @@ class $VocabularyListsTable extends VocabularyLists
       context.handle(
         _updatedAtMeta,
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
       );
     }
     return context;
@@ -1957,14 +1954,6 @@ class $VocabularyListsTable extends VocabularyLists
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       )!,
-      isPreset: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}is_preset'],
-      )!,
-      presetType: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}preset_type'],
-      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}created_at'],
@@ -1972,6 +1961,14 @@ class $VocabularyListsTable extends VocabularyLists
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}synced'],
       )!,
     );
   }
@@ -1986,18 +1983,18 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
   final String id;
   final String name;
   final String description;
-  final int isPreset;
-  final String presetType;
   final String createdAt;
   final String updatedAt;
+  final String? deletedAt;
+  final int synced;
   const VocabularyList({
     required this.id,
     required this.name,
     required this.description,
-    required this.isPreset,
-    required this.presetType,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
+    required this.synced,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2005,10 +2002,12 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['description'] = Variable<String>(description);
-    map['is_preset'] = Variable<int>(isPreset);
-    map['preset_type'] = Variable<String>(presetType);
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    map['synced'] = Variable<int>(synced);
     return map;
   }
 
@@ -2017,10 +2016,12 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
       id: Value(id),
       name: Value(name),
       description: Value(description),
-      isPreset: Value(isPreset),
-      presetType: Value(presetType),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      synced: Value(synced),
     );
   }
 
@@ -2033,10 +2034,10 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       description: serializer.fromJson<String>(json['description']),
-      isPreset: serializer.fromJson<int>(json['isPreset']),
-      presetType: serializer.fromJson<String>(json['presetType']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      synced: serializer.fromJson<int>(json['synced']),
     );
   }
   @override
@@ -2046,10 +2047,10 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'description': serializer.toJson<String>(description),
-      'isPreset': serializer.toJson<int>(isPreset),
-      'presetType': serializer.toJson<String>(presetType),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
+      'deletedAt': serializer.toJson<String?>(deletedAt),
+      'synced': serializer.toJson<int>(synced),
     };
   }
 
@@ -2057,18 +2058,18 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
     String? id,
     String? name,
     String? description,
-    int? isPreset,
-    String? presetType,
     String? createdAt,
     String? updatedAt,
+    Value<String?> deletedAt = const Value.absent(),
+    int? synced,
   }) => VocabularyList(
     id: id ?? this.id,
     name: name ?? this.name,
     description: description ?? this.description,
-    isPreset: isPreset ?? this.isPreset,
-    presetType: presetType ?? this.presetType,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    synced: synced ?? this.synced,
   );
   VocabularyList copyWithCompanion(VocabularyListsCompanion data) {
     return VocabularyList(
@@ -2077,12 +2078,10 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
       description: data.description.present
           ? data.description.value
           : this.description,
-      isPreset: data.isPreset.present ? data.isPreset.value : this.isPreset,
-      presetType: data.presetType.present
-          ? data.presetType.value
-          : this.presetType,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      synced: data.synced.present ? data.synced.value : this.synced,
     );
   }
 
@@ -2092,10 +2091,10 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('description: $description, ')
-          ..write('isPreset: $isPreset, ')
-          ..write('presetType: $presetType, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('synced: $synced')
           ..write(')'))
         .toString();
   }
@@ -2105,10 +2104,10 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
     id,
     name,
     description,
-    isPreset,
-    presetType,
     createdAt,
     updatedAt,
+    deletedAt,
+    synced,
   );
   @override
   bool operator ==(Object other) =>
@@ -2117,39 +2116,39 @@ class VocabularyList extends DataClass implements Insertable<VocabularyList> {
           other.id == this.id &&
           other.name == this.name &&
           other.description == this.description &&
-          other.isPreset == this.isPreset &&
-          other.presetType == this.presetType &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.synced == this.synced);
 }
 
 class VocabularyListsCompanion extends UpdateCompanion<VocabularyList> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> description;
-  final Value<int> isPreset;
-  final Value<String> presetType;
   final Value<String> createdAt;
   final Value<String> updatedAt;
+  final Value<String?> deletedAt;
+  final Value<int> synced;
   final Value<int> rowid;
   const VocabularyListsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.description = const Value.absent(),
-    this.isPreset = const Value.absent(),
-    this.presetType = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.synced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   VocabularyListsCompanion.insert({
     required String id,
     required String name,
     this.description = const Value.absent(),
-    this.isPreset = const Value.absent(),
-    this.presetType = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.synced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name);
@@ -2157,20 +2156,20 @@ class VocabularyListsCompanion extends UpdateCompanion<VocabularyList> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? description,
-    Expression<int>? isPreset,
-    Expression<String>? presetType,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
+    Expression<String>? deletedAt,
+    Expression<int>? synced,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (description != null) 'description': description,
-      if (isPreset != null) 'is_preset': isPreset,
-      if (presetType != null) 'preset_type': presetType,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (synced != null) 'synced': synced,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2179,20 +2178,20 @@ class VocabularyListsCompanion extends UpdateCompanion<VocabularyList> {
     Value<String>? id,
     Value<String>? name,
     Value<String>? description,
-    Value<int>? isPreset,
-    Value<String>? presetType,
     Value<String>? createdAt,
     Value<String>? updatedAt,
+    Value<String?>? deletedAt,
+    Value<int>? synced,
     Value<int>? rowid,
   }) {
     return VocabularyListsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
-      isPreset: isPreset ?? this.isPreset,
-      presetType: presetType ?? this.presetType,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      synced: synced ?? this.synced,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2209,17 +2208,17 @@ class VocabularyListsCompanion extends UpdateCompanion<VocabularyList> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
-    if (isPreset.present) {
-      map['is_preset'] = Variable<int>(isPreset.value);
-    }
-    if (presetType.present) {
-      map['preset_type'] = Variable<String>(presetType.value);
-    }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<String>(deletedAt.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<int>(synced.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2233,10 +2232,10 @@ class VocabularyListsCompanion extends UpdateCompanion<VocabularyList> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('description: $description, ')
-          ..write('isPreset: $isPreset, ')
-          ..write('presetType: $presetType, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('synced: $synced, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2289,6 +2288,16 @@ class $VocabularyListEntriesTable extends VocabularyListEntries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _posMeta = const VerificationMeta('pos');
+  @override
+  late final GeneratedColumn<String> pos = GeneratedColumn<String>(
+    'pos',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _addedAtMeta = const VerificationMeta(
     'addedAt',
   );
@@ -2301,13 +2310,49 @@ class $VocabularyListEntriesTable extends VocabularyListEntries
     requiredDuringInsert: false,
     defaultValue: Constant(DateTime.now().toIso8601String()),
   );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<int> synced = GeneratedColumn<int>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     listId,
     entryId,
     headword,
+    pos,
     addedAt,
+    updatedAt,
+    deletedAt,
+    synced,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2350,10 +2395,34 @@ class $VocabularyListEntriesTable extends VocabularyListEntries
     } else if (isInserting) {
       context.missing(_headwordMeta);
     }
+    if (data.containsKey('pos')) {
+      context.handle(
+        _posMeta,
+        pos.isAcceptableOrUnknown(data['pos']!, _posMeta),
+      );
+    }
     if (data.containsKey('added_at')) {
       context.handle(
         _addedAtMeta,
         addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
       );
     }
     return context;
@@ -2381,9 +2450,25 @@ class $VocabularyListEntriesTable extends VocabularyListEntries
         DriftSqlType.string,
         data['${effectivePrefix}headword'],
       )!,
+      pos: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pos'],
+      )!,
       addedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}added_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}synced'],
       )!,
     );
   }
@@ -2400,13 +2485,21 @@ class VocabularyListEntry extends DataClass
   final String listId;
   final int entryId;
   final String headword;
+  final String pos;
   final String addedAt;
+  final String? updatedAt;
+  final String? deletedAt;
+  final int synced;
   const VocabularyListEntry({
     required this.id,
     required this.listId,
     required this.entryId,
     required this.headword,
+    required this.pos,
     required this.addedAt,
+    this.updatedAt,
+    this.deletedAt,
+    required this.synced,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2415,7 +2508,15 @@ class VocabularyListEntry extends DataClass
     map['list_id'] = Variable<String>(listId);
     map['entry_id'] = Variable<int>(entryId);
     map['headword'] = Variable<String>(headword);
+    map['pos'] = Variable<String>(pos);
     map['added_at'] = Variable<String>(addedAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<String>(updatedAt);
+    }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    map['synced'] = Variable<int>(synced);
     return map;
   }
 
@@ -2425,7 +2526,15 @@ class VocabularyListEntry extends DataClass
       listId: Value(listId),
       entryId: Value(entryId),
       headword: Value(headword),
+      pos: Value(pos),
       addedAt: Value(addedAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      synced: Value(synced),
     );
   }
 
@@ -2439,7 +2548,11 @@ class VocabularyListEntry extends DataClass
       listId: serializer.fromJson<String>(json['listId']),
       entryId: serializer.fromJson<int>(json['entryId']),
       headword: serializer.fromJson<String>(json['headword']),
+      pos: serializer.fromJson<String>(json['pos']),
       addedAt: serializer.fromJson<String>(json['addedAt']),
+      updatedAt: serializer.fromJson<String?>(json['updatedAt']),
+      deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      synced: serializer.fromJson<int>(json['synced']),
     );
   }
   @override
@@ -2450,7 +2563,11 @@ class VocabularyListEntry extends DataClass
       'listId': serializer.toJson<String>(listId),
       'entryId': serializer.toJson<int>(entryId),
       'headword': serializer.toJson<String>(headword),
+      'pos': serializer.toJson<String>(pos),
       'addedAt': serializer.toJson<String>(addedAt),
+      'updatedAt': serializer.toJson<String?>(updatedAt),
+      'deletedAt': serializer.toJson<String?>(deletedAt),
+      'synced': serializer.toJson<int>(synced),
     };
   }
 
@@ -2459,13 +2576,21 @@ class VocabularyListEntry extends DataClass
     String? listId,
     int? entryId,
     String? headword,
+    String? pos,
     String? addedAt,
+    Value<String?> updatedAt = const Value.absent(),
+    Value<String?> deletedAt = const Value.absent(),
+    int? synced,
   }) => VocabularyListEntry(
     id: id ?? this.id,
     listId: listId ?? this.listId,
     entryId: entryId ?? this.entryId,
     headword: headword ?? this.headword,
+    pos: pos ?? this.pos,
     addedAt: addedAt ?? this.addedAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    synced: synced ?? this.synced,
   );
   VocabularyListEntry copyWithCompanion(VocabularyListEntriesCompanion data) {
     return VocabularyListEntry(
@@ -2473,7 +2598,11 @@ class VocabularyListEntry extends DataClass
       listId: data.listId.present ? data.listId.value : this.listId,
       entryId: data.entryId.present ? data.entryId.value : this.entryId,
       headword: data.headword.present ? data.headword.value : this.headword,
+      pos: data.pos.present ? data.pos.value : this.pos,
       addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      synced: data.synced.present ? data.synced.value : this.synced,
     );
   }
 
@@ -2484,13 +2613,27 @@ class VocabularyListEntry extends DataClass
           ..write('listId: $listId, ')
           ..write('entryId: $entryId, ')
           ..write('headword: $headword, ')
-          ..write('addedAt: $addedAt')
+          ..write('pos: $pos, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('synced: $synced')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, listId, entryId, headword, addedAt);
+  int get hashCode => Object.hash(
+    id,
+    listId,
+    entryId,
+    headword,
+    pos,
+    addedAt,
+    updatedAt,
+    deletedAt,
+    synced,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2499,7 +2642,11 @@ class VocabularyListEntry extends DataClass
           other.listId == this.listId &&
           other.entryId == this.entryId &&
           other.headword == this.headword &&
-          other.addedAt == this.addedAt);
+          other.pos == this.pos &&
+          other.addedAt == this.addedAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.synced == this.synced);
 }
 
 class VocabularyListEntriesCompanion
@@ -2508,14 +2655,22 @@ class VocabularyListEntriesCompanion
   final Value<String> listId;
   final Value<int> entryId;
   final Value<String> headword;
+  final Value<String> pos;
   final Value<String> addedAt;
+  final Value<String?> updatedAt;
+  final Value<String?> deletedAt;
+  final Value<int> synced;
   final Value<int> rowid;
   const VocabularyListEntriesCompanion({
     this.id = const Value.absent(),
     this.listId = const Value.absent(),
     this.entryId = const Value.absent(),
     this.headword = const Value.absent(),
+    this.pos = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.synced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   VocabularyListEntriesCompanion.insert({
@@ -2523,7 +2678,11 @@ class VocabularyListEntriesCompanion
     required String listId,
     required int entryId,
     required String headword,
+    this.pos = const Value.absent(),
     this.addedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.synced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        listId = Value(listId),
@@ -2534,7 +2693,11 @@ class VocabularyListEntriesCompanion
     Expression<String>? listId,
     Expression<int>? entryId,
     Expression<String>? headword,
+    Expression<String>? pos,
     Expression<String>? addedAt,
+    Expression<String>? updatedAt,
+    Expression<String>? deletedAt,
+    Expression<int>? synced,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2542,7 +2705,11 @@ class VocabularyListEntriesCompanion
       if (listId != null) 'list_id': listId,
       if (entryId != null) 'entry_id': entryId,
       if (headword != null) 'headword': headword,
+      if (pos != null) 'pos': pos,
       if (addedAt != null) 'added_at': addedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (synced != null) 'synced': synced,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2552,7 +2719,11 @@ class VocabularyListEntriesCompanion
     Value<String>? listId,
     Value<int>? entryId,
     Value<String>? headword,
+    Value<String>? pos,
     Value<String>? addedAt,
+    Value<String?>? updatedAt,
+    Value<String?>? deletedAt,
+    Value<int>? synced,
     Value<int>? rowid,
   }) {
     return VocabularyListEntriesCompanion(
@@ -2560,7 +2731,11 @@ class VocabularyListEntriesCompanion
       listId: listId ?? this.listId,
       entryId: entryId ?? this.entryId,
       headword: headword ?? this.headword,
+      pos: pos ?? this.pos,
       addedAt: addedAt ?? this.addedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      synced: synced ?? this.synced,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2580,8 +2755,20 @@ class VocabularyListEntriesCompanion
     if (headword.present) {
       map['headword'] = Variable<String>(headword.value);
     }
+    if (pos.present) {
+      map['pos'] = Variable<String>(pos.value);
+    }
     if (addedAt.present) {
       map['added_at'] = Variable<String>(addedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<String>(deletedAt.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<int>(synced.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2596,7 +2783,11 @@ class VocabularyListEntriesCompanion
           ..write('listId: $listId, ')
           ..write('entryId: $entryId, ')
           ..write('headword: $headword, ')
+          ..write('pos: $pos, ')
           ..write('addedAt: $addedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('synced: $synced, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4471,10 +4662,10 @@ typedef $$VocabularyListsTableCreateCompanionBuilder =
       required String id,
       required String name,
       Value<String> description,
-      Value<int> isPreset,
-      Value<String> presetType,
       Value<String> createdAt,
       Value<String> updatedAt,
+      Value<String?> deletedAt,
+      Value<int> synced,
       Value<int> rowid,
     });
 typedef $$VocabularyListsTableUpdateCompanionBuilder =
@@ -4482,10 +4673,10 @@ typedef $$VocabularyListsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<String> description,
-      Value<int> isPreset,
-      Value<String> presetType,
       Value<String> createdAt,
       Value<String> updatedAt,
+      Value<String?> deletedAt,
+      Value<int> synced,
       Value<int> rowid,
     });
 
@@ -4513,16 +4704,6 @@ class $$VocabularyListsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get isPreset => $composableBuilder(
-    column: $table.isPreset,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get presetType => $composableBuilder(
-    column: $table.presetType,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -4530,6 +4711,16 @@ class $$VocabularyListsTableFilterComposer
 
   ColumnFilters<String> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get synced => $composableBuilder(
+    column: $table.synced,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4558,16 +4749,6 @@ class $$VocabularyListsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get isPreset => $composableBuilder(
-    column: $table.isPreset,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get presetType => $composableBuilder(
-    column: $table.presetType,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4575,6 +4756,16 @@ class $$VocabularyListsTableOrderingComposer
 
   ColumnOrderings<String> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get synced => $composableBuilder(
+    column: $table.synced,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4599,19 +4790,17 @@ class $$VocabularyListsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get isPreset =>
-      $composableBuilder(column: $table.isPreset, builder: (column) => column);
-
-  GeneratedColumn<String> get presetType => $composableBuilder(
-    column: $table.presetType,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
   GeneratedColumn<String> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
 }
 
 class $$VocabularyListsTableTableManager
@@ -4654,19 +4843,19 @@ class $$VocabularyListsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> description = const Value.absent(),
-                Value<int> isPreset = const Value.absent(),
-                Value<String> presetType = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
+                Value<String?> deletedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => VocabularyListsCompanion(
                 id: id,
                 name: name,
                 description: description,
-                isPreset: isPreset,
-                presetType: presetType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                synced: synced,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4674,19 +4863,19 @@ class $$VocabularyListsTableTableManager
                 required String id,
                 required String name,
                 Value<String> description = const Value.absent(),
-                Value<int> isPreset = const Value.absent(),
-                Value<String> presetType = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
+                Value<String?> deletedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => VocabularyListsCompanion.insert(
                 id: id,
                 name: name,
                 description: description,
-                isPreset: isPreset,
-                presetType: presetType,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                synced: synced,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4720,7 +4909,11 @@ typedef $$VocabularyListEntriesTableCreateCompanionBuilder =
       required String listId,
       required int entryId,
       required String headword,
+      Value<String> pos,
       Value<String> addedAt,
+      Value<String?> updatedAt,
+      Value<String?> deletedAt,
+      Value<int> synced,
       Value<int> rowid,
     });
 typedef $$VocabularyListEntriesTableUpdateCompanionBuilder =
@@ -4729,7 +4922,11 @@ typedef $$VocabularyListEntriesTableUpdateCompanionBuilder =
       Value<String> listId,
       Value<int> entryId,
       Value<String> headword,
+      Value<String> pos,
       Value<String> addedAt,
+      Value<String?> updatedAt,
+      Value<String?> deletedAt,
+      Value<int> synced,
       Value<int> rowid,
     });
 
@@ -4762,8 +4959,28 @@ class $$VocabularyListEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get pos => $composableBuilder(
+    column: $table.pos,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get addedAt => $composableBuilder(
     column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get synced => $composableBuilder(
+    column: $table.synced,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4797,8 +5014,28 @@ class $$VocabularyListEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get pos => $composableBuilder(
+    column: $table.pos,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get addedAt => $composableBuilder(
     column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get synced => $composableBuilder(
+    column: $table.synced,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4824,8 +5061,20 @@ class $$VocabularyListEntriesTableAnnotationComposer
   GeneratedColumn<String> get headword =>
       $composableBuilder(column: $table.headword, builder: (column) => column);
 
+  GeneratedColumn<String> get pos =>
+      $composableBuilder(column: $table.pos, builder: (column) => column);
+
   GeneratedColumn<String> get addedAt =>
       $composableBuilder(column: $table.addedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
 }
 
 class $$VocabularyListEntriesTableTableManager
@@ -4878,14 +5127,22 @@ class $$VocabularyListEntriesTableTableManager
                 Value<String> listId = const Value.absent(),
                 Value<int> entryId = const Value.absent(),
                 Value<String> headword = const Value.absent(),
+                Value<String> pos = const Value.absent(),
                 Value<String> addedAt = const Value.absent(),
+                Value<String?> updatedAt = const Value.absent(),
+                Value<String?> deletedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => VocabularyListEntriesCompanion(
                 id: id,
                 listId: listId,
                 entryId: entryId,
                 headword: headword,
+                pos: pos,
                 addedAt: addedAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                synced: synced,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4894,14 +5151,22 @@ class $$VocabularyListEntriesTableTableManager
                 required String listId,
                 required int entryId,
                 required String headword,
+                Value<String> pos = const Value.absent(),
                 Value<String> addedAt = const Value.absent(),
+                Value<String?> updatedAt = const Value.absent(),
+                Value<String?> deletedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => VocabularyListEntriesCompanion.insert(
                 id: id,
                 listId: listId,
                 entryId: entryId,
                 headword: headword,
+                pos: pos,
                 addedAt: addedAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                synced: synced,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

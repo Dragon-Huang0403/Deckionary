@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../providers/my_words_providers.dart';
 import '../providers/review_providers.dart';
 import 'learned_words_screen.dart';
+import 'my_words_screen.dart';
 import 'review_session_screen.dart';
 import 'study_words_screen.dart';
 import 'widgets/filter_selector.dart';
@@ -222,6 +224,29 @@ class ReviewHomeScreen extends ConsumerWidget {
           },
           loading: () => const SizedBox.shrink(),
           error: (_, _) => const SizedBox.shrink(),
+        ),
+
+        const SizedBox(height: 12),
+
+        // My Words card
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.bookmark_outline, color: cs.primary),
+            title: const Text('My Words'),
+            subtitle: Consumer(
+              builder: (context, ref, _) {
+                final count = ref.watch(myWordsCountProvider);
+                return Text(
+                  count == 0 ? 'Add custom words to study' : '$count words',
+                );
+              },
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyWordsScreen()),
+            ),
+          ),
         ),
 
         const SizedBox(height: 20),

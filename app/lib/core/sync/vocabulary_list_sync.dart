@@ -1,0 +1,268 @@
+import 'package:flutter/foundation.dart';
+import 'package:drift/drift.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/app_database.dart';
+import 'table_sync.dart';
+
+class VocabularyListSync {
+  final UserDatabase _db;
+  final SupabaseClient _supabase;
+  final String? Function() _getUserId;
+  final TableSync _tableSync;
+
+  VocabularyListSync({
+    required UserDatabase db,
+    required SupabaseClient supabase,
+    required String? Function() getUserId,
+    required TableSync tableSync,
+  }) : _db = db,
+       _supabase = supabase,
+       _getUserId = getUserId,
+       _tableSync = tableSync;
+
+  // ── Push ───────────────────────────────────────────────────────────────────
+
+  Future<int> pushAllUnsyncedLists() async {
+    if (_getUserId() == null) return 0;
+    final unsynced = await _db
+        .customSelect(
+          'SELECT * FROM vocabulary_lists WHERE synced = 0',
+          readsFrom: {_db.vocabularyLists},
+        )
+        .get();
+    if (unsynced.isEmpty) return 0;
+
+    var pushed = 0;
+    for (final row in unsynced) {
+      final data = row.data;
+      try {
+        await _supabase.from('vocabulary_lists').upsert({
+          'id': data['id'],
+          'user_id': _getUserId(),
+          'name': data['name'],
+          'description': data['description'],
+          'created_at': data['created_at'],
+          'updated_at': data['updated_at'],
+          'deleted_at': data['deleted_at'],
+        });
+        await _db.customUpdate(
+          'UPDATE vocabulary_lists SET synced = 1 WHERE id = ?',
+          variables: [Variable.withString(data['id'] as String)],
+          updates: {_db.vocabularyLists},
+        );
+        pushed++;
+      } catch (e) {
+        debugPrint('Push vocabulary list failed: $e');
+      }
+    }
+    return pushed;
+  }
+
+  Future<int> pushAllUnsyncedEntries() async {
+    if (_getUserId() == null) return 0;
+    final unsynced = await _db
+        .customSelect(
+          'SELECT * FROM vocabulary_list_entries WHERE synced = 0',
+          readsFrom: {_db.vocabularyListEntries},
+        )
+        .get();
+    if (unsynced.isEmpty) return 0;
+
+    var pushed = 0;
+    for (final row in unsynced) {
+      final data = row.data;
+      try {
+        await _supabase.from('vocabulary_list_entries').upsert({
+          'id': data['id'],
+          'user_id': _getUserId(),
+          'list_id': data['list_id'],
+          'entry_id': data['entry_id'],
+          'headword': data['headword'],
+          'pos': data['pos'],
+          'added_at': data['added_at'],
+          'updated_at': data['updated_at'],
+          'deleted_at': data['deleted_at'],
+        });
+        await _db.customUpdate(
+          'UPDATE vocabulary_list_entries SET synced = 1 WHERE id = ?',
+          variables: [Variable.withString(data['id'] as String)],
+          updates: {_db.vocabularyListEntries},
+        );
+        pushed++;
+      } catch (e) {
+        debugPrint('Push vocabulary list entry failed: $e');
+      }
+    }
+    return pushed;
+  }
+
+  // ── Pull ───────────────────────────────────────────────────────────────────
+
+  Future<int> pullLists() => _tableSync.pull(
+    remoteTable: 'vocabulary_lists',
+    watermarkKey: 'vocabulary_lists',
+    processRow: _processListRow,
+  );
+
+  Future<int> pullEntries() => _tableSync.pull(
+    remoteTable: 'vocabulary_list_entries',
+    watermarkKey: 'vocabulary_list_entries',
+    processRow: _processEntryRow,
+  );
+
+  Future<bool> _processListRow(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final remoteUpdatedAt = row['updated_at'] as String;
+    final remoteDeletedAt = row['deleted_at'] as String?;
+
+    final existing = await _db
+        .customSelect(
+          'SELECT id, updated_at FROM vocabulary_lists WHERE id = ?',
+          variables: [Variable.withString(id)],
+          readsFrom: {_db.vocabularyLists},
+        )
+        .get();
+
+    if (existing.isEmpty) {
+      if (remoteDeletedAt != null) return false;
+      await _db.customInsert(
+        '''INSERT INTO vocabulary_lists
+           (id, name, description, created_at, updated_at, synced)
+           VALUES (?, ?, ?, ?, ?, 1)''',
+        variables: [
+          Variable.withString(id),
+          Variable.withString(row['name'] as String),
+          Variable.withString((row['description'] as String?) ?? ''),
+          Variable.withString(row['created_at'] as String),
+          Variable.withString(remoteUpdatedAt),
+        ],
+        updates: {_db.vocabularyLists},
+      );
+      return true;
+    }
+
+    final localUpdatedAt = existing.first.data['updated_at'] as String;
+    if (remoteUpdatedAt.compareTo(localUpdatedAt) > 0) {
+      if (remoteDeletedAt != null) {
+        await _db.customUpdate(
+          'UPDATE vocabulary_lists SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
+          variables: [
+            Variable.withString(remoteDeletedAt),
+            Variable.withString(remoteUpdatedAt),
+            Variable.withString(id),
+          ],
+          updates: {_db.vocabularyLists},
+        );
+      } else {
+        await _db.customUpdate(
+          '''UPDATE vocabulary_lists SET
+             name = ?, description = ?, updated_at = ?, synced = 1
+             WHERE id = ?''',
+          variables: [
+            Variable.withString(row['name'] as String),
+            Variable.withString((row['description'] as String?) ?? ''),
+            Variable.withString(remoteUpdatedAt),
+            Variable.withString(id),
+          ],
+          updates: {_db.vocabularyLists},
+        );
+      }
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> _processEntryRow(Map<String, dynamic> row) async {
+    final id = row['id'] as String;
+    final remoteUpdatedAt = row['updated_at'] as String;
+    final remoteDeletedAt = row['deleted_at'] as String?;
+
+    final existing = await _db
+        .customSelect(
+          'SELECT id, updated_at FROM vocabulary_list_entries WHERE id = ?',
+          variables: [Variable.withString(id)],
+          readsFrom: {_db.vocabularyListEntries},
+        )
+        .get();
+
+    if (existing.isEmpty) {
+      if (remoteDeletedAt != null) return false;
+      await _db.customInsert(
+        '''INSERT INTO vocabulary_list_entries
+           (id, list_id, entry_id, headword, pos, added_at, updated_at, synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1)''',
+        variables: [
+          Variable.withString(id),
+          Variable.withString(row['list_id'] as String),
+          Variable.withInt(row['entry_id'] as int),
+          Variable.withString(row['headword'] as String),
+          Variable.withString((row['pos'] as String?) ?? ''),
+          Variable.withString(row['added_at'] as String),
+          Variable.withString(remoteUpdatedAt),
+        ],
+        updates: {_db.vocabularyListEntries},
+      );
+      return true;
+    }
+
+    final localUpdatedAt = existing.first.data['updated_at'] as String;
+    if (remoteUpdatedAt.compareTo(localUpdatedAt) > 0) {
+      if (remoteDeletedAt != null) {
+        await _db.customUpdate(
+          'UPDATE vocabulary_list_entries SET deleted_at = ?, updated_at = ?, synced = 1 WHERE id = ?',
+          variables: [
+            Variable.withString(remoteDeletedAt),
+            Variable.withString(remoteUpdatedAt),
+            Variable.withString(id),
+          ],
+          updates: {_db.vocabularyListEntries},
+        );
+      } else {
+        await _db.customUpdate(
+          '''UPDATE vocabulary_list_entries SET
+             list_id = ?, entry_id = ?, headword = ?, pos = ?,
+             added_at = ?, updated_at = ?, synced = 1
+             WHERE id = ?''',
+          variables: [
+            Variable.withString(row['list_id'] as String),
+            Variable.withInt(row['entry_id'] as int),
+            Variable.withString(row['headword'] as String),
+            Variable.withString((row['pos'] as String?) ?? ''),
+            Variable.withString(row['added_at'] as String),
+            Variable.withString(remoteUpdatedAt),
+            Variable.withString(id),
+          ],
+          updates: {_db.vocabularyListEntries},
+        );
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // ── Orchestration ──────────────────────────────────────────────────────────
+
+  Future<void> syncVocabularyData() async {
+    await pullLists();
+    await pullEntries();
+    await pushAllUnsyncedLists();
+    await pushAllUnsyncedEntries();
+  }
+
+  Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: retentionDays))
+        .toUtc()
+        .toIso8601String();
+    await _db.customUpdate(
+      'DELETE FROM vocabulary_list_entries WHERE deleted_at IS NOT NULL AND synced = 1 AND deleted_at < ?',
+      variables: [Variable.withString(cutoff)],
+      updates: {_db.vocabularyListEntries},
+    );
+    await _db.customUpdate(
+      'DELETE FROM vocabulary_lists WHERE deleted_at IS NOT NULL AND synced = 1 AND deleted_at < ?',
+      variables: [Variable.withString(cutoff)],
+      updates: {_db.vocabularyLists},
+    );
+  }
+}

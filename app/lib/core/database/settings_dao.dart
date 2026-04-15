@@ -113,6 +113,13 @@ class SettingsDao {
   Future<void> setLaunchOnStartup(bool enabled) =>
       set('launch_on_startup', enabled.toString());
 
+  // ── My Words settings ───────────────────────────────────────────────────
+
+  /// My Words ordering: 'fifo' (default), 'lifo', or 'random'
+  Future<String> getMyWordsOrder() async =>
+      await get('my_words_order') ?? 'fifo';
+  Future<void> setMyWordsOrder(String order) => set('my_words_order', order);
+
   // ── New cards queue persistence ─────────────────────────────────────────
 
   static const _newCardsQueueKey = 'new_cards_queue';

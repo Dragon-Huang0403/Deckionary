@@ -4,6 +4,7 @@ import 'app_database.dart';
 import 'review_dao.dart';
 import 'search_history_dao.dart';
 import 'settings_dao.dart';
+import 'vocabulary_list_dao.dart';
 import '../sync/sync_provider.dart';
 
 /// Global provider for the read-only dictionary database.
@@ -47,6 +48,11 @@ final reviewDaoProvider = Provider<ReviewDao>((ref) {
     db: ref.read(userDbProvider),
     dictDb: ref.read(dictionaryDbProvider),
   );
+});
+
+/// Vocabulary list DAO (My Words)
+final vocabularyListDaoProvider = Provider<VocabularyListDao>((ref) {
+  return VocabularyListDao(ref.read(userDbProvider));
 });
 
 /// Initialize databases. Call before runApp.

@@ -4,6 +4,7 @@ import 'search_history_sync.dart';
 import 'review_sync.dart';
 import 'settings_sync.dart';
 import 'table_sync.dart';
+import 'vocabulary_list_sync.dart';
 
 class SyncService {
   final UserDatabase _db;
@@ -11,6 +12,7 @@ class SyncService {
   final SearchHistorySync _searchHistorySync;
   final ReviewSync _reviewSync;
   final SettingsSync _settingsSync;
+  final VocabularyListSync _vocabularyListSync;
 
   factory SyncService({
     required UserDatabase db,
@@ -43,6 +45,12 @@ class SyncService {
         getUserId: getUserId,
         tableSync: tableSync,
       ),
+      vocabularyListSync: VocabularyListSync(
+        db: db,
+        supabase: supabase,
+        getUserId: getUserId,
+        tableSync: tableSync,
+      ),
     );
   }
 
@@ -52,11 +60,13 @@ class SyncService {
     required SearchHistorySync searchHistorySync,
     required ReviewSync reviewSync,
     required SettingsSync settingsSync,
+    required VocabularyListSync vocabularyListSync,
   }) : _db = db,
        _tableSync = tableSync,
        _searchHistorySync = searchHistorySync,
        _reviewSync = reviewSync,
-       _settingsSync = settingsSync;
+       _settingsSync = settingsSync,
+       _vocabularyListSync = vocabularyListSync;
 
   // ── Search History ──────────────────────────────────────────────────────
 
@@ -90,6 +100,10 @@ class SyncService {
 
   Future<int> pushAllSettings() => _settingsSync.pushAllSettings();
 
+  // ── Vocabulary Lists ─────────────────────────────────────────────────────
+
+  Future<void> syncVocabularyData() => _vocabularyListSync.syncVocabularyData();
+
   // ── Full Sync & Recovery ────────────────────────────────────────────────
 
   /// Clear all watermarks and re-sync everything from scratch.
@@ -99,6 +113,7 @@ class SyncService {
     await _settingsSync.pushDirtySettings();
     await _reviewSync.syncReviewData();
     await _searchHistorySync.syncSearchHistory();
+    await _vocabularyListSync.syncVocabularyData();
   }
 
   /// Auto-clear watermarks on first run after a sync bug fix.
@@ -134,5 +149,6 @@ class SyncService {
   Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
     await _searchHistorySync.cleanupSoftDeletes(retentionDays: retentionDays);
     await _reviewSync.cleanupSoftDeletes(retentionDays: retentionDays);
+    await _vocabularyListSync.cleanupSoftDeletes(retentionDays: retentionDays);
   }
 }

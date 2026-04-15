@@ -65,16 +65,14 @@ class VocabularyLists extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get description => text().withDefault(const Constant(''))();
-  IntColumn get isPreset =>
-      integer().named('is_preset').withDefault(const Constant(0))();
-  TextColumn get presetType =>
-      text().named('preset_type').withDefault(const Constant(''))();
   TextColumn get createdAt => text()
       .named('created_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();
   TextColumn get updatedAt => text()
       .named('updated_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get deletedAt => text().named('deleted_at').nullable()();
+  IntColumn get synced => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -88,9 +86,13 @@ class VocabularyListEntries extends Table {
   TextColumn get listId => text().named('list_id')();
   IntColumn get entryId => integer().named('entry_id')();
   TextColumn get headword => text()();
+  TextColumn get pos => text().withDefault(const Constant(''))();
   TextColumn get addedAt => text()
       .named('added_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get updatedAt => text().named('updated_at').nullable()();
+  TextColumn get deletedAt => text().named('deleted_at').nullable()();
+  IntColumn get synced => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column> get primaryKey => {id};

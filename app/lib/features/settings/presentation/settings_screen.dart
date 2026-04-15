@@ -37,6 +37,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         await syncService.pushDirtySettings();
         syncService.syncSearchHistory();
         syncService.syncReviewData();
+        syncService.syncVocabularyData();
         syncService.cleanupSoftDeletes();
         if (settingsPulled > 0) {
           ref.invalidate(themeModeProvider);

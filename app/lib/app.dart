@@ -194,9 +194,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
         actions: [
           TextButton(
             onPressed: () {
-              ref
-                  .read(settingsDaoProvider)
-                  .setSkippedVersion(versionCode);
+              ref.read(settingsDaoProvider).setSkippedVersion(versionCode);
               Navigator.pop(ctx);
             },
             child: const Text('Skip this version'),
@@ -469,6 +467,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     sync.syncReviewData().then((_) {
       ref.invalidate(reviewSummaryProvider);
     });
+    sync.syncVocabularyData();
     // Pull settings first, then push dirty (was push→pull, now pull→push).
     sync.pullSettings().then((pulled) {
       if (pulled > 0) {

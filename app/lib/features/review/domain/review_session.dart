@@ -2,6 +2,7 @@ import 'package:fsrs/fsrs.dart' as fsrs;
 import '../../../core/database/app_database.dart';
 import '../../../core/database/review_dao.dart';
 import '../../../core/database/settings_dao.dart';
+import '../../../core/database/vocabulary_list_dao.dart';
 import '../../../core/sync/sync_service.dart';
 import 'review_filter.dart';
 import 'review_service.dart';
@@ -41,6 +42,7 @@ class ReviewSession {
   final ReviewService _service;
   final SyncService? _syncService;
   final SettingsDao _settingsDao;
+  final VocabularyListDao? _vocabDao;
   final List<QueueCard> _queue = [];
   int _currentIndex = 0;
   final SessionStats stats = SessionStats();
@@ -51,10 +53,12 @@ class ReviewSession {
     required ReviewService service,
     required SettingsDao settingsDao,
     SyncService? syncService,
+    VocabularyListDao? vocabDao,
   }) : _dao = dao,
        _service = service,
        _settingsDao = settingsDao,
-       _syncService = syncService;
+       _syncService = syncService,
+       _vocabDao = vocabDao;
 
   bool get isLoaded => _isLoaded;
   bool get isEmpty => _queue.isEmpty;
@@ -67,12 +71,15 @@ class ReviewSession {
       _currentIndex < _queue.length ? _queue[_currentIndex] : null;
 
   /// Load the review queue: due cards first, then new cards.
+  /// New cards are drawn from My Words first (priority), then filter fills remaining.
   Future<void> loadQueue({
     required ReviewFilter filter,
     required int newCardsPerDay,
     required int maxReviewsPerDay,
     required String cardOrder,
     bool randomOrder = false,
+    String? myWordsListId,
+    String myWordsOrder = 'fifo',
   }) async {
     _queue.clear();
     _currentIndex = 0;
@@ -98,26 +105,33 @@ class ReviewSession {
       newCardsPerDay,
     );
 
-    if (newLimit > 0 && !filter.isEmpty) {
+    if (newLimit > 0) {
       final newIds = await _resolveNewCardIds(
         filter: filter,
         newCardsPerDay: newCardsPerDay,
         cardOrder: cardOrder,
         newLimit: newLimit,
         randomOrder: randomOrder,
+        myWordsListId: myWordsListId,
+        myWordsOrder: myWordsOrder,
       );
 
       if (newIds.isNotEmpty) {
         final entries = await _dao.getEntryDetails(newIds);
-        for (final entry in entries) {
-          _queue.add(
-            QueueCard(
-              entryId: entry['id'] as int,
-              headword: entry['headword'] as String,
-              pos: (entry['pos'] as String?) ?? '',
-              isNew: true,
-            ),
-          );
+        // Sort entries to match newIds order (getEntryDetails may reorder)
+        final entryMap = {for (final e in entries) e['id'] as int: e};
+        for (final id in newIds) {
+          final entry = entryMap[id];
+          if (entry != null) {
+            _queue.add(
+              QueueCard(
+                entryId: entry['id'] as int,
+                headword: entry['headword'] as String,
+                pos: (entry['pos'] as String?) ?? '',
+                isNew: true,
+              ),
+            );
+          }
         }
       }
     }
@@ -126,12 +140,15 @@ class ReviewSession {
   }
 
   /// Try to resume from persisted queue, otherwise generate fresh.
+  /// My Words cards are drawn first (priority), filter fills remaining budget.
   Future<List<int>> _resolveNewCardIds({
     required ReviewFilter filter,
     required int newCardsPerDay,
     required String cardOrder,
     required int newLimit,
     required bool randomOrder,
+    String? myWordsListId,
+    String myWordsOrder = 'fifo',
   }) async {
     final currentHash = filter.queueHash(
       newCardsPerDay: newCardsPerDay,
@@ -154,14 +171,34 @@ class ReviewSession {
       if (resumeIds.isNotEmpty) return resumeIds;
     }
 
-    // Generate fresh queue
-    final newIds = await _dao.getNewEntryIds(
-      cefrLevels: filter.cefrLevels.toList(),
-      ox3000: filter.ox3000,
-      ox5000: filter.ox5000,
-      limit: newLimit,
-      randomOrder: randomOrder,
-    );
+    // Generate fresh queue: My Words first, filter fills remaining
+    final myWordsIds = <int>[];
+    if (myWordsListId != null && _vocabDao != null) {
+      final ids = await _vocabDao.getNewEntryIds(
+        listId: myWordsListId,
+        limit: newLimit,
+        excludeIds: {},
+        order: myWordsOrder,
+      );
+      myWordsIds.addAll(ids);
+    }
+
+    final remaining = newLimit - myWordsIds.length;
+    final filterIds = <int>[];
+    if (remaining > 0 && !filter.isEmpty) {
+      final ids = await _dao.getNewEntryIds(
+        cefrLevels: filter.cefrLevels.toList(),
+        ox3000: filter.ox3000,
+        ox5000: filter.ox5000,
+        limit: remaining,
+        randomOrder: randomOrder,
+      );
+      // Exclude any IDs already claimed by My Words
+      final myWordsSet = myWordsIds.toSet();
+      filterIds.addAll(ids.where((id) => !myWordsSet.contains(id)));
+    }
+
+    final newIds = [...myWordsIds, ...filterIds];
 
     // Persist for session resumption
     if (newIds.isNotEmpty) {

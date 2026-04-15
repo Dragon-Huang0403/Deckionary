@@ -31,7 +31,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +72,13 @@ class UserDatabase extends _$UserDatabase {
       if (from < 7) {
         await customStatement('DROP TABLE IF EXISTS audio_cache');
         await customStatement('DROP TABLE IF EXISTS sync_queue');
+      }
+      if (from < 8) {
+        // Reshape vocabulary tables (previously unused, safe to recreate)
+        await customStatement('DROP TABLE IF EXISTS vocabulary_lists');
+        await customStatement('DROP TABLE IF EXISTS vocabulary_list_entries');
+        await m.createTable(vocabularyLists);
+        await m.createTable(vocabularyListEntries);
       }
     },
   );

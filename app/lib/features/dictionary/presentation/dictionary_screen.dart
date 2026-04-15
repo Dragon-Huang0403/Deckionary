@@ -8,6 +8,7 @@ import '../../../app.dart'
     show searchBarFocusTrigger, clipboardSearchText, isOverlayModeProvider;
 import '../../../core/audio/audio_provider.dart';
 import '../../../core/database/database_provider.dart';
+import '../../review/providers/my_words_providers.dart';
 import '../providers/search_provider.dart';
 import '../providers/search_history_provider.dart';
 import '../../../core/sync/sync_provider.dart';
@@ -532,6 +533,28 @@ class _DictionaryScreenState extends ConsumerState<DictionaryScreen>
               .read(searchHistoryDaoProvider)
               .deleteByHeadwordAndPos(item.headword ?? item.query, item.pos);
           ref.read(syncServiceProvider)?.pushAllUnsynced();
+        },
+        onAddToMyWords: (item) async {
+          if (item.entryId == null) return;
+          final dao = ref.read(vocabularyListDaoProvider);
+          final list = await ref.read(myWordsListProvider.future);
+          await dao.addEntry(
+            listId: list.id,
+            entryId: item.entryId!,
+            headword: item.headword ?? item.query,
+            pos: item.pos,
+          );
+          ref.invalidate(myWordsEntriesProvider);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Added "${item.headword ?? item.query}" to My Words',
+                ),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          }
         },
       );
     }

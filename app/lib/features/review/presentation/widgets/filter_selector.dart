@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/database/database_provider.dart';
 import '../../domain/review_filter.dart';
+import '../../providers/my_words_providers.dart';
 import '../../providers/review_providers.dart';
 
 /// Dialog for selecting which words to study (CEFR levels + Oxford lists).
@@ -151,6 +152,30 @@ class _FilterSelectorState extends ConsumerState<FilterSelector> {
               onChanged: (v) {
                 setState(() => _ox5000 = v);
                 _updateWordCount();
+              },
+            ),
+
+            // My Words indicator
+            Consumer(
+              builder: (context, ref, _) {
+                final count = ref.watch(myWordsCountProvider);
+                if (count == 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.bookmark, size: 16, color: cs.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'My Words: $count words',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
 

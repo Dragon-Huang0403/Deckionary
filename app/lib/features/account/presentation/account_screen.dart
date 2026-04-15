@@ -85,6 +85,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       // Pull remote first, then push local
       await syncService.syncSearchHistory();
       await syncService.syncReviewData();
+      await syncService.syncVocabularyData();
       final settingsPulled = await syncService.pullSettings();
       await syncService.pushDirtySettings();
       await syncService.cleanupSoftDeletes();

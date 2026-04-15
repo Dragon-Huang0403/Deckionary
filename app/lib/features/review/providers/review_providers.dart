@@ -4,6 +4,7 @@ import '../../../core/sync/sync_provider.dart';
 import '../domain/review_filter.dart';
 import '../domain/review_service.dart';
 import '../domain/review_session.dart';
+import 'my_words_providers.dart';
 
 /// FSRS review service (singleton, uses default scheduler params).
 final reviewServiceProvider = Provider<ReviewService>((ref) {
@@ -50,6 +51,7 @@ class ReviewSummary {
 
 final reviewSummaryProvider = FutureProvider<ReviewSummary>((ref) async {
   final dao = ref.read(reviewDaoProvider);
+  final vocabDao = ref.read(vocabularyListDaoProvider);
   final settingsDao = ref.read(settingsDaoProvider);
   final filter = await ref.watch(reviewFilterProvider.future);
 
@@ -65,22 +67,32 @@ final reviewSummaryProvider = FutureProvider<ReviewSummary>((ref) async {
   final totalCards = results[2];
   final newCardsPerDay = results[3];
 
-  // Count available new cards
+  // Count available new cards (My Words + filter)
   int newAvailable = 0;
-  if (!filter.isEmpty) {
-    final newLearnedToday = await dao.countNewLearnedToday();
-    final remaining = (newCardsPerDay - newLearnedToday).clamp(
-      0,
-      newCardsPerDay,
+  final newLearnedToday = await dao.countNewLearnedToday();
+  final remaining = (newCardsPerDay - newLearnedToday).clamp(0, newCardsPerDay);
+  if (remaining > 0) {
+    // My Words first
+    final myWordsList = await ref.read(myWordsListProvider.future);
+    final myWordsIds = await vocabDao.getNewEntryIds(
+      listId: myWordsList.id,
+      limit: remaining,
+      excludeIds: {},
     );
-    if (remaining > 0) {
-      final newIds = await dao.getNewEntryIds(
+    newAvailable += myWordsIds.length;
+
+    // Filter fills remaining
+    final filterRemaining = remaining - myWordsIds.length;
+    if (filterRemaining > 0 && !filter.isEmpty) {
+      final filterIds = await dao.getNewEntryIds(
         cefrLevels: filter.cefrLevels.toList(),
         ox3000: filter.ox3000,
         ox5000: filter.ox5000,
-        limit: remaining,
+        limit: filterRemaining,
       );
-      newAvailable = newIds.length;
+      // Exclude overlaps with My Words
+      final myWordsSet = myWordsIds.toSet();
+      newAvailable += filterIds.where((id) => !myWordsSet.contains(id)).length;
     }
   }
 
@@ -107,11 +119,16 @@ class ReviewSessionNotifier extends AsyncNotifier<ReviewSession?> {
     final dao = ref.read(reviewDaoProvider);
     final service = ref.read(reviewServiceProvider);
     final settingsDao = ref.read(settingsDaoProvider);
+    final vocabDao = ref.read(vocabularyListDaoProvider);
     final filter = await ref.read(reviewFilterProvider.future);
 
     final newCardsPerDay = await settingsDao.getNewCardsPerDay();
     final maxReviewsPerDay = await settingsDao.getMaxReviewsPerDay();
     final cardOrder = await settingsDao.getReviewCardOrder();
+    final myWordsOrder = await settingsDao.getMyWordsOrder();
+
+    // Get My Words list ID if it exists (don't create on session start)
+    final myWordsList = await ref.read(myWordsListProvider.future);
 
     final syncService = ref.read(syncServiceProvider);
     final session = ReviewSession(
@@ -119,6 +136,7 @@ class ReviewSessionNotifier extends AsyncNotifier<ReviewSession?> {
       service: service,
       settingsDao: settingsDao,
       syncService: syncService,
+      vocabDao: vocabDao,
     );
     await session.loadQueue(
       filter: filter,
@@ -126,6 +144,8 @@ class ReviewSessionNotifier extends AsyncNotifier<ReviewSession?> {
       maxReviewsPerDay: maxReviewsPerDay,
       cardOrder: cardOrder,
       randomOrder: cardOrder == 'random',
+      myWordsListId: myWordsList.id,
+      myWordsOrder: myWordsOrder,
     );
 
     state = AsyncData(session);

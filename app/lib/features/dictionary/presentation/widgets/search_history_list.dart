@@ -8,6 +8,7 @@ class SearchHistoryList extends StatefulWidget {
   final void Function(String word, {String? pos, int? entryId}) onTap;
   final VoidCallback onClearAll;
   final void Function(SearchHistoryData item) onDelete;
+  final void Function(SearchHistoryData item)? onAddToMyWords;
 
   const SearchHistoryList({
     super.key,
@@ -17,6 +18,7 @@ class SearchHistoryList extends StatefulWidget {
     required this.onTap,
     required this.onClearAll,
     required this.onDelete,
+    this.onAddToMyWords,
   });
 
   @override
@@ -159,6 +161,9 @@ class _SearchHistoryListState extends State<SearchHistoryList> {
             pos: pos.isNotEmpty ? pos : null,
             entryId: item.entryId,
           ),
+          onLongPress: item.entryId != null && widget.onAddToMyWords != null
+              ? () => widget.onAddToMyWords!(item)
+              : null,
           contentPadding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
         );
