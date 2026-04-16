@@ -17,9 +17,11 @@ Future<List<SearchResult>> searchEntries(
     rows = await db.lookupVariant(query);
   }
 
-  // 3. Fuzzy (suffix stripping)
-  if (rows.isEmpty) {
-    rows = await db.fuzzyLookup(query);
+  // 3. Suffix strip — always run, append base form after exact/variant match
+  final baseRows = await db.suffixStrip(query);
+  if (baseRows.isNotEmpty) {
+    final existingIds = rows.map((r) => r['id'] as int).toSet();
+    rows.addAll(baseRows.where((r) => !existingIds.contains(r['id'])));
   }
 
   // 4. Prefix autocomplete (LIKE)

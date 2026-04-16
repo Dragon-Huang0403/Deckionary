@@ -177,31 +177,65 @@ extension DictionarySearch on DictionaryDatabase {
     return results.map((r) => r.data).toList();
   }
 
-  Future<List<Map<String, dynamic>>> fuzzyLookup(String headword) async {
+  /// Strip common English suffixes to find the base/root headword.
+  Future<List<Map<String, dynamic>>> suffixStrip(String headword) async {
     final key = headword.toLowerCase().trim();
+    List<Map<String, dynamic>> results;
 
-    var results = await lookupWord(key);
-    if (results.isNotEmpty) return results;
-
-    results = await lookupVariant(key);
-    if (results.isNotEmpty) return results;
-
-    const suffixes = ['s', 'es', 'ies', 'ed', 'ing', 'ly'];
+    const suffixes = [
+      'iest', 'ier', 'ies', 'ied', // y-form inflections
+      'ment', 'ness', 'less', 'able', // derivational
+      'ing', 'ful', 'est', // inflectional
+      'ed', 'er', 'or', 'es', 'ly', 's', // short suffixes
+    ];
     for (final suffix in suffixes) {
       if (!key.endsWith(suffix)) continue;
       final base = key.substring(0, key.length - suffix.length);
+      if (base.isEmpty) continue;
+
+      // Direct base lookup
       results = await lookupWord(base);
       if (results.isNotEmpty) return results;
-      if (suffix == 'ies') {
+
+      // base+"y": ies/ied/ier/iest (tries→try, happier→happy)
+      if (const {'ies', 'ied', 'ier', 'iest'}.contains(suffix)) {
         results = await lookupWord('${base}y');
         if (results.isNotEmpty) return results;
       }
-      if (suffix == 'ed') {
+
+      // base+"e": ed/ing/er/or/est/ly/able (evolving→evolve, advisor→advise)
+      if (const {'ed', 'ing', 'er', 'or', 'est', 'ly', 'able'}
+          .contains(suffix)) {
         results = await lookupWord('${base}e');
         if (results.isNotEmpty) return results;
       }
-    }
 
+      // i→y: ly/ness/ful (happily→happy, happiness→happy, beautiful→beauty)
+      if (const {'ly', 'ness', 'ful'}.contains(suffix) &&
+          base.endsWith('i')) {
+        results =
+            await lookupWord('${base.substring(0, base.length - 1)}y');
+        if (results.isNotEmpty) return results;
+      }
+
+      // Doubled consonant: ing/ed/er/est (running→run, stopped→stop)
+      if (const {'ing', 'ed', 'er', 'est'}.contains(suffix) &&
+          base.length >= 2 &&
+          base[base.length - 1] == base[base.length - 2]) {
+        results = await lookupWord(base.substring(0, base.length - 1));
+        if (results.isNotEmpty) return results;
+      }
+    }
     return [];
+  }
+
+  /// Lookup with exact match, variant, then suffix stripping fallback.
+  Future<List<Map<String, dynamic>>> fuzzyLookup(String headword) async {
+    final key = headword.toLowerCase().trim();
+    var results = await lookupWord(key);
+    if (results.isNotEmpty) return results;
+    results = await lookupVariant(key);
+    if (results.isNotEmpty) return results;
+    return suffixStrip(key);
   }
 }
