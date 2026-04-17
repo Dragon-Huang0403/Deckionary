@@ -14,7 +14,12 @@ Future<AppUpdateInfo?> checkPlayStoreUpdate() async {
     }
     return null;
   } catch (e, st) {
-    globalTalker.error('[UPDATE] Play Store update check failed', e, st);
+    globalTalker.error(
+      '[UPDATE] Play Store update check failed '
+      '(${e.runtimeType}): $e',
+      e,
+      st,
+    );
     return null;
   }
 }
@@ -36,12 +41,18 @@ Future<bool> startFlexibleUpdate() async {
       },
       onError: (e) {
         sub.cancel();
-        globalTalker.error('[UPDATE] listener error: $e');
+        globalTalker.error(
+          '[UPDATE] listener error (${e.runtimeType}): $e',
+        );
       },
     );
     return true;
   } catch (e, st) {
-    globalTalker.error('[UPDATE] Flexible update failed', e, st);
+    globalTalker.error(
+      '[UPDATE] Flexible update failed (${e.runtimeType}): $e',
+      e,
+      st,
+    );
     return false;
   }
 }

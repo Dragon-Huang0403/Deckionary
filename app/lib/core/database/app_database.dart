@@ -82,9 +82,12 @@ class UserDatabase extends _$UserDatabase {
         await m.createTable(vocabularyListEntries);
       }
       if (from < 9) {
+        // createTable uses the current schema, which already includes
+        // session_id/attempt_number (added in v10). Nothing to do at v10.
         await m.createTable(speakingResults);
       }
-      if (from < 10) {
+      if (from == 9) {
+        // Only needed when the table was created at v9 without these columns.
         await m.addColumn(speakingResults, speakingResults.sessionId);
         await m.addColumn(speakingResults, speakingResults.attemptNumber);
         // Backfill: treat each existing row as a single-attempt session

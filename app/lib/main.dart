@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,13 +35,18 @@ void main() async {
       settingsDao: SettingsDao(globalUserDb),
       supabaseClient: syncEnabled ? Supabase.instance.client : null,
     );
-  } catch (e) {
+  } catch (e, st) {
     runApp(
       MaterialApp(
         debugShowCheckedModeBanner: false,
         home: Scaffold(body: Center(child: Text('Failed to start: $e'))),
       ),
     );
+    // initLogging() didn't run, so globalLogFlushService is null. Push the
+    // startup failure directly to app_logs if Supabase came up in parallel.
+    if (syncEnabled) {
+      unawaited(_reportStartupFailure(e, st));
+    }
     return;
   }
 
@@ -71,6 +77,24 @@ Future<void> _initSyncServices() async {
     }
   } catch (e) {
     globalTalker.warning('[INIT] sync services not available: $e');
+  }
+}
+
+Future<void> _reportStartupFailure(Object error, StackTrace stack) async {
+  try {
+    await Supabase.instance.client.from('app_logs').insert({
+      'device_id': 'pre-init',
+      'level': 'error',
+      'tag': 'STARTUP',
+      'message': 'Startup failed before logging initialized',
+      'error': error.toString(),
+      'stack_trace': stack.toString(),
+      'app_version': appVersion,
+      'platform': Platform.operatingSystem,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  } catch (_) {
+    // Best-effort; the on-screen message already tells the user.
   }
 }
 
