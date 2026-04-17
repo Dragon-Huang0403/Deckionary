@@ -36,7 +36,8 @@ class _SpeakingHistoryDetailScreenState
 
   Future<void> _deleteAndPop() async {
     final service = ref.read(speakingServiceProvider);
-    await service?.deleteResult(widget.id);
+    // TODO(Task 15): delete by session_id once history is grouped per-session.
+    await service?.deleteSession(widget.id);
     ref.invalidate(speakingHistoryProvider);
     if (mounted) Navigator.pop(context);
   }
@@ -165,9 +166,8 @@ class _SpeakingHistoryDetailScreenState
                               IconButton(
                                 icon: const Icon(Icons.volume_up),
                                 tooltip: 'Listen',
-                                onPressed: () => _playNaturalVersion(
-                                  result.naturalVersion,
-                                ),
+                                onPressed: () =>
+                                    _playNaturalVersion(result.naturalVersion),
                               ),
                           ],
                         ),

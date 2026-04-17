@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../main.dart';
 import '../data/curated_topics.dart';
@@ -123,24 +124,25 @@ class SpeakingHistoryItem {
 /// Loads a full SpeakingResult from DB by ID (for history detail screen).
 final speakingResultByIdProvider =
     FutureProvider.family<SpeakingResult?, String>((ref, id) async {
-  final service = ref.watch(speakingServiceProvider);
-  if (service == null) return null;
-  final row = await service.getResultById(id);
-  if (row == null) return null;
-  final corrections = (jsonDecode(row.correctionsJson) as List)
-      .map((e) => SpeakingCorrection.fromJson(e as Map<String, dynamic>))
-      .toList();
-  return SpeakingResult(
-    transcript: row.transcript,
-    corrections: corrections,
-    naturalVersion: row.naturalVersion,
-    overallNote: row.overallNote,
-  );
-});
+      final service = ref.watch(speakingServiceProvider);
+      if (service == null) return null;
+      final row = await service.getResultById(id);
+      if (row == null) return null;
+      final corrections = (jsonDecode(row.correctionsJson) as List)
+          .map((e) => SpeakingCorrection.fromJson(e as Map<String, dynamic>))
+          .toList();
+      return SpeakingResult(
+        transcript: row.transcript,
+        corrections: corrections,
+        naturalVersion: row.naturalVersion,
+        overallNote: row.overallNote,
+      );
+    });
 
 // ── Analyze action ───────────────────────────────────────────────────────────
 
 /// Analyze a voice recording and save the result.
+/// TODO(Task 12): replace callers with `SpeakingSessionNotifier.addAttemptFromAudio`.
 Future<SpeakingResult> analyzeRecording(
   WidgetRef ref, {
   required Uint8List audioBytes,
@@ -149,9 +151,11 @@ Future<SpeakingResult> analyzeRecording(
 }) async {
   final service = ref.read(speakingServiceProvider)!;
   final result = await service.analyzeRecording(audioBytes, topic);
-  await service.saveResult(
+  await service.saveAttempt(
+    sessionId: const Uuid().v4(),
     topic: topic,
     isCustomTopic: isCustomTopic,
+    attemptNumber: 1,
     result: result,
   );
   ref.invalidate(speakingHistoryProvider);
@@ -159,6 +163,7 @@ Future<SpeakingResult> analyzeRecording(
 }
 
 /// Analyze typed text and save the result.
+/// TODO(Task 12): replace callers with `SpeakingSessionNotifier.addAttemptFromText`.
 Future<SpeakingResult> analyzeText(
   WidgetRef ref, {
   required String text,
@@ -167,9 +172,11 @@ Future<SpeakingResult> analyzeText(
 }) async {
   final service = ref.read(speakingServiceProvider)!;
   final result = await service.analyzeText(text, topic);
-  await service.saveResult(
+  await service.saveAttempt(
+    sessionId: const Uuid().v4(),
     topic: topic,
     isCustomTopic: isCustomTopic,
+    attemptNumber: 1,
     result: result,
   );
   ref.invalidate(speakingHistoryProvider);

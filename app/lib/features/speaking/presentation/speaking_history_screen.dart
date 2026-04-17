@@ -76,20 +76,23 @@ class _HistoryListTile extends ConsumerWidget {
       ),
       confirmDismiss: (_) async {
         final service = ref.read(speakingServiceProvider);
-        await service?.deleteResult(item.id);
+        // TODO(Task 7/15): pass session_id once history items expose it.
+        await service?.deleteSession(item.id);
         ref.invalidate(speakingHistoryProvider);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Session deleted')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Session deleted')));
         }
         return true;
       },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: ListTile(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
           title: Text(
             item.topic,
             maxLines: 2,
@@ -107,8 +110,7 @@ class _HistoryListTile extends ConsumerWidget {
                 _Badge(
                   label:
                       '${item.correctionsCount} ${item.correctionsCount == 1 ? 'correction' : 'corrections'}',
-                  color:
-                      item.correctionsCount >= 2 ? Colors.red : Colors.green,
+                  color: item.correctionsCount >= 2 ? Colors.red : Colors.green,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -124,10 +126,8 @@ class _HistoryListTile extends ConsumerWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => SpeakingHistoryDetailScreen(
-                id: item.id,
-                topic: item.topic,
-              ),
+              builder: (_) =>
+                  SpeakingHistoryDetailScreen(id: item.id, topic: item.topic),
             ),
           ),
         ),
