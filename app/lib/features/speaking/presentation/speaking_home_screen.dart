@@ -99,8 +99,10 @@ class _SpeakingHomeScreenState extends ConsumerState<SpeakingHomeScreen> {
                             label: const Text('Shuffle'),
                             onPressed: () {
                               setSheetState(() {
-                                topic = curatedTopics[
-                                    Random().nextInt(curatedTopics.length)];
+                                topic =
+                                    curatedTopics[Random().nextInt(
+                                      curatedTopics.length,
+                                    )];
                               });
                             },
                           ),
@@ -136,214 +138,235 @@ class _SpeakingHomeScreenState extends ConsumerState<SpeakingHomeScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Speaking Practice'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'History',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const SpeakingHistoryScreen(),
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // ── Headline ─────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Speaking Practice',
+                        style: textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.history),
+                      tooltip: 'History',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SpeakingHistoryScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: CustomScrollView(
-        slivers: [
-          // ── Random Topic Card ─────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: _showRandomTopicSheet,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          cs.primary,
-                          cs.primary.withValues(alpha: 0.7),
+
+            // ── Custom Topic Input ────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: TextField(
+                  controller: _customController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your own topic...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.arrow_forward),
+                      tooltip: 'Go',
+                      onPressed: _submitCustomTopic,
+                    ),
+                  ),
+                  textInputAction: TextInputAction.go,
+                  onSubmitted: (_) => _submitCustomTopic(),
+                ),
+              ),
+            ),
+
+            // ── Random Topic Card ─────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: _showRandomTopicSheet,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            cs.primary,
+                            cs.primary.withValues(alpha: 0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.casino_outlined,
+                            size: 28,
+                            color: cs.onPrimary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Random Topic',
+                                  style: textTheme.titleMedium?.copyWith(
+                                    color: cs.onPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  'Start with a surprise topic',
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: cs.onPrimary.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: cs.onPrimary),
                         ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.casino_outlined,
-                          size: 28,
-                          color: cs.onPrimary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Random Topic',
-                                style: textTheme.titleMedium?.copyWith(
-                                  color: cs.onPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                'Start with a surprise topic',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: cs.onPrimary.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.chevron_right, color: cs.onPrimary),
-                      ],
-                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // ── Custom Topic Input ────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: TextField(
-                controller: _customController,
-                decoration: InputDecoration(
-                  hintText: 'Enter your own topic...',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.arrow_forward),
-                    tooltip: 'Go',
-                    onPressed: _submitCustomTopic,
-                  ),
-                ),
-                textInputAction: TextInputAction.go,
-                onSubmitted: (_) => _submitCustomTopic(),
-              ),
-            ),
-          ),
-
-          // ── Recent Practice ───────────────────────────────────
-          ...historyAsync.when(
-            loading: () => [const SliverToBoxAdapter(child: SizedBox.shrink())],
-            error: (e, st) => [
-              const SliverToBoxAdapter(child: SizedBox.shrink()),
-            ],
-            data: (items) {
-              if (items.isEmpty) {
-                return [const SliverToBoxAdapter(child: SizedBox.shrink())];
-              }
-              final recentItems = items.take(5).toList();
-              return [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Recent Practice',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: cs.primary,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SpeakingHistoryScreen(),
+            // ── Recent Practice ───────────────────────────────────
+            ...historyAsync.when(
+              loading: () => [
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
+              ],
+              error: (e, st) => [
+                const SliverToBoxAdapter(child: SizedBox.shrink()),
+              ],
+              data: (items) {
+                if (items.isEmpty) {
+                  return [const SliverToBoxAdapter(child: SizedBox.shrink())];
+                }
+                final recentItems = items.take(5).toList();
+                return [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Recent Practice',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: cs.primary,
                             ),
                           ),
-                          child: const Text('See all'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 80,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: recentItems.length,
-                      separatorBuilder: (_, i) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final item = recentItems[index];
-                        return _RecentPracticeCard(
-                          item: item,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => SpeakingHistoryDetailScreen(
-                                id: item.id,
-                                topic: item.topic,
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SpeakingHistoryScreen(),
                               ),
                             ),
+                            child: const Text('See all'),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ];
-            },
-          ),
-
-          // ── Browse Topics Header ──────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                'Browse Topics',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: cs.primary,
-                ),
-              ),
-            ),
-          ),
-
-          // ── Browse Topics List ────────────────────────────────
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              final category = topicsByCategory.keys.elementAt(index);
-              final topics = topicsByCategory[category]!;
-              return ExpansionTile(
-                title: Text(category.displayName),
-                subtitle: Text(
-                  '${topics.length} topics',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-                children: [
-                  for (final topic in topics)
-                    ListTile(
-                      title: Text(topic.title, style: textTheme.bodyMedium),
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: cs.onSurfaceVariant,
+                        ],
                       ),
-                      onTap: () =>
-                          _goToRecordScreen(topic.title, isCustom: false),
                     ),
-                ],
-              );
-            }, childCount: topicsByCategory.length),
-          ),
-        ],
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 80,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: recentItems.length,
+                        separatorBuilder: (_, i) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final item = recentItems[index];
+                          return _RecentPracticeCard(
+                            item: item,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SpeakingHistoryDetailScreen(
+                                  id: item.id,
+                                  topic: item.topic,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ];
+              },
+            ),
+
+            // ── Browse Topics Header ──────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(
+                  'Browse Topics',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: cs.primary,
+                  ),
+                ),
+              ),
+            ),
+
+            // ── Browse Topics List ────────────────────────────────
+            SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final category = topicsByCategory.keys.elementAt(index);
+                final topics = topicsByCategory[category]!;
+                return ExpansionTile(
+                  title: Text(category.displayName),
+                  subtitle: Text(
+                    '${topics.length} topics',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+                  ),
+                  children: [
+                    for (final topic in topics)
+                      ListTile(
+                        title: Text(topic.title, style: textTheme.bodyMedium),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        onTap: () =>
+                            _goToRecordScreen(topic.title, isCustom: false),
+                      ),
+                  ],
+                );
+              }, childCount: topicsByCategory.length),
+            ),
+          ],
+        ),
       ),
     );
   }
