@@ -151,6 +151,8 @@ class SpeakingResults extends Table {
   TextColumn get correctionsJson => text().named('corrections_json')();
   TextColumn get naturalVersion => text().named('natural_version')();
   TextColumn get overallNote => text().named('overall_note').nullable()();
+  TextColumn get sessionId => text().named('session_id').nullable()();
+  IntColumn get attemptNumber => integer().named('attempt_number').nullable()();
   TextColumn get createdAt => text()
       .named('created_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();

@@ -2877,6 +2877,28 @@ class $SpeakingResultsTable extends SpeakingResults
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _attemptNumberMeta = const VerificationMeta(
+    'attemptNumber',
+  );
+  @override
+  late final GeneratedColumn<int> attemptNumber = GeneratedColumn<int>(
+    'attempt_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2931,6 +2953,8 @@ class $SpeakingResultsTable extends SpeakingResults
     correctionsJson,
     naturalVersion,
     overallNote,
+    sessionId,
+    attemptNumber,
     createdAt,
     updatedAt,
     deletedAt,
@@ -3009,6 +3033,21 @@ class $SpeakingResultsTable extends SpeakingResults
         ),
       );
     }
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    }
+    if (data.containsKey('attempt_number')) {
+      context.handle(
+        _attemptNumberMeta,
+        attemptNumber.isAcceptableOrUnknown(
+          data['attempt_number']!,
+          _attemptNumberMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3070,6 +3109,14 @@ class $SpeakingResultsTable extends SpeakingResults
         DriftSqlType.string,
         data['${effectivePrefix}overall_note'],
       ),
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      ),
+      attemptNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_number'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}created_at'],
@@ -3104,6 +3151,8 @@ class SpeakingResultRow extends DataClass
   final String correctionsJson;
   final String naturalVersion;
   final String? overallNote;
+  final String? sessionId;
+  final int? attemptNumber;
   final String createdAt;
   final String updatedAt;
   final String? deletedAt;
@@ -3116,6 +3165,8 @@ class SpeakingResultRow extends DataClass
     required this.correctionsJson,
     required this.naturalVersion,
     this.overallNote,
+    this.sessionId,
+    this.attemptNumber,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -3132,6 +3183,12 @@ class SpeakingResultRow extends DataClass
     map['natural_version'] = Variable<String>(naturalVersion);
     if (!nullToAbsent || overallNote != null) {
       map['overall_note'] = Variable<String>(overallNote);
+    }
+    if (!nullToAbsent || sessionId != null) {
+      map['session_id'] = Variable<String>(sessionId);
+    }
+    if (!nullToAbsent || attemptNumber != null) {
+      map['attempt_number'] = Variable<int>(attemptNumber);
     }
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
@@ -3153,6 +3210,12 @@ class SpeakingResultRow extends DataClass
       overallNote: overallNote == null && nullToAbsent
           ? const Value.absent()
           : Value(overallNote),
+      sessionId: sessionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionId),
+      attemptNumber: attemptNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attemptNumber),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -3175,6 +3238,8 @@ class SpeakingResultRow extends DataClass
       correctionsJson: serializer.fromJson<String>(json['correctionsJson']),
       naturalVersion: serializer.fromJson<String>(json['naturalVersion']),
       overallNote: serializer.fromJson<String?>(json['overallNote']),
+      sessionId: serializer.fromJson<String?>(json['sessionId']),
+      attemptNumber: serializer.fromJson<int?>(json['attemptNumber']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
@@ -3192,6 +3257,8 @@ class SpeakingResultRow extends DataClass
       'correctionsJson': serializer.toJson<String>(correctionsJson),
       'naturalVersion': serializer.toJson<String>(naturalVersion),
       'overallNote': serializer.toJson<String?>(overallNote),
+      'sessionId': serializer.toJson<String?>(sessionId),
+      'attemptNumber': serializer.toJson<int?>(attemptNumber),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
       'deletedAt': serializer.toJson<String?>(deletedAt),
@@ -3207,6 +3274,8 @@ class SpeakingResultRow extends DataClass
     String? correctionsJson,
     String? naturalVersion,
     Value<String?> overallNote = const Value.absent(),
+    Value<String?> sessionId = const Value.absent(),
+    Value<int?> attemptNumber = const Value.absent(),
     String? createdAt,
     String? updatedAt,
     Value<String?> deletedAt = const Value.absent(),
@@ -3219,6 +3288,10 @@ class SpeakingResultRow extends DataClass
     correctionsJson: correctionsJson ?? this.correctionsJson,
     naturalVersion: naturalVersion ?? this.naturalVersion,
     overallNote: overallNote.present ? overallNote.value : this.overallNote,
+    sessionId: sessionId.present ? sessionId.value : this.sessionId,
+    attemptNumber: attemptNumber.present
+        ? attemptNumber.value
+        : this.attemptNumber,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -3243,6 +3316,10 @@ class SpeakingResultRow extends DataClass
       overallNote: data.overallNote.present
           ? data.overallNote.value
           : this.overallNote,
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      attemptNumber: data.attemptNumber.present
+          ? data.attemptNumber.value
+          : this.attemptNumber,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -3260,6 +3337,8 @@ class SpeakingResultRow extends DataClass
           ..write('correctionsJson: $correctionsJson, ')
           ..write('naturalVersion: $naturalVersion, ')
           ..write('overallNote: $overallNote, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('attemptNumber: $attemptNumber, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3277,6 +3356,8 @@ class SpeakingResultRow extends DataClass
     correctionsJson,
     naturalVersion,
     overallNote,
+    sessionId,
+    attemptNumber,
     createdAt,
     updatedAt,
     deletedAt,
@@ -3293,6 +3374,8 @@ class SpeakingResultRow extends DataClass
           other.correctionsJson == this.correctionsJson &&
           other.naturalVersion == this.naturalVersion &&
           other.overallNote == this.overallNote &&
+          other.sessionId == this.sessionId &&
+          other.attemptNumber == this.attemptNumber &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -3307,6 +3390,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
   final Value<String> correctionsJson;
   final Value<String> naturalVersion;
   final Value<String?> overallNote;
+  final Value<String?> sessionId;
+  final Value<int?> attemptNumber;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<String?> deletedAt;
@@ -3320,6 +3405,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     this.correctionsJson = const Value.absent(),
     this.naturalVersion = const Value.absent(),
     this.overallNote = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.attemptNumber = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -3334,6 +3421,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     required String correctionsJson,
     required String naturalVersion,
     this.overallNote = const Value.absent(),
+    this.sessionId = const Value.absent(),
+    this.attemptNumber = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -3352,6 +3441,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     Expression<String>? correctionsJson,
     Expression<String>? naturalVersion,
     Expression<String>? overallNote,
+    Expression<String>? sessionId,
+    Expression<int>? attemptNumber,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<String>? deletedAt,
@@ -3366,6 +3457,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
       if (correctionsJson != null) 'corrections_json': correctionsJson,
       if (naturalVersion != null) 'natural_version': naturalVersion,
       if (overallNote != null) 'overall_note': overallNote,
+      if (sessionId != null) 'session_id': sessionId,
+      if (attemptNumber != null) 'attempt_number': attemptNumber,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -3382,6 +3475,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     Value<String>? correctionsJson,
     Value<String>? naturalVersion,
     Value<String?>? overallNote,
+    Value<String?>? sessionId,
+    Value<int?>? attemptNumber,
     Value<String>? createdAt,
     Value<String>? updatedAt,
     Value<String?>? deletedAt,
@@ -3396,6 +3491,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
       correctionsJson: correctionsJson ?? this.correctionsJson,
       naturalVersion: naturalVersion ?? this.naturalVersion,
       overallNote: overallNote ?? this.overallNote,
+      sessionId: sessionId ?? this.sessionId,
+      attemptNumber: attemptNumber ?? this.attemptNumber,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -3428,6 +3525,12 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     if (overallNote.present) {
       map['overall_note'] = Variable<String>(overallNote.value);
     }
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (attemptNumber.present) {
+      map['attempt_number'] = Variable<int>(attemptNumber.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
     }
@@ -3456,6 +3559,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
           ..write('correctionsJson: $correctionsJson, ')
           ..write('naturalVersion: $naturalVersion, ')
           ..write('overallNote: $overallNote, ')
+          ..write('sessionId: $sessionId, ')
+          ..write('attemptNumber: $attemptNumber, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -5883,6 +5988,8 @@ typedef $$SpeakingResultsTableCreateCompanionBuilder =
       required String correctionsJson,
       required String naturalVersion,
       Value<String?> overallNote,
+      Value<String?> sessionId,
+      Value<int?> attemptNumber,
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<String?> deletedAt,
@@ -5898,6 +6005,8 @@ typedef $$SpeakingResultsTableUpdateCompanionBuilder =
       Value<String> correctionsJson,
       Value<String> naturalVersion,
       Value<String?> overallNote,
+      Value<String?> sessionId,
+      Value<int?> attemptNumber,
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<String?> deletedAt,
@@ -5946,6 +6055,16 @@ class $$SpeakingResultsTableFilterComposer
 
   ColumnFilters<String> get overallNote => $composableBuilder(
     column: $table.overallNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptNumber => $composableBuilder(
+    column: $table.attemptNumber,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6014,6 +6133,16 @@ class $$SpeakingResultsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptNumber => $composableBuilder(
+    column: $table.attemptNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6075,6 +6204,14 @@ class $$SpeakingResultsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+
+  GeneratedColumn<int> get attemptNumber => $composableBuilder(
+    column: $table.attemptNumber,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6132,6 +6269,8 @@ class $$SpeakingResultsTableTableManager
                 Value<String> correctionsJson = const Value.absent(),
                 Value<String> naturalVersion = const Value.absent(),
                 Value<String?> overallNote = const Value.absent(),
+                Value<String?> sessionId = const Value.absent(),
+                Value<int?> attemptNumber = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<String?> deletedAt = const Value.absent(),
@@ -6145,6 +6284,8 @@ class $$SpeakingResultsTableTableManager
                 correctionsJson: correctionsJson,
                 naturalVersion: naturalVersion,
                 overallNote: overallNote,
+                sessionId: sessionId,
+                attemptNumber: attemptNumber,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -6160,6 +6301,8 @@ class $$SpeakingResultsTableTableManager
                 required String correctionsJson,
                 required String naturalVersion,
                 Value<String?> overallNote = const Value.absent(),
+                Value<String?> sessionId = const Value.absent(),
+                Value<int?> attemptNumber = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<String?> deletedAt = const Value.absent(),
@@ -6173,6 +6316,8 @@ class $$SpeakingResultsTableTableManager
                 correctionsJson: correctionsJson,
                 naturalVersion: naturalVersion,
                 overallNote: overallNote,
+                sessionId: sessionId,
+                attemptNumber: attemptNumber,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

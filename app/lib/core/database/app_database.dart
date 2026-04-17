@@ -32,7 +32,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -83,6 +83,15 @@ class UserDatabase extends _$UserDatabase {
       }
       if (from < 9) {
         await m.createTable(speakingResults);
+      }
+      if (from < 10) {
+        await m.addColumn(speakingResults, speakingResults.sessionId);
+        await m.addColumn(speakingResults, speakingResults.attemptNumber);
+        // Backfill: treat each existing row as a single-attempt session
+        await customStatement(
+          'UPDATE speaking_results SET session_id = id, attempt_number = 1 '
+          'WHERE session_id IS NULL',
+        );
       }
     },
   );
