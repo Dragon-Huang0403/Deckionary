@@ -14,8 +14,8 @@ class SpeakingService {
   final SupabaseClient _supabase;
 
   SpeakingService({required UserDatabase db, required SupabaseClient supabase})
-      : _db = db,
-        _supabase = supabase;
+    : _db = db,
+      _supabase = supabase;
 
   /// Analyze a voice recording. Sends audio to the speaking-analyze edge
   /// function and returns structured corrections.
@@ -23,7 +23,8 @@ class SpeakingService {
     Uint8List audioBytes,
     String topic,
   ) async {
-    final token = _supabase.auth.currentSession?.accessToken ??
+    final token =
+        _supabase.auth.currentSession?.accessToken ??
         (isDevBuild ? supabaseAnonKey : null);
     if (token == null || token.isEmpty) {
       throw Exception('Not authenticated — please sign in');
@@ -53,7 +54,8 @@ class SpeakingService {
 
   /// Analyze typed text.
   Future<SpeakingResult> analyzeText(String text, String topic) async {
-    final token = _supabase.auth.currentSession?.accessToken ??
+    final token =
+        _supabase.auth.currentSession?.accessToken ??
         (isDevBuild ? supabaseAnonKey : null);
     if (token == null || token.isEmpty) {
       throw Exception('Not authenticated — please sign in');
@@ -90,7 +92,9 @@ class SpeakingService {
   }) async {
     final now = DateTime.now().toUtc().toIso8601String();
     final id = const Uuid().v4();
-    await _db.into(_db.speakingResults).insert(
+    await _db
+        .into(_db.speakingResults)
+        .insert(
           SpeakingResultsCompanion.insert(
             id: id,
             topic: topic,
@@ -110,7 +114,7 @@ class SpeakingService {
 
   /// Most recent rows, excluding soft-deleted. Callers are responsible for
   /// grouping by session_id.
-  Future<List<SpeakingResultRow>> getHistory({int limit = 200}) async {
+  Future<List<SpeakingResultRow>> getHistory({int limit = 50}) async {
     return (_db.select(_db.speakingResults)
           ..where((t) => t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
@@ -123,28 +127,27 @@ class SpeakingService {
     String sessionId,
   ) async {
     return (_db.select(_db.speakingResults)
-          ..where(
-            (t) => t.sessionId.equals(sessionId) & t.deletedAt.isNull(),
-          )
+          ..where((t) => t.sessionId.equals(sessionId) & t.deletedAt.isNull())
           ..orderBy([(t) => OrderingTerm.asc(t.attemptNumber)]))
         .get();
   }
 
-  /// Backward-compatible lookup by row id (history detail loaded before
-  /// grouping refactor). Prefer getAttemptsBySessionId.
+  /// Transitional — used only by the legacy history detail screen. Removed
+  /// when history providers are rewritten to load sessions by session_id
+  /// (see plan Task 15).
   Future<SpeakingResultRow?> getResultById(String id) async {
-    final rows = await (_db.select(_db.speakingResults)
-          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
-        .get();
+    final rows = await (_db.select(
+      _db.speakingResults,
+    )..where((t) => t.id.equals(id) & t.deletedAt.isNull())).get();
     return rows.isEmpty ? null : rows.first;
   }
 
   /// Soft-delete every attempt in a session.
   Future<void> deleteSession(String sessionId) async {
     final now = DateTime.now().toUtc().toIso8601String();
-    await (_db.update(_db.speakingResults)
-          ..where((t) => t.sessionId.equals(sessionId)))
-        .write(
+    await (_db.update(
+      _db.speakingResults,
+    )..where((t) => t.sessionId.equals(sessionId))).write(
       SpeakingResultsCompanion(
         deletedAt: Value(now),
         updatedAt: Value(now),
