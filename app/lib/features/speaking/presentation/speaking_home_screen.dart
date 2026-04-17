@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/curated_topics.dart';
 import '../providers/speaking_providers.dart';
+import '../providers/speaking_session_notifier.dart';
 import 'speaking_history_detail_screen.dart';
 import 'speaking_history_screen.dart';
 import 'speaking_record_screen.dart';
@@ -26,13 +27,14 @@ class _SpeakingHomeScreenState extends ConsumerState<SpeakingHomeScreen> {
   }
 
   void _goToRecordScreen(String topic, {required bool isCustom}) {
-    if (topic.trim().isEmpty) return;
+    final trimmed = topic.trim();
+    if (trimmed.isEmpty) return;
+    ref
+        .read(speakingSessionNotifierProvider.notifier)
+        .startSession(topic: trimmed, isCustomTopic: isCustom);
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            SpeakingRecordScreen(topic: topic.trim(), isCustomTopic: isCustom),
-      ),
+      MaterialPageRoute(builder: (_) => const SpeakingRecordScreen()),
     );
   }
 
