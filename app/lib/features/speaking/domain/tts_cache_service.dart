@@ -108,6 +108,17 @@ class TtsCacheService {
 
   Future<void> stop() => _player.stop();
 
+  /// Play a local audio file (e.g. the user's shadow recording).
+  Future<void> playLocalFile(String path) async {
+    try {
+      await _player.stop();
+      await _player.setFilePath(path);
+      await _player.play();
+    } catch (e, st) {
+      globalTalker.error('[TTS] local playback error', e, st);
+    }
+  }
+
   void dispose() {
     _player.dispose();
     if (_initialized) _db?.close();
