@@ -66,7 +66,7 @@ class _HistoryListTile extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Dismissible(
-      key: ValueKey(item.id),
+      key: ValueKey(item.sessionId),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -76,8 +76,7 @@ class _HistoryListTile extends ConsumerWidget {
       ),
       confirmDismiss: (_) async {
         final service = ref.read(speakingServiceProvider);
-        // TODO(Task 7/15): pass session_id once history items expose it.
-        await service?.deleteSession(item.id);
+        await service?.deleteSession(item.sessionId);
         ref.invalidate(speakingHistoryProvider);
         if (context.mounted) {
           ScaffoldMessenger.of(
@@ -108,8 +107,9 @@ class _HistoryListTile extends ConsumerWidget {
                   const SizedBox(width: 6),
                 ],
                 _Badge(
-                  label:
-                      '${item.correctionsCount} ${item.correctionsCount == 1 ? 'correction' : 'corrections'}',
+                  label: item.attemptCount > 1
+                      ? '${item.attemptCount} attempts · ${item.correctionsCount} ${item.correctionsCount == 1 ? 'correction' : 'corrections'}'
+                      : '${item.correctionsCount} ${item.correctionsCount == 1 ? 'correction' : 'corrections'}',
                   color: item.correctionsCount >= 2 ? Colors.red : Colors.green,
                 ),
                 const SizedBox(width: 8),
@@ -126,8 +126,10 @@ class _HistoryListTile extends ConsumerWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) =>
-                  SpeakingHistoryDetailScreen(id: item.id, topic: item.topic),
+              builder: (_) => SpeakingHistoryDetailScreen(
+                id: item.sessionId,
+                topic: item.topic,
+              ),
             ),
           ),
         ),

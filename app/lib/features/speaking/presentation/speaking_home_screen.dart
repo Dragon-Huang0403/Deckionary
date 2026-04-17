@@ -308,7 +308,7 @@ class _SpeakingHomeScreenState extends ConsumerState<SpeakingHomeScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => SpeakingHistoryDetailScreen(
-                                  id: item.id,
+                                  id: item.sessionId,
                                   topic: item.topic,
                                 ),
                               ),

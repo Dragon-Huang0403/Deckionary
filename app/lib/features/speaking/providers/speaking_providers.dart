@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../main.dart';
 import '../data/curated_topics.dart';
+import '../domain/speaking_attempt.dart';
 import '../domain/speaking_result.dart';
 import '../domain/speaking_service.dart';
 import '../domain/speaking_topic.dart';
@@ -81,42 +81,60 @@ final curatedTopicsProvider =
       return grouped;
     });
 
-// ── History ──────────────────────────────────────────────────────────────────
+// ── History (grouped by session_id) ─────────────────────────────────────────
 
 final speakingHistoryProvider = FutureProvider<List<SpeakingHistoryItem>>((
   ref,
 ) async {
   final service = ref.watch(speakingServiceProvider);
   if (service == null) return [];
-  final rows = await service.getHistory();
-  return rows.map((r) {
+  final rows = await service.getHistory(limit: 200);
+
+  // Group by session_id; fall back to row id for legacy rows where session_id
+  // is null (should not happen post-migration, but defensively handled).
+  final Map<String, List<SpeakingResultRow>> bySession = {};
+  for (final row in rows) {
+    final key = row.sessionId ?? row.id;
+    bySession.putIfAbsent(key, () => []).add(row);
+  }
+
+  final items = bySession.entries.map((entry) {
+    final sessionRows = entry.value
+      ..sort((a, b) => (a.attemptNumber ?? 1).compareTo(b.attemptNumber ?? 1));
+    final latest = sessionRows.last;
     var count = 0;
     try {
-      final list = jsonDecode(r.correctionsJson);
+      final list = jsonDecode(latest.correctionsJson);
       if (list is List) count = list.length;
     } catch (_) {}
     return SpeakingHistoryItem(
-      id: r.id,
-      topic: r.topic,
-      isCustomTopic: r.isCustomTopic,
+      sessionId: entry.key,
+      topic: latest.topic,
+      isCustomTopic: latest.isCustomTopic,
       correctionsCount: count,
-      createdAt: DateTime.parse(r.createdAt),
+      attemptCount: sessionRows.length,
+      createdAt: DateTime.parse(latest.createdAt),
     );
   }).toList();
+
+  items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return items;
 });
 
 class SpeakingHistoryItem {
-  final String id;
+  final String sessionId;
   final String topic;
   final bool isCustomTopic;
-  final int correctionsCount;
-  final DateTime createdAt;
+  final int correctionsCount; // from the latest attempt
+  final int attemptCount;
+  final DateTime createdAt; // latest attempt's createdAt
 
   const SpeakingHistoryItem({
-    required this.id,
+    required this.sessionId,
     required this.topic,
     required this.isCustomTopic,
     required this.correctionsCount,
+    required this.attemptCount,
     required this.createdAt,
   });
 }
@@ -139,46 +157,79 @@ final speakingResultByIdProvider =
       );
     });
 
+/// Loads all attempts for one session (for history detail screen).
+final speakingSessionByIdProvider =
+    FutureProvider.family<SpeakingHistorySession?, String>((
+      ref,
+      sessionId,
+    ) async {
+      final service = ref.watch(speakingServiceProvider);
+      if (service == null) return null;
+      final rows = await service.getAttemptsBySessionId(sessionId);
+      if (rows.isEmpty) return null;
+      final attempts = rows.map(_rowToAttempt).toList();
+      return SpeakingHistorySession(
+        sessionId: sessionId,
+        topic: rows.first.topic,
+        isCustomTopic: rows.first.isCustomTopic,
+        attempts: attempts,
+      );
+    });
+
+SpeakingAttempt _rowToAttempt(SpeakingResultRow row) {
+  final corrections = (jsonDecode(row.correctionsJson) as List)
+      .map((e) => SpeakingCorrection.fromJson(e as Map<String, dynamic>))
+      .toList();
+  final result = SpeakingResult(
+    transcript: row.transcript,
+    corrections: corrections,
+    naturalVersion: row.naturalVersion,
+    overallNote: row.overallNote,
+  );
+  return SpeakingAttempt(
+    id: row.id,
+    attemptNumber: row.attemptNumber ?? 1,
+    result: result,
+    createdAt: DateTime.parse(row.createdAt),
+  );
+}
+
+/// Read-only snapshot of a past session loaded from the DB.
+class SpeakingHistorySession {
+  final String sessionId;
+  final String topic;
+  final bool isCustomTopic;
+  final List<SpeakingAttempt> attempts;
+
+  const SpeakingHistorySession({
+    required this.sessionId,
+    required this.topic,
+    required this.isCustomTopic,
+    required this.attempts,
+  });
+}
+
 // ── Analyze action ───────────────────────────────────────────────────────────
 
-/// Analyze a voice recording and save the result.
-/// TODO(Task 12): replace callers with `SpeakingSessionNotifier.addAttemptFromAudio`.
+// Temporary shims — removed in Task 12.
 Future<SpeakingResult> analyzeRecording(
   WidgetRef ref, {
   required Uint8List audioBytes,
   required String topic,
   required bool isCustomTopic,
 }) async {
-  final service = ref.read(speakingServiceProvider)!;
-  final result = await service.analyzeRecording(audioBytes, topic);
-  await service.saveAttempt(
-    sessionId: const Uuid().v4(),
-    topic: topic,
-    isCustomTopic: isCustomTopic,
-    attemptNumber: 1,
-    result: result,
+  throw UnimplementedError(
+    'analyzeRecording(ref, ...) is deprecated — use SpeakingSessionNotifier',
   );
-  ref.invalidate(speakingHistoryProvider);
-  return result;
 }
 
-/// Analyze typed text and save the result.
-/// TODO(Task 12): replace callers with `SpeakingSessionNotifier.addAttemptFromText`.
 Future<SpeakingResult> analyzeText(
   WidgetRef ref, {
   required String text,
   required String topic,
   required bool isCustomTopic,
 }) async {
-  final service = ref.read(speakingServiceProvider)!;
-  final result = await service.analyzeText(text, topic);
-  await service.saveAttempt(
-    sessionId: const Uuid().v4(),
-    topic: topic,
-    isCustomTopic: isCustomTopic,
-    attemptNumber: 1,
-    result: result,
+  throw UnimplementedError(
+    'analyzeText(ref, ...) is deprecated — use SpeakingSessionNotifier',
   );
-  ref.invalidate(speakingHistoryProvider);
-  return result;
 }
