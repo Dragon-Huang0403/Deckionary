@@ -6,19 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
-import '../domain/speaking_result.dart';
 import '../providers/speaking_providers.dart';
+import '../providers/speaking_session_notifier.dart';
 import 'speaking_result_screen.dart';
 
 class SpeakingRecordScreen extends ConsumerStatefulWidget {
-  final String topic;
-  final bool isCustomTopic;
+  /// true when launched from the result screen's Try-again button — the
+  /// result screen is already on the nav stack, so this screen just pops.
+  final bool isRetry;
 
-  const SpeakingRecordScreen({
-    super.key,
-    required this.topic,
-    required this.isCustomTopic,
-  });
+  const SpeakingRecordScreen({super.key, this.isRetry = false});
 
   @override
   ConsumerState<SpeakingRecordScreen> createState() =>
@@ -82,13 +79,10 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
 
     try {
       final audioBytes = await File(path).readAsBytes();
-      final result = await analyzeRecording(
-        ref,
-        audioBytes: audioBytes,
-        topic: widget.topic,
-        isCustomTopic: widget.isCustomTopic,
-      );
-      _navigateToResult(result);
+      await ref
+          .read(speakingSessionNotifierProvider.notifier)
+          .addAttemptFromAudio(audioBytes);
+      _navigateOnSuccess();
     } catch (e) {
       _handleError(e);
     }
@@ -97,35 +91,29 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
   Future<void> _submitText() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
-
     ref.read(recordingStatusProvider.notifier).set(RecordingStatus.processing);
 
     try {
-      final result = await analyzeText(
-        ref,
-        text: text,
-        topic: widget.topic,
-        isCustomTopic: widget.isCustomTopic,
-      );
-      _navigateToResult(result);
+      await ref
+          .read(speakingSessionNotifierProvider.notifier)
+          .addAttemptFromText(text);
+      _navigateOnSuccess();
     } catch (e) {
       _handleError(e);
     }
   }
 
-  void _navigateToResult(SpeakingResult result) {
+  void _navigateOnSuccess() {
     if (!mounted) return;
     ref.read(recordingStatusProvider.notifier).set(RecordingStatus.idle);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SpeakingResultScreen(
-          result: result,
-          topic: widget.topic,
-          isCustomTopic: widget.isCustomTopic,
-        ),
-      ),
-    );
+    if (widget.isRetry) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const SpeakingResultScreen()),
+      );
+    }
   }
 
   void _handleError(Object error) {
@@ -144,18 +132,19 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final session = ref.watch(speakingSessionNotifierProvider);
+    final topicLabel = session?.topic ?? '';
     final inputMode = ref.watch(inputModeProvider);
     final recordingStatus = ref.watch(recordingStatusProvider);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.topic, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(topicLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Input mode selector
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -184,8 +173,6 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
                 ),
               ),
             ),
-
-            // Main content area
             Expanded(
               child: recordingStatus == RecordingStatus.processing
                   ? _buildProcessing()
@@ -214,7 +201,6 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
 
   Widget _buildSpeakMode(ColorScheme cs, RecordingStatus status) {
     final isRecording = status == RecordingStatus.recording;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
