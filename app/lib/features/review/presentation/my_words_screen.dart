@@ -194,8 +194,9 @@ class _MyWordsScreenState extends ConsumerState<MyWordsScreen> {
                       child: ChoiceChip(
                         label: Text(e.value),
                         selected: order.value == e.key,
-                        onSelected: (_) =>
-                            ref.read(myWordsOrderProvider.notifier).setOrder(e.key),
+                        onSelected: (_) => ref
+                            .read(myWordsOrderProvider.notifier)
+                            .setOrder(e.key),
                       ),
                     ),
                   ),

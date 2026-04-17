@@ -95,8 +95,9 @@ class PlatformDisplayAdapter {
   }
 
   Future<DisplayFrame?> getActiveWindowDisplay() async {
-    final result =
-        await _windowChannel.invokeMethod<Map>('getActiveWindowScreenFrame');
+    final result = await _windowChannel.invokeMethod<Map>(
+      'getActiveWindowScreenFrame',
+    );
     if (result == null) return null;
     return DisplayFrame(
       x: (result['x'] as num).toDouble(),

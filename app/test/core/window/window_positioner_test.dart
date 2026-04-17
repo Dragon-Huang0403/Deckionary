@@ -192,8 +192,7 @@ void main() {
     });
 
     test('falls back to mouse when activeWindow returns null', () async {
-      final mouseDisplay =
-          DisplayFrame(x: 0, y: 0, width: 1920, height: 1080);
+      final mouseDisplay = DisplayFrame(x: 0, y: 0, width: 1920, height: 1080);
       final resolver = DisplayResolver(
         getMouseDisplay: () async => mouseDisplay,
         getActiveWindowDisplay: () async => null,
@@ -204,23 +203,28 @@ void main() {
       expect(result, same(mouseDisplay));
     });
 
-    test('falls back to primary when activeWindow and mouse both null',
-        () async {
-      final primaryDisplay =
-          DisplayFrame(x: 0, y: 0, width: 2560, height: 1440);
-      final resolver = DisplayResolver(
-        getMouseDisplay: () async => null,
-        getActiveWindowDisplay: () async => null,
-        getPrimaryDisplay: () async => primaryDisplay,
-      );
+    test(
+      'falls back to primary when activeWindow and mouse both null',
+      () async {
+        final primaryDisplay = DisplayFrame(
+          x: 0,
+          y: 0,
+          width: 2560,
+          height: 1440,
+        );
+        final resolver = DisplayResolver(
+          getMouseDisplay: () async => null,
+          getActiveWindowDisplay: () async => null,
+          getPrimaryDisplay: () async => primaryDisplay,
+        );
 
-      final result = await resolver.resolve(ShowOnScreen.activeWindow);
-      expect(result, same(primaryDisplay));
-    });
+        final result = await resolver.resolve(ShowOnScreen.activeWindow);
+        expect(result, same(primaryDisplay));
+      },
+    );
 
     test('falls back to mouse when primaryScreen returns null', () async {
-      final mouseDisplay =
-          DisplayFrame(x: 0, y: 0, width: 1920, height: 1080);
+      final mouseDisplay = DisplayFrame(x: 0, y: 0, width: 1920, height: 1080);
       final resolver = DisplayResolver(
         getMouseDisplay: () async => mouseDisplay,
         getActiveWindowDisplay: () async => null,

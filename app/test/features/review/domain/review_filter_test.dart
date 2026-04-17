@@ -52,7 +52,9 @@ void main() {
       });
 
       test('fromJson handles missing boolean keys gracefully', () {
-        final json = jsonEncode({'cefr': ['a1']});
+        final json = jsonEncode({
+          'cefr': ['a1'],
+        });
         final filter = ReviewFilter.fromJson(json);
         expect(filter.cefrLevels, {'a1'});
         expect(filter.ox3000, false);
@@ -62,7 +64,11 @@ void main() {
 
     group('copyWith', () {
       test('overrides specified fields only', () {
-        const original = ReviewFilter(cefrLevels: {'a1'}, ox3000: true, ox5000: false);
+        const original = ReviewFilter(
+          cefrLevels: {'a1'},
+          ox3000: true,
+          ox5000: false,
+        );
         final copied = original.copyWith(ox5000: true);
         expect(copied.cefrLevels, {'a1'});
         expect(copied.ox3000, true);

@@ -2794,6 +2794,678 @@ class VocabularyListEntriesCompanion
   }
 }
 
+class $SpeakingResultsTable extends SpeakingResults
+    with TableInfo<$SpeakingResultsTable, SpeakingResultRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SpeakingResultsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _topicMeta = const VerificationMeta('topic');
+  @override
+  late final GeneratedColumn<String> topic = GeneratedColumn<String>(
+    'topic',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isCustomTopicMeta = const VerificationMeta(
+    'isCustomTopic',
+  );
+  @override
+  late final GeneratedColumn<bool> isCustomTopic = GeneratedColumn<bool>(
+    'is_custom_topic',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_custom_topic" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _transcriptMeta = const VerificationMeta(
+    'transcript',
+  );
+  @override
+  late final GeneratedColumn<String> transcript = GeneratedColumn<String>(
+    'transcript',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _correctionsJsonMeta = const VerificationMeta(
+    'correctionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> correctionsJson = GeneratedColumn<String>(
+    'corrections_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _naturalVersionMeta = const VerificationMeta(
+    'naturalVersion',
+  );
+  @override
+  late final GeneratedColumn<String> naturalVersion = GeneratedColumn<String>(
+    'natural_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _overallNoteMeta = const VerificationMeta(
+    'overallNote',
+  );
+  @override
+  late final GeneratedColumn<String> overallNote = GeneratedColumn<String>(
+    'overall_note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: Constant(DateTime.now().toIso8601String()),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: Constant(DateTime.now().toIso8601String()),
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<int> synced = GeneratedColumn<int>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    topic,
+    isCustomTopic,
+    transcript,
+    correctionsJson,
+    naturalVersion,
+    overallNote,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    synced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'speaking_results';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SpeakingResultRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('topic')) {
+      context.handle(
+        _topicMeta,
+        topic.isAcceptableOrUnknown(data['topic']!, _topicMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_topicMeta);
+    }
+    if (data.containsKey('is_custom_topic')) {
+      context.handle(
+        _isCustomTopicMeta,
+        isCustomTopic.isAcceptableOrUnknown(
+          data['is_custom_topic']!,
+          _isCustomTopicMeta,
+        ),
+      );
+    }
+    if (data.containsKey('transcript')) {
+      context.handle(
+        _transcriptMeta,
+        transcript.isAcceptableOrUnknown(data['transcript']!, _transcriptMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_transcriptMeta);
+    }
+    if (data.containsKey('corrections_json')) {
+      context.handle(
+        _correctionsJsonMeta,
+        correctionsJson.isAcceptableOrUnknown(
+          data['corrections_json']!,
+          _correctionsJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_correctionsJsonMeta);
+    }
+    if (data.containsKey('natural_version')) {
+      context.handle(
+        _naturalVersionMeta,
+        naturalVersion.isAcceptableOrUnknown(
+          data['natural_version']!,
+          _naturalVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_naturalVersionMeta);
+    }
+    if (data.containsKey('overall_note')) {
+      context.handle(
+        _overallNoteMeta,
+        overallNote.isAcceptableOrUnknown(
+          data['overall_note']!,
+          _overallNoteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SpeakingResultRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SpeakingResultRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      topic: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}topic'],
+      )!,
+      isCustomTopic: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_custom_topic'],
+      )!,
+      transcript: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transcript'],
+      )!,
+      correctionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}corrections_json'],
+      )!,
+      naturalVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}natural_version'],
+      )!,
+      overallNote: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}overall_note'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}synced'],
+      )!,
+    );
+  }
+
+  @override
+  $SpeakingResultsTable createAlias(String alias) {
+    return $SpeakingResultsTable(attachedDatabase, alias);
+  }
+}
+
+class SpeakingResultRow extends DataClass
+    implements Insertable<SpeakingResultRow> {
+  final String id;
+  final String topic;
+  final bool isCustomTopic;
+  final String transcript;
+  final String correctionsJson;
+  final String naturalVersion;
+  final String? overallNote;
+  final String createdAt;
+  final String updatedAt;
+  final String? deletedAt;
+  final int synced;
+  const SpeakingResultRow({
+    required this.id,
+    required this.topic,
+    required this.isCustomTopic,
+    required this.transcript,
+    required this.correctionsJson,
+    required this.naturalVersion,
+    this.overallNote,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.synced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['topic'] = Variable<String>(topic);
+    map['is_custom_topic'] = Variable<bool>(isCustomTopic);
+    map['transcript'] = Variable<String>(transcript);
+    map['corrections_json'] = Variable<String>(correctionsJson);
+    map['natural_version'] = Variable<String>(naturalVersion);
+    if (!nullToAbsent || overallNote != null) {
+      map['overall_note'] = Variable<String>(overallNote);
+    }
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    map['synced'] = Variable<int>(synced);
+    return map;
+  }
+
+  SpeakingResultsCompanion toCompanion(bool nullToAbsent) {
+    return SpeakingResultsCompanion(
+      id: Value(id),
+      topic: Value(topic),
+      isCustomTopic: Value(isCustomTopic),
+      transcript: Value(transcript),
+      correctionsJson: Value(correctionsJson),
+      naturalVersion: Value(naturalVersion),
+      overallNote: overallNote == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overallNote),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      synced: Value(synced),
+    );
+  }
+
+  factory SpeakingResultRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SpeakingResultRow(
+      id: serializer.fromJson<String>(json['id']),
+      topic: serializer.fromJson<String>(json['topic']),
+      isCustomTopic: serializer.fromJson<bool>(json['isCustomTopic']),
+      transcript: serializer.fromJson<String>(json['transcript']),
+      correctionsJson: serializer.fromJson<String>(json['correctionsJson']),
+      naturalVersion: serializer.fromJson<String>(json['naturalVersion']),
+      overallNote: serializer.fromJson<String?>(json['overallNote']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      synced: serializer.fromJson<int>(json['synced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'topic': serializer.toJson<String>(topic),
+      'isCustomTopic': serializer.toJson<bool>(isCustomTopic),
+      'transcript': serializer.toJson<String>(transcript),
+      'correctionsJson': serializer.toJson<String>(correctionsJson),
+      'naturalVersion': serializer.toJson<String>(naturalVersion),
+      'overallNote': serializer.toJson<String?>(overallNote),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+      'deletedAt': serializer.toJson<String?>(deletedAt),
+      'synced': serializer.toJson<int>(synced),
+    };
+  }
+
+  SpeakingResultRow copyWith({
+    String? id,
+    String? topic,
+    bool? isCustomTopic,
+    String? transcript,
+    String? correctionsJson,
+    String? naturalVersion,
+    Value<String?> overallNote = const Value.absent(),
+    String? createdAt,
+    String? updatedAt,
+    Value<String?> deletedAt = const Value.absent(),
+    int? synced,
+  }) => SpeakingResultRow(
+    id: id ?? this.id,
+    topic: topic ?? this.topic,
+    isCustomTopic: isCustomTopic ?? this.isCustomTopic,
+    transcript: transcript ?? this.transcript,
+    correctionsJson: correctionsJson ?? this.correctionsJson,
+    naturalVersion: naturalVersion ?? this.naturalVersion,
+    overallNote: overallNote.present ? overallNote.value : this.overallNote,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    synced: synced ?? this.synced,
+  );
+  SpeakingResultRow copyWithCompanion(SpeakingResultsCompanion data) {
+    return SpeakingResultRow(
+      id: data.id.present ? data.id.value : this.id,
+      topic: data.topic.present ? data.topic.value : this.topic,
+      isCustomTopic: data.isCustomTopic.present
+          ? data.isCustomTopic.value
+          : this.isCustomTopic,
+      transcript: data.transcript.present
+          ? data.transcript.value
+          : this.transcript,
+      correctionsJson: data.correctionsJson.present
+          ? data.correctionsJson.value
+          : this.correctionsJson,
+      naturalVersion: data.naturalVersion.present
+          ? data.naturalVersion.value
+          : this.naturalVersion,
+      overallNote: data.overallNote.present
+          ? data.overallNote.value
+          : this.overallNote,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      synced: data.synced.present ? data.synced.value : this.synced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpeakingResultRow(')
+          ..write('id: $id, ')
+          ..write('topic: $topic, ')
+          ..write('isCustomTopic: $isCustomTopic, ')
+          ..write('transcript: $transcript, ')
+          ..write('correctionsJson: $correctionsJson, ')
+          ..write('naturalVersion: $naturalVersion, ')
+          ..write('overallNote: $overallNote, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('synced: $synced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    topic,
+    isCustomTopic,
+    transcript,
+    correctionsJson,
+    naturalVersion,
+    overallNote,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    synced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SpeakingResultRow &&
+          other.id == this.id &&
+          other.topic == this.topic &&
+          other.isCustomTopic == this.isCustomTopic &&
+          other.transcript == this.transcript &&
+          other.correctionsJson == this.correctionsJson &&
+          other.naturalVersion == this.naturalVersion &&
+          other.overallNote == this.overallNote &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.synced == this.synced);
+}
+
+class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
+  final Value<String> id;
+  final Value<String> topic;
+  final Value<bool> isCustomTopic;
+  final Value<String> transcript;
+  final Value<String> correctionsJson;
+  final Value<String> naturalVersion;
+  final Value<String?> overallNote;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<String?> deletedAt;
+  final Value<int> synced;
+  final Value<int> rowid;
+  const SpeakingResultsCompanion({
+    this.id = const Value.absent(),
+    this.topic = const Value.absent(),
+    this.isCustomTopic = const Value.absent(),
+    this.transcript = const Value.absent(),
+    this.correctionsJson = const Value.absent(),
+    this.naturalVersion = const Value.absent(),
+    this.overallNote = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SpeakingResultsCompanion.insert({
+    required String id,
+    required String topic,
+    this.isCustomTopic = const Value.absent(),
+    required String transcript,
+    required String correctionsJson,
+    required String naturalVersion,
+    this.overallNote = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       topic = Value(topic),
+       transcript = Value(transcript),
+       correctionsJson = Value(correctionsJson),
+       naturalVersion = Value(naturalVersion);
+  static Insertable<SpeakingResultRow> custom({
+    Expression<String>? id,
+    Expression<String>? topic,
+    Expression<bool>? isCustomTopic,
+    Expression<String>? transcript,
+    Expression<String>? correctionsJson,
+    Expression<String>? naturalVersion,
+    Expression<String>? overallNote,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<String>? deletedAt,
+    Expression<int>? synced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (topic != null) 'topic': topic,
+      if (isCustomTopic != null) 'is_custom_topic': isCustomTopic,
+      if (transcript != null) 'transcript': transcript,
+      if (correctionsJson != null) 'corrections_json': correctionsJson,
+      if (naturalVersion != null) 'natural_version': naturalVersion,
+      if (overallNote != null) 'overall_note': overallNote,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (synced != null) 'synced': synced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SpeakingResultsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? topic,
+    Value<bool>? isCustomTopic,
+    Value<String>? transcript,
+    Value<String>? correctionsJson,
+    Value<String>? naturalVersion,
+    Value<String?>? overallNote,
+    Value<String>? createdAt,
+    Value<String>? updatedAt,
+    Value<String?>? deletedAt,
+    Value<int>? synced,
+    Value<int>? rowid,
+  }) {
+    return SpeakingResultsCompanion(
+      id: id ?? this.id,
+      topic: topic ?? this.topic,
+      isCustomTopic: isCustomTopic ?? this.isCustomTopic,
+      transcript: transcript ?? this.transcript,
+      correctionsJson: correctionsJson ?? this.correctionsJson,
+      naturalVersion: naturalVersion ?? this.naturalVersion,
+      overallNote: overallNote ?? this.overallNote,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      synced: synced ?? this.synced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (topic.present) {
+      map['topic'] = Variable<String>(topic.value);
+    }
+    if (isCustomTopic.present) {
+      map['is_custom_topic'] = Variable<bool>(isCustomTopic.value);
+    }
+    if (transcript.present) {
+      map['transcript'] = Variable<String>(transcript.value);
+    }
+    if (correctionsJson.present) {
+      map['corrections_json'] = Variable<String>(correctionsJson.value);
+    }
+    if (naturalVersion.present) {
+      map['natural_version'] = Variable<String>(naturalVersion.value);
+    }
+    if (overallNote.present) {
+      map['overall_note'] = Variable<String>(overallNote.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<String>(deletedAt.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<int>(synced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SpeakingResultsCompanion(')
+          ..write('id: $id, ')
+          ..write('topic: $topic, ')
+          ..write('isCustomTopic: $isCustomTopic, ')
+          ..write('transcript: $transcript, ')
+          ..write('correctionsJson: $correctionsJson, ')
+          ..write('naturalVersion: $naturalVersion, ')
+          ..write('overallNote: $overallNote, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('synced: $synced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SearchHistoryTable extends SearchHistory
     with TableInfo<$SearchHistoryTable, SearchHistoryData> {
   @override
@@ -3806,6 +4478,9 @@ abstract class _$UserDatabase extends GeneratedDatabase {
   );
   late final $VocabularyListEntriesTable vocabularyListEntries =
       $VocabularyListEntriesTable(this);
+  late final $SpeakingResultsTable speakingResults = $SpeakingResultsTable(
+    this,
+  );
   late final $SearchHistoryTable searchHistory = $SearchHistoryTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
   late final $SyncMetaTable syncMeta = $SyncMetaTable(this);
@@ -3818,6 +4493,7 @@ abstract class _$UserDatabase extends GeneratedDatabase {
     reviewLogs,
     vocabularyLists,
     vocabularyListEntries,
+    speakingResults,
     searchHistory,
     settings,
     syncMeta,
@@ -5198,6 +5874,340 @@ typedef $$VocabularyListEntriesTableProcessedTableManager =
       VocabularyListEntry,
       PrefetchHooks Function()
     >;
+typedef $$SpeakingResultsTableCreateCompanionBuilder =
+    SpeakingResultsCompanion Function({
+      required String id,
+      required String topic,
+      Value<bool> isCustomTopic,
+      required String transcript,
+      required String correctionsJson,
+      required String naturalVersion,
+      Value<String?> overallNote,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<String?> deletedAt,
+      Value<int> synced,
+      Value<int> rowid,
+    });
+typedef $$SpeakingResultsTableUpdateCompanionBuilder =
+    SpeakingResultsCompanion Function({
+      Value<String> id,
+      Value<String> topic,
+      Value<bool> isCustomTopic,
+      Value<String> transcript,
+      Value<String> correctionsJson,
+      Value<String> naturalVersion,
+      Value<String?> overallNote,
+      Value<String> createdAt,
+      Value<String> updatedAt,
+      Value<String?> deletedAt,
+      Value<int> synced,
+      Value<int> rowid,
+    });
+
+class $$SpeakingResultsTableFilterComposer
+    extends Composer<_$UserDatabase, $SpeakingResultsTable> {
+  $$SpeakingResultsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get topic => $composableBuilder(
+    column: $table.topic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCustomTopic => $composableBuilder(
+    column: $table.isCustomTopic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transcript => $composableBuilder(
+    column: $table.transcript,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get correctionsJson => $composableBuilder(
+    column: $table.correctionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get naturalVersion => $composableBuilder(
+    column: $table.naturalVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get overallNote => $composableBuilder(
+    column: $table.overallNote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SpeakingResultsTableOrderingComposer
+    extends Composer<_$UserDatabase, $SpeakingResultsTable> {
+  $$SpeakingResultsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get topic => $composableBuilder(
+    column: $table.topic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCustomTopic => $composableBuilder(
+    column: $table.isCustomTopic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transcript => $composableBuilder(
+    column: $table.transcript,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get correctionsJson => $composableBuilder(
+    column: $table.correctionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get naturalVersion => $composableBuilder(
+    column: $table.naturalVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get overallNote => $composableBuilder(
+    column: $table.overallNote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SpeakingResultsTableAnnotationComposer
+    extends Composer<_$UserDatabase, $SpeakingResultsTable> {
+  $$SpeakingResultsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get topic =>
+      $composableBuilder(column: $table.topic, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCustomTopic => $composableBuilder(
+    column: $table.isCustomTopic,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get transcript => $composableBuilder(
+    column: $table.transcript,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get correctionsJson => $composableBuilder(
+    column: $table.correctionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get naturalVersion => $composableBuilder(
+    column: $table.naturalVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get overallNote => $composableBuilder(
+    column: $table.overallNote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+}
+
+class $$SpeakingResultsTableTableManager
+    extends
+        RootTableManager<
+          _$UserDatabase,
+          $SpeakingResultsTable,
+          SpeakingResultRow,
+          $$SpeakingResultsTableFilterComposer,
+          $$SpeakingResultsTableOrderingComposer,
+          $$SpeakingResultsTableAnnotationComposer,
+          $$SpeakingResultsTableCreateCompanionBuilder,
+          $$SpeakingResultsTableUpdateCompanionBuilder,
+          (
+            SpeakingResultRow,
+            BaseReferences<
+              _$UserDatabase,
+              $SpeakingResultsTable,
+              SpeakingResultRow
+            >,
+          ),
+          SpeakingResultRow,
+          PrefetchHooks Function()
+        > {
+  $$SpeakingResultsTableTableManager(
+    _$UserDatabase db,
+    $SpeakingResultsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SpeakingResultsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SpeakingResultsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SpeakingResultsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> topic = const Value.absent(),
+                Value<bool> isCustomTopic = const Value.absent(),
+                Value<String> transcript = const Value.absent(),
+                Value<String> correctionsJson = const Value.absent(),
+                Value<String> naturalVersion = const Value.absent(),
+                Value<String?> overallNote = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<String?> deletedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SpeakingResultsCompanion(
+                id: id,
+                topic: topic,
+                isCustomTopic: isCustomTopic,
+                transcript: transcript,
+                correctionsJson: correctionsJson,
+                naturalVersion: naturalVersion,
+                overallNote: overallNote,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                synced: synced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String topic,
+                Value<bool> isCustomTopic = const Value.absent(),
+                required String transcript,
+                required String correctionsJson,
+                required String naturalVersion,
+                Value<String?> overallNote = const Value.absent(),
+                Value<String> createdAt = const Value.absent(),
+                Value<String> updatedAt = const Value.absent(),
+                Value<String?> deletedAt = const Value.absent(),
+                Value<int> synced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SpeakingResultsCompanion.insert(
+                id: id,
+                topic: topic,
+                isCustomTopic: isCustomTopic,
+                transcript: transcript,
+                correctionsJson: correctionsJson,
+                naturalVersion: naturalVersion,
+                overallNote: overallNote,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                synced: synced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SpeakingResultsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$UserDatabase,
+      $SpeakingResultsTable,
+      SpeakingResultRow,
+      $$SpeakingResultsTableFilterComposer,
+      $$SpeakingResultsTableOrderingComposer,
+      $$SpeakingResultsTableAnnotationComposer,
+      $$SpeakingResultsTableCreateCompanionBuilder,
+      $$SpeakingResultsTableUpdateCompanionBuilder,
+      (
+        SpeakingResultRow,
+        BaseReferences<
+          _$UserDatabase,
+          $SpeakingResultsTable,
+          SpeakingResultRow
+        >,
+      ),
+      SpeakingResultRow,
+      PrefetchHooks Function()
+    >;
 typedef $$SearchHistoryTableCreateCompanionBuilder =
     SearchHistoryCompanion Function({
       Value<int> id,
@@ -5777,6 +6787,8 @@ class $UserDatabaseManager {
       $$VocabularyListsTableTableManager(_db, _db.vocabularyLists);
   $$VocabularyListEntriesTableTableManager get vocabularyListEntries =>
       $$VocabularyListEntriesTableTableManager(_db, _db.vocabularyListEntries);
+  $$SpeakingResultsTableTableManager get speakingResults =>
+      $$SpeakingResultsTableTableManager(_db, _db.speakingResults);
   $$SearchHistoryTableTableManager get searchHistory =>
       $$SearchHistoryTableTableManager(_db, _db.searchHistory);
   $$SettingsTableTableManager get settings =>

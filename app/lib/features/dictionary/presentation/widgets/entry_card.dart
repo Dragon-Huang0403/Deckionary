@@ -128,30 +128,30 @@ class _MyWordsButton extends ConsumerWidget {
       onTap: () => _toggle(ref, isAdded),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isAdded ? Icons.bookmark : Icons.bookmark_outline,
-                size: 16,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isAdded ? Icons.bookmark : Icons.bookmark_outline,
+              size: 16,
+              color: isAdded
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isAdded ? 'In My Words' : 'My Words',
+              style: TextStyle(
+                fontSize: 12,
                 color: isAdded
                     ? Theme.of(context).colorScheme.primary
                     : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(width: 4),
-              Text(
-                isAdded ? 'In My Words' : 'My Words',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isAdded
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   Future<void> _toggle(WidgetRef ref, bool isAdded) async {

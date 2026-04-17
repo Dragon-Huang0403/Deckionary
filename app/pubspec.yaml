@@ -25,6 +25,7 @@ dependencies:
 
   # Audio
   just_audio: any
+  record: any
 
   # FSRS spaced repetition
   fsrs: any
@@ -50,6 +51,7 @@ dependencies:
   connectivity_plus: ">=6.0.0 <7.1.0" # 7.1.x requires macOS 26 SDK (Xcode 26+)
   path_provider: any
   collection: any
+  crypto: any
 
   # Logging & monitoring
   talker_flutter: any

@@ -132,10 +132,12 @@ void main() {
       await dao.addSearch('target');
       final before = await dao.getRecent();
       await dao.deleteById(before.first.id);
-      final rows = await db.customSelect(
-        'SELECT synced, deleted_at FROM search_history WHERE id = ?',
-        variables: [Variable.withInt(before.first.id)],
-      ).get();
+      final rows = await db
+          .customSelect(
+            'SELECT synced, deleted_at FROM search_history WHERE id = ?',
+            variables: [Variable.withInt(before.first.id)],
+          )
+          .get();
       expect(rows.first.data['synced'], 0);
       expect(rows.first.data['deleted_at'], isNotNull);
     });
@@ -154,10 +156,12 @@ void main() {
       await dao.addSearch('run', headword: 'run', pos: 'verb');
       final before = await dao.getRecent();
       await dao.deleteByHeadwordAndPos('run', 'verb');
-      final rows = await db.customSelect(
-        'SELECT synced, deleted_at FROM search_history WHERE id = ?',
-        variables: [Variable.withInt(before.first.id)],
-      ).get();
+      final rows = await db
+          .customSelect(
+            'SELECT synced, deleted_at FROM search_history WHERE id = ?',
+            variables: [Variable.withInt(before.first.id)],
+          )
+          .get();
       expect(rows.first.data['synced'], 0);
       expect(rows.first.data['deleted_at'], isNotNull);
     });
@@ -175,9 +179,9 @@ void main() {
       await dao.addSearch('word1');
       await dao.addSearch('word2');
       await dao.clearAll();
-      final rows = await db.customSelect(
-        'SELECT synced, deleted_at FROM search_history',
-      ).get();
+      final rows = await db
+          .customSelect('SELECT synced, deleted_at FROM search_history')
+          .get();
       for (final row in rows) {
         expect(row.data['synced'], 0);
         expect(row.data['deleted_at'], isNotNull);

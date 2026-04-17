@@ -66,28 +66,19 @@ void main() {
     test('"tables" finds "table" via -s strip', () async {
       final results = await db.fuzzyLookup('tables');
       expect(results, isNotEmpty);
-      expect(
-        results.any((r) => (r['headword'] as String) == 'table'),
-        isTrue,
-      );
+      expect(results.any((r) => (r['headword'] as String) == 'table'), isTrue);
     });
 
     test('"carries" finds "carry" via -ies -> -y', () async {
       final results = await db.fuzzyLookup('carries');
       expect(results, isNotEmpty);
-      expect(
-        results.any((r) => (r['headword'] as String) == 'carry'),
-        isTrue,
-      );
+      expect(results.any((r) => (r['headword'] as String) == 'carry'), isTrue);
     });
 
     test('"danced" finds "dance" via -ed -> -e', () async {
       final results = await db.fuzzyLookup('danced');
       expect(results, isNotEmpty);
-      expect(
-        results.any((r) => (r['headword'] as String) == 'dance'),
-        isTrue,
-      );
+      expect(results.any((r) => (r['headword'] as String) == 'dance'), isTrue);
     });
 
     test('returns exact match if word is itself a headword', () async {
@@ -358,8 +349,7 @@ void main() {
       expect(
         headwords.contains('hello') || headwords.contains('hi'),
         isTrue,
-        reason:
-            'FTS for "greeting" should find words defined with "greeting"',
+        reason: 'FTS for "greeting" should find words defined with "greeting"',
       );
     });
 
@@ -409,8 +399,11 @@ void main() {
       final ftsResults = results.where(
         (r) => r.source != SearchMatchSource.headword,
       );
-      expect(ftsResults, isNotEmpty,
-          reason: 'Should append FTS results for definition matches');
+      expect(
+        ftsResults,
+        isNotEmpty,
+        reason: 'Should append FTS results for definition matches',
+      );
     });
 
     test('variant spelling resolves via pipeline', () async {
@@ -439,30 +432,40 @@ void main() {
   // ── 8. searchEntries — base form appended ──────────────────────────────
 
   group('searchEntries — base form appended', () {
-    test('inflected headword shows exact match first, then base form',
-        () async {
-      // "running" is a headword AND suffix-strips to "run"
-      final results = await searchEntries(db, 'running');
-      expect(results, isNotEmpty);
+    test(
+      'inflected headword shows exact match first, then base form',
+      () async {
+        // "running" is a headword AND suffix-strips to "run"
+        final results = await searchEntries(db, 'running');
+        expect(results, isNotEmpty);
 
-      final headwords = results
-          .where((r) => r.source == SearchMatchSource.headword)
-          .map((r) => r.entry.headword)
-          .toList();
-      expect(headwords.first, 'running',
-          reason: 'Exact match should come first');
-      expect(headwords.contains('run'), isTrue,
-          reason: 'Base form "run" should be appended');
-    });
+        final headwords = results
+            .where((r) => r.source == SearchMatchSource.headword)
+            .map((r) => r.entry.headword)
+            .toList();
+        expect(
+          headwords.first,
+          'running',
+          reason: 'Exact match should come first',
+        );
+        expect(
+          headwords.contains('run'),
+          isTrue,
+          reason: 'Base form "run" should be appended',
+        );
+      },
+    );
 
     test('non-headword inflection shows base form', () async {
       // "evolving" is NOT a headword -> suffix strip finds "evolve"
       final results = await searchEntries(db, 'evolving');
       expect(results, isNotEmpty);
       expect(
-        results.any((r) =>
-            r.entry.headword == 'evolve' &&
-            r.source == SearchMatchSource.headword),
+        results.any(
+          (r) =>
+              r.entry.headword == 'evolve' &&
+              r.source == SearchMatchSource.headword,
+        ),
         isTrue,
         reason: '"evolving" should resolve to "evolve" via suffix stripping',
       );
@@ -477,10 +480,16 @@ void main() {
           .where((r) => r.source == SearchMatchSource.headword)
           .map((r) => r.entry.headword)
           .toList();
-      expect(headwords.first, 'development',
-          reason: 'Exact match should come first');
-      expect(headwords.contains('develop'), isTrue,
-          reason: 'Base form "develop" should be appended');
+      expect(
+        headwords.first,
+        'development',
+        reason: 'Exact match should come first',
+      );
+      expect(
+        headwords.contains('develop'),
+        isTrue,
+        reason: 'Base form "develop" should be appended',
+      );
     });
 
     test('base form with no suffix match shows only itself', () async {

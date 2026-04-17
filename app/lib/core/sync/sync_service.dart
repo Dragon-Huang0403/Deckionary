@@ -3,6 +3,7 @@ import '../database/app_database.dart';
 import 'search_history_sync.dart';
 import 'review_sync.dart';
 import 'settings_sync.dart';
+import 'speaking_sync.dart';
 import 'table_sync.dart';
 import 'vocabulary_list_sync.dart';
 
@@ -13,6 +14,7 @@ class SyncService {
   final ReviewSync _reviewSync;
   final SettingsSync _settingsSync;
   final VocabularyListSync _vocabularyListSync;
+  final SpeakingSync _speakingSync;
 
   factory SyncService({
     required UserDatabase db,
@@ -51,6 +53,12 @@ class SyncService {
         getUserId: getUserId,
         tableSync: tableSync,
       ),
+      speakingSync: SpeakingSync(
+        db: db,
+        supabase: supabase,
+        getUserId: getUserId,
+        tableSync: tableSync,
+      ),
     );
   }
 
@@ -61,12 +69,14 @@ class SyncService {
     required ReviewSync reviewSync,
     required SettingsSync settingsSync,
     required VocabularyListSync vocabularyListSync,
+    required SpeakingSync speakingSync,
   }) : _db = db,
        _tableSync = tableSync,
        _searchHistorySync = searchHistorySync,
        _reviewSync = reviewSync,
        _settingsSync = settingsSync,
-       _vocabularyListSync = vocabularyListSync;
+       _vocabularyListSync = vocabularyListSync,
+       _speakingSync = speakingSync;
 
   // ── Search History ──────────────────────────────────────────────────────
 
@@ -104,6 +114,10 @@ class SyncService {
 
   Future<void> syncVocabularyData() => _vocabularyListSync.syncVocabularyData();
 
+  // ── Speaking ────────────────────────────────────────────────────────────
+
+  Future<void> syncSpeakingData() => _speakingSync.syncSpeakingData();
+
   // ── Full Sync & Recovery ────────────────────────────────────────────────
 
   /// Clear all watermarks and re-sync everything from scratch.
@@ -114,6 +128,7 @@ class SyncService {
     await _reviewSync.syncReviewData();
     await _searchHistorySync.syncSearchHistory();
     await _vocabularyListSync.syncVocabularyData();
+    await _speakingSync.syncSpeakingData();
   }
 
   /// Auto-clear watermarks on first run after a sync bug fix.
@@ -150,5 +165,6 @@ class SyncService {
     await _searchHistorySync.cleanupSoftDeletes(retentionDays: retentionDays);
     await _reviewSync.cleanupSoftDeletes(retentionDays: retentionDays);
     await _vocabularyListSync.cleanupSoftDeletes(retentionDays: retentionDays);
+    await _speakingSync.cleanupSoftDeletes(retentionDays: retentionDays);
   }
 }

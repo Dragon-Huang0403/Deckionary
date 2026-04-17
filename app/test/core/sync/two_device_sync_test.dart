@@ -392,7 +392,10 @@ void main() {
       return rows.map((r) => r.data).toList();
     }
 
-    Future<String> createLocalList(UserDatabase db, {required String id}) async {
+    Future<String> createLocalList(
+      UserDatabase db, {
+      required String id,
+    }) async {
       final now = DateTime.now().toUtc().toIso8601String();
       await db.customInsert(
         '''INSERT INTO vocabulary_lists (id, name, created_at, updated_at, synced)

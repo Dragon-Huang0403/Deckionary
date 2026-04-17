@@ -17,6 +17,8 @@ import 'features/dictionary/presentation/dictionary_screen.dart';
 import 'features/review/presentation/review_home_screen.dart';
 import 'features/review/providers/review_providers.dart';
 import 'features/settings/presentation/settings_screen.dart';
+import 'features/speaking/presentation/speaking_home_screen.dart';
+import 'main.dart';
 
 export 'app_providers.dart';
 export 'core/hotkey/hotkey_helpers.dart';
@@ -451,6 +453,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
       ref.invalidate(reviewSummaryProvider);
     });
     sync.syncVocabularyData();
+    sync.syncSpeakingData();
     // Pull settings first, then push dirty (was push→pull, now pull→push).
     sync.pullSettings().then((pulled) {
       if (pulled > 0) {
@@ -535,24 +538,34 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
             ? const DictionaryScreen()
             : IndexedStack(
                 index: _currentTab,
-                children: const [DictionaryScreen(), ReviewHomeScreen()],
+                children: [
+                  const DictionaryScreen(),
+                  const ReviewHomeScreen(),
+                  if (syncEnabled) const SpeakingHomeScreen(),
+                ],
               ),
         bottomNavigationBar: ref.watch(isOverlayModeProvider)
             ? null
             : NavigationBar(
                 selectedIndex: _currentTab,
                 onDestinationSelected: (i) => setState(() => _currentTab = i),
-                destinations: const [
-                  NavigationDestination(
+                destinations: [
+                  const NavigationDestination(
                     icon: Icon(Icons.book_outlined),
                     selectedIcon: Icon(Icons.book),
                     label: 'Dictionary',
                   ),
-                  NavigationDestination(
+                  const NavigationDestination(
                     icon: Icon(Icons.school_outlined),
                     selectedIcon: Icon(Icons.school),
                     label: 'Review',
                   ),
+                  if (syncEnabled)
+                    const NavigationDestination(
+                      icon: Icon(Icons.mic_outlined),
+                      selectedIcon: Icon(Icons.mic),
+                      label: 'Speaking',
+                    ),
                 ],
               ),
       ),

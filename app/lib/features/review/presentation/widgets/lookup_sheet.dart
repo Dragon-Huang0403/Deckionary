@@ -83,8 +83,7 @@ class _LookupSheetState extends ConsumerState<LookupSheet> {
             ctrl.clear();
             _focusNode.requestFocus();
           },
-          onSettingsTap: () =>
-              ref.read(openSettingsTrigger.notifier).fire(),
+          onSettingsTap: () => ref.read(openSettingsTrigger.notifier).fire(),
           autofocus: widget.autofocusSearch,
         ),
         // Content

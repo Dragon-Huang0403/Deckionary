@@ -42,7 +42,9 @@ class SettingsSync {
       });
       await _removeDirtySetting(key);
     } catch (e) {
-      globalTalker.error('[Sync] Push setting "$key" failed, marking dirty: $e');
+      globalTalker.error(
+        '[Sync] Push setting "$key" failed, marking dirty: $e',
+      );
       await _addDirtySetting(key);
     }
   }

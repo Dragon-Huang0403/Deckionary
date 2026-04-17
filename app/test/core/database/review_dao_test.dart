@@ -30,7 +30,10 @@ void main() {
 
   group('getDueCards', () {
     test('returns card with past due date', () async {
-      final pastDue = DateTime.now().toUtc().subtract(const Duration(hours: 1)).toIso8601String();
+      final pastDue = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: pastDue);
 
       final cards = await dao.getDueCards();
@@ -39,7 +42,10 @@ void main() {
     });
 
     test('does not return card with future due date', () async {
-      final futureDue = DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String();
+      final futureDue = DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 1))
+          .toIso8601String();
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: futureDue);
 
       final cards = await dao.getDueCards();
@@ -47,13 +53,18 @@ void main() {
     });
 
     test('excludes soft-deleted cards', () async {
-      final pastDue = DateTime.now().toUtc().subtract(const Duration(hours: 1)).toIso8601String();
+      final pastDue = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: pastDue);
 
       // Soft-delete the card
       await userDb.customUpdate(
         "UPDATE review_cards SET deleted_at = ? WHERE id = 'c1'",
-        variables: [Variable.withString(DateTime.now().toUtc().toIso8601String())],
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ],
         updates: {userDb.reviewCards},
       );
 
@@ -62,7 +73,10 @@ void main() {
     });
 
     test('respects limit parameter', () async {
-      final pastDue = DateTime.now().toUtc().subtract(const Duration(hours: 1)).toIso8601String();
+      final pastDue = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: pastDue);
       await insertReviewCard(userDb, id: 'c2', entryId: 2, due: pastDue);
       await insertReviewCard(userDb, id: 'c3', entryId: 3, due: pastDue);
@@ -72,9 +86,18 @@ void main() {
     });
 
     test('orders by due date ascending', () async {
-      final earliest = DateTime.now().toUtc().subtract(const Duration(hours: 3)).toIso8601String();
-      final middle = DateTime.now().toUtc().subtract(const Duration(hours: 2)).toIso8601String();
-      final latest = DateTime.now().toUtc().subtract(const Duration(hours: 1)).toIso8601String();
+      final earliest = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 3))
+          .toIso8601String();
+      final middle = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 2))
+          .toIso8601String();
+      final latest = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
 
       // Insert in non-ascending order
       await insertReviewCard(userDb, id: 'c3', entryId: 3, due: latest);
@@ -94,7 +117,13 @@ void main() {
   group('getCardByEntryId', () {
     test('returns card when it exists', () async {
       final due = DateTime.now().toUtc().toIso8601String();
-      await insertReviewCard(userDb, id: 'c1', entryId: 42, headword: 'apple', due: due);
+      await insertReviewCard(
+        userDb,
+        id: 'c1',
+        entryId: 42,
+        headword: 'apple',
+        due: due,
+      );
 
       final card = await dao.getCardByEntryId(42);
       expect(card, isNotNull);
@@ -113,7 +142,9 @@ void main() {
 
       await userDb.customUpdate(
         "UPDATE review_cards SET deleted_at = ? WHERE id = 'c1'",
-        variables: [Variable.withString(DateTime.now().toUtc().toIso8601String())],
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ],
         updates: {userDb.reviewCards},
       );
 
@@ -145,7 +176,9 @@ void main() {
 
       await userDb.customUpdate(
         "UPDATE review_cards SET deleted_at = ? WHERE id = 'c2'",
-        variables: [Variable.withString(DateTime.now().toUtc().toIso8601String())],
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ],
         updates: {userDb.reviewCards},
       );
 
@@ -159,8 +192,14 @@ void main() {
     });
 
     test('counts only cards due now or past', () async {
-      final pastDue = DateTime.now().toUtc().subtract(const Duration(hours: 1)).toIso8601String();
-      final futureDue = DateTime.now().toUtc().add(const Duration(hours: 1)).toIso8601String();
+      final pastDue = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
+      final futureDue = DateTime.now()
+          .toUtc()
+          .add(const Duration(hours: 1))
+          .toIso8601String();
 
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: pastDue);
       await insertReviewCard(userDb, id: 'c2', entryId: 2, due: futureDue);
@@ -169,12 +208,17 @@ void main() {
     });
 
     test('excludes soft-deleted cards from due count', () async {
-      final pastDue = DateTime.now().toUtc().subtract(const Duration(hours: 1)).toIso8601String();
+      final pastDue = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(hours: 1))
+          .toIso8601String();
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: pastDue);
 
       await userDb.customUpdate(
         "UPDATE review_cards SET deleted_at = ? WHERE id = 'c1'",
-        variables: [Variable.withString(DateTime.now().toUtc().toIso8601String())],
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ],
         updates: {userDb.reviewCards},
       );
 
@@ -195,20 +239,38 @@ void main() {
 
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: due);
       await insertReviewCard(userDb, id: 'c2', entryId: 2, due: due);
-      await insertReviewLog(userDb, id: 'l1', cardId: 'c1', reviewedAt: todayReview);
-      await insertReviewLog(userDb, id: 'l2', cardId: 'c2', reviewedAt: todayReview);
+      await insertReviewLog(
+        userDb,
+        id: 'l1',
+        cardId: 'c1',
+        reviewedAt: todayReview,
+      );
+      await insertReviewLog(
+        userDb,
+        id: 'l2',
+        cardId: 'c2',
+        reviewedAt: todayReview,
+      );
 
       expect(await dao.countNewLearnedToday(), 2);
     });
 
     test('does not count cards whose first review was before today', () async {
       final due = DateTime.now().toUtc().toIso8601String();
-      final yesterday = DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String();
+      final yesterday = DateTime.now()
+          .toUtc()
+          .subtract(const Duration(days: 1))
+          .toIso8601String();
       final today = DateTime.now().toUtc().toIso8601String();
 
       await insertReviewCard(userDb, id: 'c1', entryId: 1, due: due);
       // Card first reviewed yesterday, then reviewed again today — not "new" today
-      await insertReviewLog(userDb, id: 'l1', cardId: 'c1', reviewedAt: yesterday);
+      await insertReviewLog(
+        userDb,
+        id: 'l1',
+        cardId: 'c1',
+        reviewedAt: yesterday,
+      );
       await insertReviewLog(userDb, id: 'l2', cardId: 'c1', reviewedAt: today);
 
       expect(await dao.countNewLearnedToday(), 0);
@@ -245,9 +307,11 @@ void main() {
       await dao.clearAllProgress();
 
       final rows = await userDb
-          .customSelect('SELECT synced FROM review_cards WHERE id = ?',
-              variables: [Variable.withString('c1')],
-              readsFrom: {userDb.reviewCards})
+          .customSelect(
+            'SELECT synced FROM review_cards WHERE id = ?',
+            variables: [Variable.withString('c1')],
+            readsFrom: {userDb.reviewCards},
+          )
           .get();
       expect(rows.first.data['synced'], 0);
     });
@@ -260,9 +324,11 @@ void main() {
       await dao.clearAllProgress();
 
       final rows = await userDb
-          .customSelect('SELECT synced FROM review_logs WHERE id = ?',
-              variables: [Variable.withString('l1')],
-              readsFrom: {userDb.reviewLogs})
+          .customSelect(
+            'SELECT synced FROM review_logs WHERE id = ?',
+            variables: [Variable.withString('l1')],
+            readsFrom: {userDb.reviewLogs},
+          )
           .get();
       expect(rows.first.data['synced'], 0);
     });
@@ -290,7 +356,9 @@ void main() {
 
       await userDb.customUpdate(
         "UPDATE review_cards SET deleted_at = ? WHERE id = 'c1'",
-        variables: [Variable.withString(DateTime.now().toUtc().toIso8601String())],
+        variables: [
+          Variable.withString(DateTime.now().toUtc().toIso8601String()),
+        ],
         updates: {userDb.reviewCards},
       );
 

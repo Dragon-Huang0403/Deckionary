@@ -130,6 +130,7 @@ class SettingsDao {
       _ => raw ?? 'oldest',
     };
   }
+
   Future<void> setMyWordsOrder(String order) => set('my_words_order', order);
 
   // ── New cards queue persistence ─────────────────────────────────────────

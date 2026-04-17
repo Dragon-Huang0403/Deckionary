@@ -35,25 +35,22 @@ void main() async {
       supabaseClient: syncEnabled ? Supabase.instance.client : null,
     );
   } catch (e) {
-    runApp(MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: Center(child: Text('Failed to start: $e')),
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(body: Center(child: Text('Failed to start: $e'))),
       ),
-    ));
+    );
     return;
   }
 
   if (sentryDsn.isNotEmpty) {
-    await SentryFlutter.init(
-      (options) {
-        options.dsn = sentryDsn;
-        options.environment = sentryEnvironment;
-        options.release = 'deckionary@$appVersion';
-        options.dist = appBuildNumber.toString();
-      },
-      appRunner: () => _runApp(),
-    );
+    await SentryFlutter.init((options) {
+      options.dsn = sentryDsn;
+      options.environment = sentryEnvironment;
+      options.release = 'deckionary@$appVersion';
+      options.dist = appBuildNumber.toString();
+    }, appRunner: () => _runApp());
   } else {
     _runApp();
   }
@@ -78,8 +75,10 @@ Future<void> _initSyncServices() async {
 }
 
 void _runApp() {
-  runApp(ProviderScope(
-    observers: [TalkerRiverpodObserver(talker: globalTalker)],
-    child: const DeckionaryApp(),
-  ));
+  runApp(
+    ProviderScope(
+      observers: [TalkerRiverpodObserver(talker: globalTalker)],
+      child: const DeckionaryApp(),
+    ),
+  );
 }

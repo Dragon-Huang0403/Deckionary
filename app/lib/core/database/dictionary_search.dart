@@ -204,17 +204,22 @@ extension DictionarySearch on DictionaryDatabase {
       }
 
       // base+"e": ed/ing/er/or/est/ly/able (evolving→evolve, advisor→advise)
-      if (const {'ed', 'ing', 'er', 'or', 'est', 'ly', 'able'}
-          .contains(suffix)) {
+      if (const {
+        'ed',
+        'ing',
+        'er',
+        'or',
+        'est',
+        'ly',
+        'able',
+      }.contains(suffix)) {
         results = await lookupWord('${base}e');
         if (results.isNotEmpty) return results;
       }
 
       // i→y: ly/ness/ful (happily→happy, happiness→happy, beautiful→beauty)
-      if (const {'ly', 'ness', 'ful'}.contains(suffix) &&
-          base.endsWith('i')) {
-        results =
-            await lookupWord('${base.substring(0, base.length - 1)}y');
+      if (const {'ly', 'ness', 'ful'}.contains(suffix) && base.endsWith('i')) {
+        results = await lookupWord('${base.substring(0, base.length - 1)}y');
         if (results.isNotEmpty) return results;
       }
 

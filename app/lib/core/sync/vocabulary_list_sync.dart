@@ -63,7 +63,9 @@ class VocabularyListSync {
                 .limit(1);
             if (remote.isNotEmpty) {
               await _mergeAndReplace(
-                  data['id'] as String, remote[0]['id'] as String);
+                data['id'] as String,
+                remote[0]['id'] as String,
+              );
             }
           } catch (mergeErr) {
             globalTalker.error(
@@ -71,9 +73,7 @@ class VocabularyListSync {
             );
           }
         } else {
-          globalTalker.error(
-            '[Sync] Push list "${data['name']}" failed: $e',
-          );
+          globalTalker.error('[Sync] Push list "${data['name']}" failed: $e');
           // Soft-deleted list that can't be pushed — stop retrying.
           if (data['deleted_at'] != null) {
             await _db.customUpdate(
@@ -84,9 +84,7 @@ class VocabularyListSync {
           }
         }
       } catch (e) {
-        globalTalker.error(
-          '[Sync] Push list "${data['name']}" failed: $e',
-        );
+        globalTalker.error('[Sync] Push list "${data['name']}" failed: $e');
       }
     }
     return pushed;
@@ -321,10 +319,7 @@ class VocabularyListSync {
       '''UPDATE vocabulary_list_entries
          SET list_id = ?, synced = 0
          WHERE list_id = ?''',
-      variables: [
-        Variable.withString(remoteId),
-        Variable.withString(localId),
-      ],
+      variables: [Variable.withString(remoteId), Variable.withString(localId)],
       updates: {_db.vocabularyListEntries},
     );
 

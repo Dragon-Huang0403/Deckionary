@@ -8,7 +8,7 @@ class SentryTalkerObserver extends TalkerObserver {
   final LogFlushService? _flushService;
 
   const SentryTalkerObserver({LogFlushService? flushService})
-      : _flushService = flushService;
+    : _flushService = flushService;
 
   bool get _sentryEnabled => sentryDsn.isNotEmpty;
 
@@ -27,10 +27,7 @@ class SentryTalkerObserver extends TalkerObserver {
   @override
   void onException(TalkerException err) {
     if (_sentryEnabled) {
-      Sentry.captureException(
-        err.exception,
-        stackTrace: err.stackTrace,
-      );
+      Sentry.captureException(err.exception, stackTrace: err.stackTrace);
     }
     _flushService?.addError(
       message: err.message ?? err.exception.toString(),
@@ -44,18 +41,17 @@ class SentryTalkerObserver extends TalkerObserver {
     final logLevel = log.logLevel ?? LogLevel.debug;
 
     if (_sentryEnabled) {
-      Sentry.addBreadcrumb(Breadcrumb(
-        message: log.message,
-        level: _mapLevel(logLevel),
-        timestamp: DateTime.now(),
-      ));
+      Sentry.addBreadcrumb(
+        Breadcrumb(
+          message: log.message,
+          level: _mapLevel(logLevel),
+          timestamp: DateTime.now(),
+        ),
+      );
     }
     // Only buffer non-debug logs for Supabase flush
     if (logLevel != LogLevel.debug) {
-      _flushService?.addLog(
-        level: logLevel.name,
-        message: log.message ?? '',
-      );
+      _flushService?.addLog(level: logLevel.name, message: log.message ?? '');
     }
   }
 

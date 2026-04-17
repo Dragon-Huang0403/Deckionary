@@ -21,6 +21,7 @@ part 'app_database.g.dart';
     ReviewLogs,
     VocabularyLists,
     VocabularyListEntries,
+    SpeakingResults,
     SearchHistory,
     Settings,
     SyncMeta,
@@ -31,7 +32,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -79,6 +80,9 @@ class UserDatabase extends _$UserDatabase {
         await customStatement('DROP TABLE IF EXISTS vocabulary_list_entries');
         await m.createTable(vocabularyLists);
         await m.createTable(vocabularyListEntries);
+      }
+      if (from < 9) {
+        await m.createTable(speakingResults);
       }
     },
   );

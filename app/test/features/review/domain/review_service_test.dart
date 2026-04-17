@@ -68,13 +68,17 @@ void main() {
     });
 
     test('stability=0 and difficulty=0 become null for FSRS', () {
-      final fsrsCard = service.toFsrsCard(_makeDbCard(stability: 0, difficulty: 0));
+      final fsrsCard = service.toFsrsCard(
+        _makeDbCard(stability: 0, difficulty: 0),
+      );
       expect(fsrsCard.stability, isNull);
       expect(fsrsCard.difficulty, isNull);
     });
 
     test('non-zero stability/difficulty preserved', () {
-      final fsrsCard = service.toFsrsCard(_makeDbCard(stability: 4.5, difficulty: 6.7));
+      final fsrsCard = service.toFsrsCard(
+        _makeDbCard(stability: 4.5, difficulty: 6.7),
+      );
       expect(fsrsCard.stability, 4.5);
       expect(fsrsCard.difficulty, 6.7);
     });
@@ -97,7 +101,10 @@ void main() {
   group('reviewCard', () {
     test('returns updated card companion with synced=0', () {
       final dbCard = _makeDbCard(id: 'card-1', entryId: 42, headword: 'test');
-      final result = service.reviewCard(dbCard: dbCard, rating: fsrs.Rating.good);
+      final result = service.reviewCard(
+        dbCard: dbCard,
+        rating: fsrs.Rating.good,
+      );
 
       expect(result.card.id.value, 'card-1');
       expect(result.card.entryId.value, 42);
@@ -107,7 +114,10 @@ void main() {
 
     test('log references the card id', () {
       final dbCard = _makeDbCard(id: 'card-1');
-      final result = service.reviewCard(dbCard: dbCard, rating: fsrs.Rating.good);
+      final result = service.reviewCard(
+        dbCard: dbCard,
+        rating: fsrs.Rating.good,
+      );
       expect(result.log.cardId.value, 'card-1');
       expect(result.log.rating.value, fsrs.Rating.good.value);
     });
@@ -115,7 +125,10 @@ void main() {
     test('due date advances after review', () {
       final now = DateTime.now().toUtc();
       final dbCard = _makeDbCard(due: now.toIso8601String());
-      final result = service.reviewCard(dbCard: dbCard, rating: fsrs.Rating.good);
+      final result = service.reviewCard(
+        dbCard: dbCard,
+        rating: fsrs.Rating.good,
+      );
       final newDue = DateTime.parse(result.card.due.value);
       expect(newDue.isAfter(now.subtract(const Duration(seconds: 5))), true);
     });

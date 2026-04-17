@@ -39,20 +39,22 @@ Future<void> insertReviewCard(
   double difficulty = 0,
   String? lastReview,
 }) async {
-  await db.into(db.reviewCards).insert(
-    ReviewCardsCompanion.insert(
-      id: id,
-      entryId: entryId,
-      headword: headword,
-      due: due,
-      pos: Value(pos),
-      stability: Value(stability),
-      difficulty: Value(difficulty),
-      state: Value(state),
-      step: Value(step),
-      lastReview: Value(lastReview),
-    ),
-  );
+  await db
+      .into(db.reviewCards)
+      .insert(
+        ReviewCardsCompanion.insert(
+          id: id,
+          entryId: entryId,
+          headword: headword,
+          due: due,
+          pos: Value(pos),
+          stability: Value(stability),
+          difficulty: Value(difficulty),
+          state: Value(state),
+          step: Value(step),
+          lastReview: Value(lastReview),
+        ),
+      );
 }
 
 /// Inserts a review log directly into the DB for testing.
@@ -62,18 +64,20 @@ Future<void> insertReviewLog(
   required String cardId,
   required String reviewedAt,
 }) async {
-  await db.into(db.reviewLogs).insert(
-    ReviewLogsCompanion.insert(
-      id: id,
-      cardId: cardId,
-      rating: 3,
-      state: 2,
-      due: DateTime.now().toUtc().toIso8601String(),
-      stability: 0,
-      difficulty: 0,
-      elapsedDays: 0,
-      scheduledDays: 0,
-      reviewedAt: Value(reviewedAt),
-    ),
-  );
+  await db
+      .into(db.reviewLogs)
+      .insert(
+        ReviewLogsCompanion.insert(
+          id: id,
+          cardId: cardId,
+          rating: 3,
+          state: 2,
+          due: DateTime.now().toUtc().toIso8601String(),
+          stability: 0,
+          difficulty: 0,
+          elapsedDays: 0,
+          scheduledDays: 0,
+          reviewedAt: Value(reviewedAt),
+        ),
+      );
 }

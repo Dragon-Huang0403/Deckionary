@@ -83,9 +83,27 @@ void main() {
           .toIso8601String();
 
       // Insert in non-ascending order
-      await insertReviewCard(userDb, id: 'c3', entryId: 3, headword: 'cat', due: latest);
-      await insertReviewCard(userDb, id: 'c1', entryId: 1, headword: 'apple', due: earliest);
-      await insertReviewCard(userDb, id: 'c2', entryId: 2, headword: 'ball', due: middle);
+      await insertReviewCard(
+        userDb,
+        id: 'c3',
+        entryId: 3,
+        headword: 'cat',
+        due: latest,
+      );
+      await insertReviewCard(
+        userDb,
+        id: 'c1',
+        entryId: 1,
+        headword: 'apple',
+        due: earliest,
+      );
+      await insertReviewCard(
+        userDb,
+        id: 'c2',
+        entryId: 2,
+        headword: 'ball',
+        due: middle,
+      );
 
       await session.loadQueue(
         filter: const ReviewFilter(), // empty filter — no new cards
@@ -190,12 +208,7 @@ void main() {
       // Create enough review logs today to exhaust the limit
       final now = DateTime.now().toUtc().toIso8601String();
       for (var i = 0; i < 3; i++) {
-        await insertReviewCard(
-          userDb,
-          id: 'c$i',
-          entryId: 90000 + i,
-          due: now,
-        );
+        await insertReviewCard(userDb, id: 'c$i', entryId: 90000 + i, due: now);
         await insertReviewLog(
           userDb,
           id: 'l$i',
@@ -310,30 +323,32 @@ void main() {
   // ── rateCurrentCard new card ──────────────────────────────────────────────
 
   group('rateCurrentCard new card', () {
-    test('rating a new card increments newLearned and persists to DB',
-        () async {
-      await session.loadQueue(
-        filter: defaultFilter,
-        newCardsPerDay: 1,
-        maxReviewsPerDay: 200,
-        cardOrder: 'alphabetical',
-      );
+    test(
+      'rating a new card increments newLearned and persists to DB',
+      () async {
+        await session.loadQueue(
+          filter: defaultFilter,
+          newCardsPerDay: 1,
+          maxReviewsPerDay: 200,
+          cardOrder: 'alphabetical',
+        );
 
-      expect(session.total, greaterThanOrEqualTo(1));
-      final card = session.currentCard!;
-      expect(card.isNew, true);
-      expect(card.dbCard, isNull);
+        expect(session.total, greaterThanOrEqualTo(1));
+        final card = session.currentCard!;
+        expect(card.isNew, true);
+        expect(card.dbCard, isNull);
 
-      await session.rateCurrentCard(fsrs.Rating.good);
+        await session.rateCurrentCard(fsrs.Rating.good);
 
-      expect(session.stats.newLearned, 1);
-      expect(session.stats.reviewed, 1);
+        expect(session.stats.newLearned, 1);
+        expect(session.stats.reviewed, 1);
 
-      // Verify the card was persisted to DB
-      final persisted = await dao.getCardByEntryId(card.entryId);
-      expect(persisted, isNotNull);
-      expect(persisted!.headword, card.headword);
-    });
+        // Verify the card was persisted to DB
+        final persisted = await dao.getCardByEntryId(card.entryId);
+        expect(persisted, isNotNull);
+        expect(persisted!.headword, card.headword);
+      },
+    );
   });
 
   // ── rateCurrentCard again ─────────────────────────────────────────────────

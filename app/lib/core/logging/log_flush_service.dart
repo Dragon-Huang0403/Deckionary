@@ -18,20 +18,18 @@ class LogFlushService with WidgetsBindingObserver {
   static const _flushInterval = Duration(minutes: 30);
 
   /// Production constructor — flushes to Supabase.
-  LogFlushService({
-    required SupabaseClient supabase,
-    required String deviceId,
-  })  : _deviceId = deviceId,
-        _getUserId = (() => supabase.auth.currentUser?.id),
-        _insertBatch = ((batch) => supabase.from('app_logs').insert(batch));
+  LogFlushService({required SupabaseClient supabase, required String deviceId})
+    : _deviceId = deviceId,
+      _getUserId = (() => supabase.auth.currentUser?.id),
+      _insertBatch = ((batch) => supabase.from('app_logs').insert(batch));
 
   /// Test constructor — uses a custom flush callback.
   LogFlushService.forTesting({
     required String deviceId,
     required Future<void> Function(List<Map<String, dynamic>> batch) onFlush,
-  })  : _deviceId = deviceId,
-        _getUserId = (() => null),
-        _insertBatch = onFlush;
+  }) : _deviceId = deviceId,
+       _getUserId = (() => null),
+       _insertBatch = onFlush;
 
   /// Number of buffered entries (exposed for testing).
   int get bufferLength => _buffer.length;
@@ -49,17 +47,15 @@ class LogFlushService with WidgetsBindingObserver {
   }
 
   /// Add an error log entry to the buffer.
-  void addError({
-    required String message,
-    String? error,
-    String? stackTrace,
-  }) {
-    _buffer.add(_makeEntry(
-      level: 'error',
-      message: message,
-      error: error,
-      stackTrace: stackTrace,
-    ));
+  void addError({required String message, String? error, String? stackTrace}) {
+    _buffer.add(
+      _makeEntry(
+        level: 'error',
+        message: message,
+        error: error,
+        stackTrace: stackTrace,
+      ),
+    );
     _flushIfThresholdReached();
   }
 

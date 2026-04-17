@@ -140,3 +140,29 @@ class SyncMeta extends Table {
   @override
   String get tableName => 'sync_meta';
 }
+
+@DataClassName('SpeakingResultRow')
+class SpeakingResults extends Table {
+  TextColumn get id => text()();
+  TextColumn get topic => text()();
+  BoolColumn get isCustomTopic =>
+      boolean().named('is_custom_topic').withDefault(const Constant(false))();
+  TextColumn get transcript => text()();
+  TextColumn get correctionsJson => text().named('corrections_json')();
+  TextColumn get naturalVersion => text().named('natural_version')();
+  TextColumn get overallNote => text().named('overall_note').nullable()();
+  TextColumn get createdAt => text()
+      .named('created_at')
+      .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get updatedAt => text()
+      .named('updated_at')
+      .withDefault(Constant(DateTime.now().toIso8601String()))();
+  TextColumn get deletedAt => text().named('deleted_at').nullable()();
+  IntColumn get synced => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  String get tableName => 'speaking_results';
+}

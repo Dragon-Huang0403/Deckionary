@@ -174,7 +174,9 @@ class AudioDownloadManager {
       // Backoff between retry rounds.
       if (round > 0) {
         final delay = roundDelays[round.clamp(0, roundDelays.length - 1)];
-        globalTalker.info('[AudioDL] waiting ${delay}s before retry round $round');
+        globalTalker.info(
+          '[AudioDL] waiting ${delay}s before retry round $round',
+        );
         await Future.delayed(Duration(seconds: delay));
         if (stale()) return;
       }
@@ -403,7 +405,9 @@ class AudioDownloadManager {
         final tarPath = '$stagingPath/$packName';
 
         if (!File(tarPath).existsSync()) {
-          globalTalker.warning('[AudioDL] $packName: tar file missing, skipping');
+          globalTalker.warning(
+            '[AudioDL] $packName: tar file missing, skipping',
+          );
           _failedThisRound++;
           _pendingTasks--;
           _fireProgress(_failedThisRound);
