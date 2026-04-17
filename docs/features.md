@@ -62,6 +62,8 @@ AI-powered pronunciation practice using Supabase Edge Functions and OpenAI.
 
 **Flow**: user records themselves saying a word or sentence -> audio is sent to `speaking-analyze` edge function -> OpenAI Whisper transcribes and GPT scores pronunciation -> feedback displayed in app.
 
+**Practice loop**: each result screen is a session. Users can **shadow** the natural version (play model audio, record themselves locally, replay to self-compare — shadow audio stays on device) and **Try again** on the same topic. Retries append to an attempt stack rendered newest-first, collapsible, so users can see progress across iterations. Every attempt persists to `speaking_results` with a shared `session_id` and 1-indexed `attempt_number`, so the practice history surfaces "3 attempts" per topic-session and syncs across devices. Done / back ends the session and deletes local shadow files.
+
 **Edge Functions** (`supabase/functions/`):
 - `speaking-analyze` — receives audio, runs Whisper transcription + GPT pronunciation analysis
 - `speaking-tts` — generates reference audio via OpenAI TTS for comparison

@@ -190,3 +190,17 @@ Key architectural decisions in Deckionary and the reasoning behind them.
 - Long files are hard to navigate and review.
 - Widget extraction naturally follows Flutter's composition model.
 - Extensions keep related logic close to the type without bloating the main file (e.g., dictionary search methods as extensions on DictionaryDatabase).
+
+---
+
+## Speaking Sessions Grouped by `session_id`
+
+**Decision**: each practice session generates a UUID `session_id`; every attempt (first try + retries) persists as its own `speaking_results` row carrying that shared id and a 1-indexed `attempt_number`. The history UI groups rows by `session_id` and surfaces "N attempts" per session.
+
+**Why**:
+- Users need to see iteration across a topic — one row per attempt preserves the progress signal.
+- Grouping in the UI keeps the history list uncluttered (one card per session, regardless of attempt count).
+- No schema change beyond two nullable columns; legacy single-attempt rows backfill as `session_id = id`, `attempt_number = 1`.
+- Shadow audio (local imitation recordings) is ephemeral — stored in temp dir, deleted when the session ends, never synced.
+
+**Trade-off**: one DB row per attempt means more rows than the previous "one row per topic" shape. Acceptable because sessions are short (usually ≤ 3 attempts) and the history provider aggregates in memory — no SQL GROUP BY needed.
