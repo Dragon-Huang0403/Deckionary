@@ -1,3 +1,5 @@
+import { encodeBase64 } from "jsr:@std/encoding/base64";
+
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
 const SYSTEM_PROMPT = `You are an English speaking coach. Analyze the user's spoken or written English response to a given topic.
@@ -80,11 +82,7 @@ async function analyzeWithAudio(
   audioBytes: Uint8Array,
   topic: string
 ): Promise<Record<string, unknown>> {
-  const base64Audio = btoa(
-    Array.from(audioBytes)
-      .map((b) => String.fromCharCode(b))
-      .join("")
-  );
+  const base64Audio = encodeBase64(audioBytes);
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
