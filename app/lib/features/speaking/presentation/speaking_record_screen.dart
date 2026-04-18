@@ -32,6 +32,18 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    // Safety net in case the widget is destroyed before PopScope runs
+    // (e.g. platform back button without confirm). Fire-and-forget.
+    _recorder
+        .stop()
+        .then((path) async {
+          if (path != null) {
+            try {
+              await File(path).delete();
+            } catch (_) {}
+          }
+        })
+        .catchError((_) {});
     _recorder.dispose();
     _textController.dispose();
     super.dispose();
@@ -44,6 +56,61 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
     } else {
       await _startRecording();
     }
+  }
+
+  /// Stop recording without analyzing. Deletes the temp WAV.
+  Future<void> _cancelRecording() async {
+    _timer?.cancel();
+    try {
+      final path = await _recorder.stop();
+      if (path != null) {
+        try {
+          await File(path).delete();
+        } catch (_) {}
+      }
+    } catch (_) {}
+    if (mounted) {
+      ref.read(recordingStatusProvider.notifier).set(RecordingStatus.idle);
+    }
+  }
+
+  Future<bool> _confirmStopDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Stop recording?'),
+        content: const Text(
+          'Recording is in progress. Leaving will discard the current recording.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep recording'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Stop & leave'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _handlePopAttempt() async {
+    final status = ref.read(recordingStatusProvider);
+    if (status == RecordingStatus.processing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Analysis in progress — please wait…')),
+      );
+      return;
+    }
+    if (status == RecordingStatus.recording) {
+      final confirmed = await _confirmStopDialog();
+      if (!confirmed) return;
+      await _cancelRecording();
+    }
+    if (mounted) Navigator.of(context).pop();
   }
 
   Future<void> _startRecording() async {
@@ -80,9 +147,31 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
 
     try {
       final audioBytes = await File(path).readAsBytes();
-      await ref
+      final attempt = await ref
           .read(speakingSessionNotifierProvider.notifier)
           .addAttemptFromAudio(audioBytes);
+      // Persist the recording for history replay: move temp -> permanent,
+      // then fire-and-forget upload so the UI isn't blocked on network.
+      final service = ref.read(speakingServiceProvider);
+      if (service != null) {
+        try {
+          await service.attachLocalAudio(attemptId: attempt.id, tempPath: path);
+        } catch (e, st) {
+          globalTalker.handle(e, st, '[Speaking] attach local audio failed');
+        }
+        unawaited(
+          service
+              .uploadAttemptAudio(attemptId: attempt.id, bytes: audioBytes)
+              .catchError((e, st) {
+                globalTalker.handle(
+                  e,
+                  st as StackTrace,
+                  '[Speaking] upload audio failed',
+                );
+                return '';
+              }),
+        );
+      }
       _navigateOnSuccess();
     } catch (e, st) {
       _handleError(e, st);
@@ -140,55 +229,62 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
     final recordingStatus = ref.watch(recordingStatusProvider);
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 72,
-        title: Text(
-          topicLabel,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium,
+    return PopScope<Object?>(
+      canPop: recordingStatus == RecordingStatus.idle,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handlePopAttempt();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          toolbarHeight: 72,
+          title: Text(
+            topicLabel,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: SegmentedButton<InputMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: InputMode.speaking,
-                      label: Text('Speak'),
-                      icon: Icon(Icons.mic),
-                    ),
-                    ButtonSegment(
-                      value: InputMode.typing,
-                      label: Text('Type'),
-                      icon: Icon(Icons.keyboard),
-                    ),
-                  ],
-                  selected: {inputMode},
-                  onSelectionChanged: recordingStatus != RecordingStatus.idle
-                      ? null
-                      : (modes) => ref
-                            .read(inputModeProvider.notifier)
-                            .set(modes.first),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: SegmentedButton<InputMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: InputMode.speaking,
+                        label: Text('Speak'),
+                        icon: Icon(Icons.mic),
+                      ),
+                      ButtonSegment(
+                        value: InputMode.typing,
+                        label: Text('Type'),
+                        icon: Icon(Icons.keyboard),
+                      ),
+                    ],
+                    selected: {inputMode},
+                    onSelectionChanged: recordingStatus != RecordingStatus.idle
+                        ? null
+                        : (modes) => ref
+                              .read(inputModeProvider.notifier)
+                              .set(modes.first),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: recordingStatus == RecordingStatus.processing
-                  ? _buildProcessing()
-                  : inputMode == InputMode.speaking
-                  ? Center(child: _buildSpeakMode(cs, recordingStatus))
-                  : _buildTypeMode(cs),
-            ),
-          ],
+              Expanded(
+                child: recordingStatus == RecordingStatus.processing
+                    ? _buildProcessing()
+                    : inputMode == InputMode.speaking
+                    ? Center(child: _buildSpeakMode(cs, recordingStatus))
+                    : _buildTypeMode(cs),
+              ),
+            ],
+          ),
         ),
       ),
     );

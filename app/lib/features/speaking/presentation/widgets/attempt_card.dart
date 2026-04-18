@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/logging/logging_service.dart';
 import '../../domain/speaking_attempt.dart';
 import '../../providers/speaking_providers.dart';
 import 'correction_card.dart';
@@ -90,11 +93,20 @@ class AttemptCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Your transcript',
-                  style: textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Your transcript',
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (readOnly &&
+                        (attempt.audioStorageKey != null ||
+                            attempt.audioLocalPath != null))
+                      _OwnRecordingPlayer(attempt: attempt),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -182,6 +194,71 @@ class AttemptCard extends StatelessWidget {
         const SizedBox(height: 8),
         const Divider(height: 32),
       ],
+    );
+  }
+}
+
+/// Plays the user's own recorded attempt. Local-first: if the audio file is
+/// already on disk, plays it immediately. Otherwise downloads from Supabase
+/// Storage, caches locally, then plays.
+class _OwnRecordingPlayer extends ConsumerStatefulWidget {
+  final SpeakingAttempt attempt;
+  const _OwnRecordingPlayer({required this.attempt});
+
+  @override
+  ConsumerState<_OwnRecordingPlayer> createState() =>
+      _OwnRecordingPlayerState();
+}
+
+class _OwnRecordingPlayerState extends ConsumerState<_OwnRecordingPlayer> {
+  bool _loading = false;
+  String? _resolvedPath;
+
+  Future<void> _play() async {
+    final tts = ref.read(ttsCacheServiceProvider);
+    if (tts == null) return;
+    setState(() => _loading = true);
+    try {
+      var path = _resolvedPath ?? widget.attempt.audioLocalPath;
+      if (path == null || !File(path).existsSync()) {
+        final service = ref.read(speakingServiceProvider);
+        final storageKey = widget.attempt.audioStorageKey;
+        if (service == null || storageKey == null) {
+          throw StateError('Audio not available');
+        }
+        path = await service.downloadAttemptAudio(
+          attemptId: widget.attempt.id,
+          storageKey: storageKey,
+        );
+      }
+      _resolvedPath = path;
+      await tts.playLocalFile(path);
+    } catch (e, st) {
+      globalTalker.handle(e, st, '[Speaking] own recording playback failed');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not play recording: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    return IconButton(
+      icon: const Icon(Icons.play_circle_outline),
+      tooltip: 'Play your recording',
+      visualDensity: VisualDensity.compact,
+      onPressed: _play,
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/config.dart';
@@ -101,6 +103,8 @@ class SpeakingService {
     required bool isCustomTopic,
     required int attemptNumber,
     required SpeakingResult result,
+    String? audioLocalPath,
+    String? audioStorageKey,
   }) async {
     final now = DateTime.now().toUtc().toIso8601String();
     final id = const Uuid().v4();
@@ -117,11 +121,100 @@ class SpeakingService {
             overallNote: Value(result.overallNote),
             sessionId: Value(sessionId),
             attemptNumber: Value(attemptNumber),
+            audioLocalPath: Value(audioLocalPath),
+            audioStorageKey: Value(audioStorageKey),
             createdAt: Value(now),
             updatedAt: Value(now),
           ),
         );
     return id;
+  }
+
+  /// Move a freshly-recorded WAV from its temp path into the permanent
+  /// per-attempt location, then update the row with the new `audio_local_path`.
+  /// Returns the final absolute path.
+  Future<String> attachLocalAudio({
+    required String attemptId,
+    required String tempPath,
+  }) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final audioDir = Directory('${dir.path}/speaking_audio');
+    if (!audioDir.existsSync()) {
+      audioDir.createSync(recursive: true);
+    }
+    final finalPath = '${audioDir.path}/$attemptId.wav';
+    try {
+      await File(tempPath).rename(finalPath);
+    } on FileSystemException {
+      // Cross-device rename may fail; fall back to copy+delete.
+      await File(tempPath).copy(finalPath);
+      try {
+        await File(tempPath).delete();
+      } catch (_) {}
+    }
+    await (_db.update(_db.speakingResults)
+          ..where((t) => t.id.equals(attemptId)))
+        .write(SpeakingResultsCompanion(audioLocalPath: Value(finalPath)));
+    return finalPath;
+  }
+
+  /// Upload a recording to the private `speaking-audio` bucket. Updates the
+  /// row with `audio_storage_key` and flips `synced = 0`. Errors are rethrown
+  /// so callers can log; callers typically fire-and-forget.
+  Future<String> uploadAttemptAudio({
+    required String attemptId,
+    required Uint8List bytes,
+  }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError(
+        'uploadAttemptAudio called without an authenticated user',
+      );
+    }
+    final key = '$userId/$attemptId.wav';
+    await _supabase.storage
+        .from('speaking-audio')
+        .uploadBinary(
+          key,
+          bytes,
+          fileOptions: const FileOptions(
+            contentType: 'audio/wav',
+            upsert: true,
+          ),
+        );
+    final now = DateTime.now().toUtc().toIso8601String();
+    await (_db.update(
+      _db.speakingResults,
+    )..where((t) => t.id.equals(attemptId))).write(
+      SpeakingResultsCompanion(
+        audioStorageKey: Value(key),
+        updatedAt: Value(now),
+        synced: const Value(0),
+      ),
+    );
+    return key;
+  }
+
+  /// Download a previously uploaded recording to a local file and update the
+  /// row with `audio_local_path` (device-local, not synced). Returns the path.
+  Future<String> downloadAttemptAudio({
+    required String attemptId,
+    required String storageKey,
+  }) async {
+    final bytes = await _supabase.storage
+        .from('speaking-audio')
+        .download(storageKey);
+    final dir = await getApplicationDocumentsDirectory();
+    final audioDir = Directory('${dir.path}/speaking_audio');
+    if (!audioDir.existsSync()) {
+      audioDir.createSync(recursive: true);
+    }
+    final finalPath = '${audioDir.path}/$attemptId.wav';
+    await File(finalPath).writeAsBytes(bytes);
+    await (_db.update(_db.speakingResults)
+          ..where((t) => t.id.equals(attemptId)))
+        .write(SpeakingResultsCompanion(audioLocalPath: Value(finalPath)));
+    return finalPath;
   }
 
   /// Most recent rows, excluding soft-deleted. Callers are responsible for
@@ -154,8 +247,37 @@ class SpeakingService {
     return rows.isEmpty ? null : rows.first;
   }
 
-  /// Soft-delete every attempt in a session.
+  /// Soft-delete every attempt in a session and best-effort remove its audio
+  /// (local files + remote bucket objects). DB rows stay (soft-delete) so the
+  /// deletion syncs.
   Future<void> deleteSession(String sessionId) async {
+    final rows = await (_db.select(
+      _db.speakingResults,
+    )..where((t) => t.sessionId.equals(sessionId))).get();
+
+    for (final row in rows) {
+      final localPath = row.audioLocalPath;
+      if (localPath != null) {
+        try {
+          final f = File(localPath);
+          if (f.existsSync()) await f.delete();
+        } catch (e) {
+          globalTalker.error('[Speaking] delete local audio failed: $e');
+        }
+      }
+    }
+    final storageKeys = rows
+        .map((r) => r.audioStorageKey)
+        .whereType<String>()
+        .toList();
+    if (storageKeys.isNotEmpty) {
+      try {
+        await _supabase.storage.from('speaking-audio').remove(storageKeys);
+      } catch (e) {
+        globalTalker.error('[Speaking] delete remote audio failed: $e');
+      }
+    }
+
     final now = DateTime.now().toUtc().toIso8601String();
     await (_db.update(
       _db.speakingResults,

@@ -153,6 +153,10 @@ class SpeakingResults extends Table {
   TextColumn get overallNote => text().named('overall_note').nullable()();
   TextColumn get sessionId => text().named('session_id').nullable()();
   IntColumn get attemptNumber => integer().named('attempt_number').nullable()();
+  TextColumn get audioLocalPath =>
+      text().named('audio_local_path').nullable()();
+  TextColumn get audioStorageKey =>
+      text().named('audio_storage_key').nullable()();
   TextColumn get createdAt => text()
       .named('created_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();

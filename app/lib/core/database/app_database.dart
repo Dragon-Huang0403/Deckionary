@@ -32,7 +32,7 @@ class UserDatabase extends _$UserDatabase {
   UserDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +95,10 @@ class UserDatabase extends _$UserDatabase {
           'UPDATE speaking_results SET session_id = id, attempt_number = 1 '
           'WHERE session_id IS NULL',
         );
+      }
+      if (from < 11) {
+        await m.addColumn(speakingResults, speakingResults.audioLocalPath);
+        await m.addColumn(speakingResults, speakingResults.audioStorageKey);
       }
     },
   );

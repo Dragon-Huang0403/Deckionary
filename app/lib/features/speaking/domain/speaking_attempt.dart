@@ -7,6 +7,8 @@ class SpeakingAttempt {
   final int attemptNumber; // 1-indexed within the session
   final SpeakingResult result;
   final String? shadowAudioPath; // local temp file; null until recorded
+  final String? audioLocalPath; // persisted user recording on this device
+  final String? audioStorageKey; // remote object key under 'speaking-audio'
   final DateTime createdAt;
 
   const SpeakingAttempt({
@@ -15,11 +17,15 @@ class SpeakingAttempt {
     required this.result,
     required this.createdAt,
     this.shadowAudioPath,
+    this.audioLocalPath,
+    this.audioStorageKey,
   });
 
   SpeakingAttempt copyWith({
     String? shadowAudioPath,
     bool clearShadow = false,
+    String? audioLocalPath,
+    String? audioStorageKey,
   }) {
     return SpeakingAttempt(
       id: id,
@@ -29,6 +35,8 @@ class SpeakingAttempt {
       shadowAudioPath: clearShadow
           ? null
           : (shadowAudioPath ?? this.shadowAudioPath),
+      audioLocalPath: audioLocalPath ?? this.audioLocalPath,
+      audioStorageKey: audioStorageKey ?? this.audioStorageKey,
     );
   }
 }

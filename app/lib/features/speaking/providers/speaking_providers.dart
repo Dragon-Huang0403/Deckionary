@@ -191,6 +191,8 @@ SpeakingAttempt _rowToAttempt(SpeakingResultRow row) {
     attemptNumber: row.attemptNumber ?? 1,
     result: result,
     createdAt: DateTime.parse(row.createdAt),
+    audioLocalPath: row.audioLocalPath,
+    audioStorageKey: row.audioStorageKey,
   );
 }
 
