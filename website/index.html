@@ -1,36 +1,487 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deckionary</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f7f2e8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141010" media="(prefers-color-scheme: dark)" />
+
+  <title>Deckionary — Oxford Dictionary + FSRS Spaced Repetition</title>
+  <meta name="description" content="Deckionary is an Oxford Advanced Learner's Dictionary app with FSRS spaced repetition, macOS global hotkey (⌘⇧D), AI speaking coach, and cross-device sync. Free for macOS, Android, iOS." />
+  <meta name="keywords" content="Oxford dictionary app, OALD10, FSRS spaced repetition, vocabulary flashcards, Oxford 3000, Oxford 5000, English learning, macOS dictionary hotkey, Anki alternative, Deckionary" />
+  <meta name="author" content="Deckionary" />
+  <link rel="canonical" href="https://deckionary.com/" />
+  <link rel="me" href="https://github.com/Dragon-Huang0403/Deckionary" />
+  <link rel="alternate" hreflang="en" href="https://deckionary.com/" />
+  <link rel="alternate" hreflang="x-default" href="https://deckionary.com/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Deckionary" />
+  <meta property="og:title" content="Deckionary — Oxford Dictionary + FSRS Spaced Repetition" />
+  <meta property="og:description" content="The Oxford dictionary, reimagined as a flashcard deck. Look up, review, and remember — on macOS, Android, and iOS." />
+  <meta property="og:url" content="https://deckionary.com/" />
+  <meta property="og:image" content="https://deckionary.com/assets/og-image.png" />
+  <meta property="og:image:alt" content="Deckionary app icon — a stylized book with a flashcard." />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:locale:alternate" content="zh_TW" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Deckionary — Oxford Dictionary + FSRS Spaced Repetition" />
+  <meta name="twitter:description" content="The Oxford dictionary, reimagined as a flashcard deck. Free on macOS, Android, iOS." />
+  <meta name="twitter:image" content="https://deckionary.com/assets/og-image.png" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+
+  <link rel="preload" as="image" href="/assets/screenshots/dictionary.png" fetchpriority="high" />
+  <link rel="stylesheet" href="/style.css" />
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://deckionary.com/#org",
+        "name": "Deckionary",
+        "url": "https://deckionary.com/",
+        "logo": "https://deckionary.com/icon-512.png",
+        "email": "privacy@deckionary.com",
+        "sameAs": [
+          "https://github.com/Dragon-Huang0403/Deckionary"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://deckionary.com/#site",
+        "url": "https://deckionary.com/",
+        "name": "Deckionary",
+        "publisher": { "@id": "https://deckionary.com/#org" },
+        "inLanguage": "en-US"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "Deckionary",
+        "alternateName": "Oxford Dictionary + Spaced Repetition",
+        "description": "Dictionary and vocabulary learning app powered by the Oxford Advanced Learner's Dictionary (OALD10) with FSRS spaced repetition, macOS global hotkey, AI speaking coach, and cross-device sync.",
+        "applicationCategory": "EducationApplication",
+        "applicationSubCategory": "Dictionary",
+        "operatingSystem": "macOS, Android, iOS",
+        "softwareVersion": "0.2.1",
+        "downloadUrl": "https://github.com/Dragon-Huang0403/Deckionary/releases/latest",
+        "url": "https://deckionary.com/",
+        "image": "https://deckionary.com/assets/og-image.png",
+        "screenshot": [
+          "https://deckionary.com/assets/screenshots/dictionary.png",
+          "https://deckionary.com/assets/screenshots/spaced_repetition.png",
+          "https://deckionary.com/assets/screenshots/hotkey.png",
+          "https://deckionary.com/assets/screenshots/review.png"
+        ],
+        "featureList": [
+          "Full Oxford Advanced Learner's Dictionary (OALD10) with 76,000+ entries",
+          "FSRS-4.5 spaced repetition for long-term memory",
+          "CEFR A1–C2 and Oxford 3000/5000 level badges",
+          "macOS global hotkey (⌘⇧D) with clipboard auto-paste",
+          "US and British audio pronunciations",
+          "AI speaking coach with Whisper transcription and GPT feedback",
+          "Offline-first with cross-device Google Sign-In sync"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "publisher": { "@id": "https://deckionary.com/#org" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is Deckionary free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Deckionary is free to download from GitHub Releases. The full Oxford Advanced Learner's Dictionary, FSRS spaced repetition, audio pronunciations, and cross-device sync are all included at no cost."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which platforms are supported?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "macOS (universal binary) and Android (APK) are available now. iOS is coming soon."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does Deckionary work offline?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The dictionary and your review queue work fully offline. When you are back online, your progress syncs via Google Sign-In using a last-write-wins strategy."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do I install Deckionary on macOS?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Download the .zip from GitHub Releases, move Deckionary.app to /Applications, and on first launch open System Settings → Privacy & Security and click 'Open Anyway'. You only need to do this once."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is Deckionary different from Anki?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Deckionary is a dictionary first. You look up words in the Oxford Advanced Learner's Dictionary and flashcards are created lazily as you read. It uses FSRS-4.5 — the same modern algorithm Anki ships — but with a dictionary-native UX and macOS hotkey workflow."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <h1>Deckionary</h1>
-      <p class="tagline">Dictionary with spaced repetition</p>
-    </div>
-  </header>
-  <main class="container">
-    <section>
-      <h2>Learn vocabulary that sticks</h2>
-      <p>Deckionary combines a full dictionary with FSRS spaced repetition to help you learn and remember new words efficiently.</p>
-      <ul>
-        <li>Look up words with detailed definitions, examples, and pronunciations</li>
-        <li>Review words using scientifically-backed spaced repetition (FSRS)</li>
-        <li>Sync your progress across devices with Google Sign-In</li>
-        <li>Available on Android and macOS</li>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Deckionary home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h10a4 4 0 0 1 4 4v14a1 1 0 0 1-1.5.87L12 19.2l-4.5 2.67A1 1 0 0 1 6 21V5a2 2 0 0 1 2-2h.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8h6M8 11h6M8 14h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>Deckionary</span>
+      </a>
+      <ul class="navlinks">
+        <li><a href="#dictionary">Dictionary</a></li>
+        <li><a href="#spaced-repetition">Review</a></li>
+        <li><a href="#hotkey">Hotkey</a></li>
+        <li><a href="#speaking-coach">Speaking</a></li>
+        <li><a href="#faq">FAQ</a></li>
       </ul>
+      <div class="navcta">
+        <a class="iconlink" href="https://github.com/Dragon-Huang0403/Deckionary" target="_blank" rel="noopener" aria-label="Deckionary on GitHub">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.73.5.94 5.29.94 11.56c0 4.9 3.17 9.05 7.57 10.52.55.1.75-.24.75-.53v-1.85c-3.08.67-3.73-1.49-3.73-1.49-.5-1.27-1.23-1.6-1.23-1.6-1-.69.08-.67.08-.67 1.1.08 1.68 1.14 1.68 1.14.99 1.69 2.6 1.2 3.23.92.1-.72.39-1.2.7-1.48-2.46-.28-5.05-1.23-5.05-5.49 0-1.21.43-2.2 1.13-2.98-.11-.28-.49-1.4.11-2.92 0 0 .93-.3 3.04 1.14a10.5 10.5 0 0 1 5.53 0c2.11-1.44 3.03-1.14 3.03-1.14.61 1.52.23 2.64.12 2.92.7.78 1.13 1.77 1.13 2.98 0 4.27-2.6 5.2-5.07 5.48.4.34.75 1 .75 2.03v3c0 .29.2.64.76.53 4.4-1.47 7.56-5.62 7.56-10.52C23.06 5.29 18.27.5 12 .5z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="btn btn-primary" href="#download">Download</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main">
+
+    <!-- HERO: the page IS a dictionary entry -->
+    <header class="hero">
+      <div class="wrap hero-grid">
+        <article class="entry" aria-label="Dictionary entry for Deckionary">
+          <div class="entry-bookmark" aria-hidden="true"></div>
+
+          <p class="entry-eyebrow"><span class="badge badge-cefr">C1</span><span class="badge badge-ox">Oxford 5000</span><span class="entry-pron">/ˈdɛk.ʃə.ˌnɛr.i/</span></p>
+
+          <h1 class="entry-headword">deck<span class="sep">·</span>ion<span class="sep">·</span>ar<span class="sep">·</span>y
+            <span class="entry-pos">noun</span>
+          </h1>
+
+          <p class="entry-etym">from <em>deck</em> (a set of cards) + <em>dictionary</em>. First known use&nbsp;—&nbsp;2026.</p>
+
+          <ol class="entry-defs" role="list">
+            <li>
+              <p class="def">The Oxford Advanced Learner's Dictionary, reimagined — <strong>76,000+ entries</strong> with definitions, examples, pronunciations, collocations, and word families, all in one polished app.</p>
+              <p class="example">&ldquo;I looked up <em>serendipity</em> in the deckionary — the examples made it click.&rdquo;</p>
+            </li>
+            <li>
+              <p class="def">A flashcard deck that learns <em>you</em>. FSRS-4.5 spaced repetition schedules each word at the moment you are about to forget it.</p>
+              <p class="example">&ldquo;Ten minutes a day. Two years later, the Oxford 5000 — learned.&rdquo;</p>
+            </li>
+            <li>
+              <p class="def">On macOS, a keystroke. Press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd> from anywhere to summon the full dictionary over your current window.</p>
+              <p class="example">&ldquo;Copy a word. Hit the hotkey. You already know what it means.&rdquo;</p>
+            </li>
+          </ol>
+
+          <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="#download">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 3v13m0 0l-5-5m5 5l5-5M4 21h16"/></svg>
+              Download free
+            </a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/Dragon-Huang0403/Deckionary" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.73.5.94 5.29.94 11.56c0 4.9 3.17 9.05 7.57 10.52.55.1.75-.24.75-.53v-1.85c-3.08.67-3.73-1.49-3.73-1.49-.5-1.27-1.23-1.6-1.23-1.6-1-.69.08-.67.08-.67 1.1.08 1.68 1.14 1.68 1.14.99 1.69 2.6 1.2 3.23.92.1-.72.39-1.2.7-1.48-2.46-.28-5.05-1.23-5.05-5.49 0-1.21.43-2.2 1.13-2.98-.11-.28-.49-1.4.11-2.92 0 0 .93-.3 3.04 1.14a10.5 10.5 0 0 1 5.53 0c2.11-1.44 3.03-1.14 3.03-1.14.61 1.52.23 2.64.12 2.92.7.78 1.13 1.77 1.13 2.98 0 4.27-2.6 5.2-5.07 5.48.4.34.75 1 .75 2.03v3c0 .29.2.64.76.53 4.4-1.47 7.56-5.62 7.56-10.52C23.06 5.29 18.27.5 12 .5z"/></svg>
+              View source on GitHub
+            </a>
+          </div>
+          <p class="hero-meta">
+            <span class="chip">v0.2.1</span>
+            <span class="chip">macOS · Android · iOS (soon)</span>
+            <span class="chip">Free &amp; open-source</span>
+          </p>
+        </article>
+
+        <figure class="hero-screenshot" aria-label="Deckionary dictionary screen">
+          <img
+            src="/assets/screenshots/dictionary.png"
+            alt="Deckionary dictionary view showing a full Oxford Advanced Learner's Dictionary entry with definitions, examples, and pronunciation controls."
+            width="820" height="1340" fetchpriority="high" decoding="async" />
+        </figure>
+      </div>
+
+      <svg class="rule" viewBox="0 0 1200 8" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="4" x2="1200" y2="4" stroke="currentColor" stroke-width="1" stroke-dasharray="2 6"/></svg>
+    </header>
+
+    <!-- FEATURE: DICTIONARY -->
+    <section class="feature" id="dictionary">
+      <div class="wrap feature-grid">
+        <div class="feature-text">
+          <p class="kicker">— No. 01 &nbsp;·&nbsp; The dictionary</p>
+          <h2>The Oxford Advanced Learner's Dictionary, in your pocket.</h2>
+          <p>Every definition, every example, every pronunciation — the full <strong>OALD10</strong>. Not scraped. Not summarised. Not paraphrased by a model.</p>
+          <ul class="bullets">
+            <li><strong>76,000+ entries</strong> with verb forms, collocations, synonyms, and word families.</li>
+            <li><strong>CEFR A1–C2</strong> and <strong>Oxford 3000 / 5000</strong> badges on every headword.</li>
+            <li><strong>Multi-tier search</strong>: exact → variant → suffix strip → prefix → fuzzy. It finds what you meant.</li>
+            <li><strong>US + GB audio</strong> for headwords, verb forms, and example sentences.</li>
+          </ul>
+        </div>
+        <figure class="feature-image">
+          <img src="/assets/screenshots/dictionary.png" alt="Dictionary entry showing definitions, examples, and CEFR level badges." loading="lazy" width="820" height="1340" decoding="async" />
+        </figure>
+      </div>
     </section>
+
+    <!-- FEATURE: SPACED REPETITION -->
+    <section class="feature feature-alt" id="spaced-repetition">
+      <div class="wrap feature-grid feature-grid-rev">
+        <div class="feature-text">
+          <p class="kicker">— No. 02 &nbsp;·&nbsp; The deck</p>
+          <h2>Spaced repetition that actually respects your time.</h2>
+          <p>Flashcards are created <em>lazily</em>, as you look words up. No bulk imports, no thousand-card backlog on day one. <strong>FSRS-4.5</strong> schedules each card to the moment you're about to forget it.</p>
+          <ul class="bullets">
+            <li>Four-button rating: <span class="rate rate-again">Again</span> <span class="rate rate-hard">Hard</span> <span class="rate rate-good">Good</span> <span class="rate rate-easy">Easy</span>.</li>
+            <li>Daily caps for new and review cards — set the pace you can actually keep.</li>
+            <li>Filter by CEFR level or Oxford 3000/5000 to focus on the words that matter.</li>
+            <li>Offline-first queue. Cancel the tab, close the laptop — your progress survives.</li>
+          </ul>
+        </div>
+        <figure class="feature-image">
+          <img src="/assets/screenshots/spaced_repetition.png" alt="Review screen with FSRS rating buttons." loading="lazy" width="820" height="1340" decoding="async" />
+        </figure>
+      </div>
+    </section>
+
+    <!-- FEATURE: HOTKEY -->
+    <section class="feature hotkey-feature" id="hotkey">
+      <div class="wrap feature-grid">
+        <div class="feature-text">
+          <p class="kicker">— No. 03 &nbsp;·&nbsp; macOS hotkey</p>
+          <h2>A dictionary, one keystroke away.</h2>
+          <p>From any app, any Space, any display — press the hotkey and Deckionary floats above your work. Copy a word to the clipboard first and it's already looked up.</p>
+          <div class="keycap-row" aria-hidden="true">
+            <span class="keycap">⌘</span>
+            <span class="plus">+</span>
+            <span class="keycap">⇧</span>
+            <span class="plus">+</span>
+            <span class="keycap keycap-accent">D</span>
+          </div>
+          <ul class="bullets">
+            <li>Reassign the shortcut in Settings.</li>
+            <li>Optional menu-bar tray icon and launch-at-login.</li>
+            <li>Always-on-top window that follows the active display.</li>
+          </ul>
+        </div>
+        <figure class="feature-image">
+          <img src="/assets/screenshots/hotkey.png" alt="Deckionary floating over another macOS app after pressing Command+Shift+D." loading="lazy" width="1400" height="900" decoding="async" />
+        </figure>
+      </div>
+    </section>
+
+    <!-- FEATURE: SPEAKING COACH -->
+    <section class="feature feature-alt" id="speaking-coach">
+      <div class="wrap feature-grid feature-grid-rev">
+        <div class="feature-text">
+          <p class="kicker">— No. 04 &nbsp;·&nbsp; AI speaking coach</p>
+          <h2>Say the word. Get graded.</h2>
+          <p>Record yourself pronouncing a headword or example sentence. Whisper transcribes it, GPT scores it — and hands back <strong>per-word feedback</strong> so you know exactly which syllable slipped.</p>
+          <ul class="bullets">
+            <li>Shadowing mode with replayable local recordings.</li>
+            <li>Full session history — watch yourself improve, week by week.</li>
+            <li>Works on every platform; no desktop-only gates.</li>
+          </ul>
+        </div>
+        <figure class="feature-image waveform">
+          <svg viewBox="0 0 400 200" width="100%" aria-hidden="true">
+            <g stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none">
+              <path d="M10 100 L30 100" />
+              <path d="M45 80 L45 120" />
+              <path d="M60 60 L60 140" />
+              <path d="M75 50 L75 150" />
+              <path d="M90 40 L90 160" />
+              <path d="M105 55 L105 145" />
+              <path d="M120 75 L120 125" />
+              <path d="M135 90 L135 110" />
+              <path d="M150 70 L150 130" />
+              <path d="M165 45 L165 155" />
+              <path d="M180 30 L180 170" />
+              <path d="M195 50 L195 150" />
+              <path d="M210 70 L210 130" />
+              <path d="M225 85 L225 115" />
+              <path d="M240 60 L240 140" />
+              <path d="M255 40 L255 160" />
+              <path d="M270 55 L270 145" />
+              <path d="M285 75 L285 125" />
+              <path d="M300 90 L300 110" />
+              <path d="M315 80 L315 120" />
+              <path d="M330 95 L330 105" />
+              <path d="M345 85 L345 115" />
+              <path d="M360 95 L360 105" />
+              <path d="M375 98 L375 102" />
+              <path d="M390 100 L390 100" />
+            </g>
+          </svg>
+          <p class="waveform-caption"><code>/ˌɛn.t͡ʃəˈlɑː.də/</code> — 92% match · nailed the stress</p>
+        </figure>
+      </div>
+    </section>
+
+    <!-- FEATURE: SYNC -->
+    <section class="feature" id="sync">
+      <div class="wrap feature-grid">
+        <div class="feature-text">
+          <p class="kicker">— No. 05 &nbsp;·&nbsp; Sync</p>
+          <h2>Your words travel with you.</h2>
+          <p>Sign in with Google once. Your search history, review queue, and settings follow you from Mac to phone to tablet.</p>
+          <ul class="bullets">
+            <li><strong>Offline-first.</strong> Do the work now; sync handles the rest.</li>
+            <li><strong>Last-write-wins</strong> across devices, with soft deletes and 30-day grace.</li>
+            <li><strong>Row-level security</strong> on Supabase — your data, your rows, nobody else's.</li>
+          </ul>
+        </div>
+        <figure class="feature-image">
+          <img src="/assets/screenshots/learning.png" alt="Review session in progress on a phone screen." loading="lazy" width="820" height="1340" decoding="async" />
+        </figure>
+      </div>
+    </section>
+
+    <!-- DOWNLOAD -->
+    <section class="download" id="download">
+      <div class="wrap">
+        <p class="kicker center">— Get the app</p>
+        <h2 class="center">Download Deckionary</h2>
+        <p class="center lede">Free. No account required. Latest release on GitHub.</p>
+
+        <div class="download-grid">
+          <a class="platform" href="https://github.com/Dragon-Huang0403/Deckionary/releases/latest" target="_blank" rel="noopener">
+            <svg class="platform-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.6 1.6c.1 1.2-.4 2.4-1.2 3.3-.8.9-2 1.6-3.3 1.5-.1-1.2.5-2.4 1.2-3.2.8-.9 2-1.5 3.3-1.6zM20 17.4c-.5 1.2-.8 1.8-1.5 2.9-1 1.5-2.4 3.3-4.1 3.3-1.5 0-1.9-1-4-1-2 0-2.5 1-4 1-1.8 0-3.1-1.6-4.1-3.1-2.9-4.3-3.2-9.4-1.4-12.1 1.3-1.9 3.3-3 5.2-3 2 0 3.2 1.1 4.8 1.1 1.5 0 2.5-1.1 4.8-1.1 1.7 0 3.5.9 4.8 2.5-4.2 2.3-3.5 8.4.5 10.5z"/></svg>
+            <h3>macOS</h3>
+            <p class="platform-meta">Universal <code>.zip</code> · Apple Silicon + Intel</p>
+            <span class="btn btn-primary">Download for macOS</span>
+          </a>
+
+          <a class="platform" href="https://github.com/Dragon-Huang0403/Deckionary/releases/latest" target="_blank" rel="noopener">
+            <svg class="platform-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.1 4.5 4.8 2.2a.4.4 0 0 1 .7-.4l1.3 2.3a8.3 8.3 0 0 1 6.4 0l1.3-2.3a.4.4 0 0 1 .7.4l-1.3 2.3a7.6 7.6 0 0 1 4.2 6.3H2A7.6 7.6 0 0 1 6.1 4.5zM8.5 8a.8.8 0 1 0 0-1.6.8.8 0 0 0 0 1.6zm7 0a.8.8 0 1 0 0-1.6.8.8 0 0 0 0 1.6zM2 11.8h20V20a2 2 0 0 1-2 2h-1v-3.5a.5.5 0 0 0-1 0V22h-4v-3.5a.5.5 0 0 0-1 0V22h-4v-3.5a.5.5 0 0 0-1 0V22H4a2 2 0 0 1-2-2v-8.2z"/></svg>
+            <h3>Android</h3>
+            <p class="platform-meta">Signed <code>.apk</code> · Android 8+</p>
+            <span class="btn btn-primary">Download APK</span>
+          </a>
+
+          <div class="platform platform-soon" aria-disabled="true">
+            <svg class="platform-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.6 1.6c.1 1.2-.4 2.4-1.2 3.3-.8.9-2 1.6-3.3 1.5-.1-1.2.5-2.4 1.2-3.2.8-.9 2-1.5 3.3-1.6zM20 17.4c-.5 1.2-.8 1.8-1.5 2.9-1 1.5-2.4 3.3-4.1 3.3-1.5 0-1.9-1-4-1-2 0-2.5 1-4 1-1.8 0-3.1-1.6-4.1-3.1-2.9-4.3-3.2-9.4-1.4-12.1 1.3-1.9 3.3-3 5.2-3 2 0 3.2 1.1 4.8 1.1 1.5 0 2.5-1.1 4.8-1.1 1.7 0 3.5.9 4.8 2.5-4.2 2.3-3.5 8.4.5 10.5z"/></svg>
+            <h3>iOS</h3>
+            <p class="platform-meta">TestFlight · coming soon</p>
+            <span class="btn btn-ghost">Notify me on GitHub</span>
+          </div>
+        </div>
+
+        <details class="install-note">
+          <summary>Installing the unsigned macOS build</summary>
+          <ol>
+            <li>Download <code>Deckionary-macOS.zip</code> from the <a href="https://github.com/Dragon-Huang0403/Deckionary/releases/latest" target="_blank" rel="noopener">latest release</a>.</li>
+            <li>Extract and move <strong>Deckionary.app</strong> to <code>/Applications</code>.</li>
+            <li>Double-click. macOS will block it — click <strong>Done</strong> (do not move to Trash).</li>
+            <li>Open <strong>System Settings → Privacy &amp; Security</strong>, find the blocked Deckionary message, click <strong>Open Anyway</strong>.</li>
+            <li>Confirm in the dialog. You only need to do this once.</li>
+          </ol>
+        </details>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq" id="faq">
+      <div class="wrap">
+        <p class="kicker center">— Frequently asked</p>
+        <h2 class="center">Questions, answered.</h2>
+
+        <dl class="faq-list">
+          <div class="faq-item">
+            <dt>Is Deckionary free?</dt>
+            <dd>Yes — download it from GitHub Releases. The full OALD10 dictionary, FSRS review, audio, and sync are all included at no cost.</dd>
+          </div>
+          <div class="faq-item">
+            <dt>Which platforms are supported?</dt>
+            <dd>macOS (universal) and Android (APK) are available today. iOS is in development.</dd>
+          </div>
+          <div class="faq-item">
+            <dt>Does it work offline?</dt>
+            <dd>Yes. The dictionary and your review queue are fully local. When you come back online, changes sync via Google Sign-In.</dd>
+          </div>
+          <div class="faq-item">
+            <dt>How is this different from Anki?</dt>
+            <dd>Deckionary is a dictionary first. Flashcards are created as you look words up — no bulk imports, no empty-deck grind. It uses the same modern FSRS-4.5 scheduler Anki ships, wrapped in a dictionary-native UX.</dd>
+          </div>
+          <div class="faq-item">
+            <dt>Where is the source code?</dt>
+            <dd>On <a href="https://github.com/Dragon-Huang0403/Deckionary" target="_blank" rel="noopener">GitHub</a>. The Flutter client, the Supabase edge functions, and the OALD10 build pipeline are all in the same repository.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
   </main>
-  <footer>
-    <div class="container">
-      <nav>
-        <a href="/privacy">Privacy Policy</a>
+
+  <footer class="site-footer">
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <span class="brand">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h10a4 4 0 0 1 4 4v14a1 1 0 0 1-1.5.87L12 19.2l-4.5 2.67A1 1 0 0 1 6 21V5a2 2 0 0 1 2-2h.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8h6M8 11h6M8 14h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>Deckionary</span>
+        </span>
+        <p class="foot-tagline">A dictionary you actually remember.</p>
+      </div>
+
+      <nav class="foot-nav" aria-label="Footer">
+        <h4>App</h4>
+        <ul>
+          <li><a href="#dictionary">Dictionary</a></li>
+          <li><a href="#spaced-repetition">Spaced repetition</a></li>
+          <li><a href="#hotkey">macOS hotkey</a></li>
+          <li><a href="#speaking-coach">Speaking coach</a></li>
+          <li><a href="#download">Download</a></li>
+        </ul>
       </nav>
-      <p>&copy; 2025 Deckionary</p>
+
+      <nav class="foot-nav" aria-label="Resources">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/Dragon-Huang0403/Deckionary" target="_blank" rel="noopener">GitHub repository</a></li>
+          <li><a href="https://github.com/Dragon-Huang0403/Deckionary/releases" target="_blank" rel="noopener">All releases</a></li>
+          <li><a href="https://github.com/Dragon-Huang0403/Deckionary/issues" target="_blank" rel="noopener">Report an issue</a></li>
+          <li><a href="/privacy">Privacy policy</a></li>
+          <li><a href="mailto:privacy@deckionary.com">privacy@deckionary.com</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap foot-legal">
+      <p>&copy; 2026 Deckionary. Built with Flutter. Dictionary data &copy; Oxford University Press (OALD10).</p>
     </div>
   </footer>
 </body>

@@ -1,68 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy - Deckionary</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#f7f2e8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141010" media="(prefers-color-scheme: dark)" />
+
+  <title>Privacy Policy — Deckionary</title>
+  <meta name="description" content="How Deckionary handles your data: what we collect, how sync works, and how to request deletion. Privacy-first, offline-first dictionary app." />
+  <link rel="canonical" href="https://deckionary.com/privacy/" />
+  <meta name="robots" content="index, follow" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Deckionary" />
+  <meta property="og:title" content="Privacy Policy — Deckionary" />
+  <meta property="og:description" content="How Deckionary handles your data. Privacy-first, offline-first dictionary app." />
+  <meta property="og:url" content="https://deckionary.com/privacy/" />
+  <meta property="og:image" content="https://deckionary.com/assets/og-image.png" />
+
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="/style.css" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home",    "item": "https://deckionary.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Privacy", "item": "https://deckionary.com/privacy/" }
+        ]
+      },
+      {
+        "@type": "WebPage",
+        "name": "Privacy Policy",
+        "url": "https://deckionary.com/privacy/",
+        "inLanguage": "en-US",
+        "isPartOf": { "@type": "WebSite", "url": "https://deckionary.com/", "name": "Deckionary" }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <h1><a href="/" style="color: inherit; text-decoration: none;">Deckionary</a></h1>
-      <p class="tagline">Privacy Policy</p>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Deckionary home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h10a4 4 0 0 1 4 4v14a1 1 0 0 1-1.5.87L12 19.2l-4.5 2.67A1 1 0 0 1 6 21V5a2 2 0 0 1 2-2h.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8h6M8 11h6M8 14h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>Deckionary</span>
+      </a>
+      <ul class="navlinks">
+        <li><a href="/#dictionary">Dictionary</a></li>
+        <li><a href="/#spaced-repetition">Review</a></li>
+        <li><a href="/#hotkey">Hotkey</a></li>
+        <li><a href="/#faq">FAQ</a></li>
+      </ul>
+      <div class="navcta">
+        <a class="iconlink" href="https://github.com/Dragon-Huang0403/Deckionary" target="_blank" rel="noopener" aria-label="Deckionary on GitHub">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.73.5.94 5.29.94 11.56c0 4.9 3.17 9.05 7.57 10.52.55.1.75-.24.75-.53v-1.85c-3.08.67-3.73-1.49-3.73-1.49-.5-1.27-1.23-1.6-1.23-1.6-1-.69.08-.67.08-.67 1.1.08 1.68 1.14 1.68 1.14.99 1.69 2.6 1.2 3.23.92.1-.72.39-1.2.7-1.48-2.46-.28-5.05-1.23-5.05-5.49 0-1.21.43-2.2 1.13-2.98-.11-.28-.49-1.4.11-2.92 0 0 .93-.3 3.04 1.14a10.5 10.5 0 0 1 5.53 0c2.11-1.44 3.03-1.14 3.03-1.14.61 1.52.23 2.64.12 2.92.7.78 1.13 1.77 1.13 2.98 0 4.27-2.6 5.2-5.07 5.48.4.34.75 1 .75 2.03v3c0 .29.2.64.76.53 4.4-1.47 7.56-5.62 7.56-10.52C23.06 5.29 18.27.5 12 .5z"/></svg>
+          <span>GitHub</span>
+        </a>
+        <a class="btn btn-primary" href="/#download">Download</a>
+      </div>
     </div>
-  </header>
-  <main class="container">
-    <p><em>Last updated: April 11, 2026</em></p>
+  </nav>
 
-    <h2>What data we collect</h2>
-    <p>When you sign in with Google, we receive your name, email address, and profile picture from your Google account. This is used solely for authentication and displaying your profile within the app.</p>
-    <p>The app stores the following data locally on your device and, if you sign in, synced to our cloud service:</p>
-    <ul>
-      <li>Search history (words you have looked up)</li>
-      <li>Review cards and review logs (your spaced repetition progress)</li>
-      <li>App settings and preferences</li>
-    </ul>
+  <main id="main" class="wrap">
+    <article class="legal">
+      <h1>Privacy Policy</h1>
+      <p class="lede">Last updated: April 11, 2026</p>
 
-    <h2>How we use your data</h2>
-    <ul>
-      <li><strong>Authentication:</strong> Your Google account information is used to identify you and enable cross-device sync.</li>
-      <li><strong>Cloud sync:</strong> Your search history, review data, and settings are synced across your devices so you can continue learning seamlessly.</li>
-      <li><strong>Audio pronunciation:</strong> Dictionary audio files are served from our CDN. No personal data is sent with audio requests.</li>
-    </ul>
+      <h2>What data we collect</h2>
+      <p>When you sign in with Google, we receive your name, email address, and profile picture from your Google account. This is used solely for authentication and displaying your profile within the app.</p>
+      <p>The app stores the following data locally on your device and, if you sign in, synced to our cloud service:</p>
+      <ul>
+        <li>Search history (words you have looked up)</li>
+        <li>Review cards and review logs (your spaced repetition progress)</li>
+        <li>App settings and preferences</li>
+      </ul>
 
-    <h2>Third-party services</h2>
-    <p>Deckionary uses the following third-party services:</p>
-    <ul>
-      <li><strong>Google Sign-In</strong> - for authentication (Google's <a href="https://policies.google.com/privacy">Privacy Policy</a>)</li>
-      <li><strong>Firebase</strong> - for app infrastructure (Google's <a href="https://firebase.google.com/support/privacy">Privacy Policy</a>)</li>
-      <li><strong>Supabase</strong> - for cloud database and authentication (<a href="https://supabase.com/privacy">Privacy Policy</a>)</li>
-      <li><strong>Cloudflare</strong> - for CDN and content delivery (<a href="https://www.cloudflare.com/privacypolicy/">Privacy Policy</a>)</li>
-    </ul>
+      <h2>How we use your data</h2>
+      <ul>
+        <li><strong>Authentication:</strong> Your Google account information is used to identify you and enable cross-device sync.</li>
+        <li><strong>Cloud sync:</strong> Your search history, review data, and settings are synced across your devices so you can continue learning seamlessly.</li>
+        <li><strong>Audio pronunciation:</strong> Dictionary audio files are served from our CDN. No personal data is sent with audio requests.</li>
+      </ul>
 
-    <h2>Data storage and security</h2>
-    <p>Your data is stored securely using Supabase (hosted on AWS). All data is isolated per user through row-level security policies. Data in transit is encrypted via HTTPS.</p>
-    <p>Local data on your device is stored in a SQLite database accessible only to the app.</p>
+      <h2>Third-party services</h2>
+      <p>Deckionary uses the following third-party services:</p>
+      <ul>
+        <li><strong>Google Sign-In</strong> — for authentication (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>)</li>
+        <li><strong>Firebase</strong> — for app infrastructure (<a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Privacy Policy</a>)</li>
+        <li><strong>Supabase</strong> — for cloud database and authentication (<a href="https://supabase.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>)</li>
+        <li><strong>Cloudflare</strong> — for CDN and content delivery (<a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Privacy Policy</a>)</li>
+      </ul>
 
-    <h2>Data retention and deletion</h2>
-    <p>Your data is retained as long as you have an account. You can sign out at any time, and your local data will be preserved on your device. To request deletion of your cloud data, contact us at the email below.</p>
+      <h2>Data storage and security</h2>
+      <p>Your data is stored securely using Supabase (hosted on AWS). All data is isolated per user through row-level security policies. Data in transit is encrypted via HTTPS.</p>
+      <p>Local data on your device is stored in a SQLite database accessible only to the app.</p>
 
-    <h2>Children's privacy</h2>
-    <p>Deckionary is not directed at children under 13. We do not knowingly collect personal information from children under 13.</p>
+      <h2>Data retention and deletion</h2>
+      <p>Your data is retained as long as you have an account. You can sign out at any time, and your local data will be preserved on your device. To request deletion of your cloud data, contact us at the email below.</p>
 
-    <h2>Changes to this policy</h2>
-    <p>We may update this privacy policy from time to time. Changes will be posted on this page with an updated revision date.</p>
+      <h2>Children's privacy</h2>
+      <p>Deckionary is not directed at children under 13. We do not knowingly collect personal information from children under 13.</p>
 
-    <h2>Contact</h2>
-    <p>If you have questions about this privacy policy or want to request data deletion, contact us at <strong>privacy@deckionary.com</strong>.</p>
+      <h2>Changes to this policy</h2>
+      <p>We may update this privacy policy from time to time. Changes will be posted on this page with an updated revision date.</p>
+
+      <h2>Contact</h2>
+      <p>If you have questions about this privacy policy or want to request data deletion, contact us at <strong><a href="mailto:privacy@deckionary.com">privacy@deckionary.com</a></strong>.</p>
+    </article>
   </main>
-  <footer>
-    <div class="container">
-      <nav>
-        <a href="/">Home</a>
+
+  <footer class="site-footer">
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <span class="brand">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h10a4 4 0 0 1 4 4v14a1 1 0 0 1-1.5.87L12 19.2l-4.5 2.67A1 1 0 0 1 6 21V5a2 2 0 0 1 2-2h.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8h6M8 11h6M8 14h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span>Deckionary</span>
+        </span>
+        <p class="foot-tagline">A dictionary you actually remember.</p>
+      </div>
+      <nav class="foot-nav" aria-label="Footer">
+        <h4>App</h4>
+        <ul>
+          <li><a href="/#dictionary">Dictionary</a></li>
+          <li><a href="/#spaced-repetition">Spaced repetition</a></li>
+          <li><a href="/#hotkey">macOS hotkey</a></li>
+          <li><a href="/#download">Download</a></li>
+        </ul>
       </nav>
-      <p>&copy; 2025 Deckionary</p>
+      <nav class="foot-nav" aria-label="Resources">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="https://github.com/Dragon-Huang0403/Deckionary" target="_blank" rel="noopener">GitHub repository</a></li>
+          <li><a href="https://github.com/Dragon-Huang0403/Deckionary/releases" target="_blank" rel="noopener">All releases</a></li>
+          <li><a href="/privacy">Privacy policy</a></li>
+          <li><a href="mailto:privacy@deckionary.com">privacy@deckionary.com</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="wrap foot-legal">
+      <p>&copy; 2026 Deckionary. Built with Flutter. Dictionary data &copy; Oxford University Press (OALD10).</p>
     </div>
   </footer>
 </body>

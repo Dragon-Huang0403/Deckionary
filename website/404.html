@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Not found — Deckionary</title>
+  <meta name="description" content="That page isn't in the dictionary. Head back to deckionary.com." />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,0..100;1,9..144,300..900,0..100&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .nf { text-align: center; padding: clamp(80px, 14vw, 160px) 0; }
+    .nf-code {
+      font-family: var(--font-display); font-weight: 300;
+      font-size: clamp(6rem, 18vw, 12rem);
+      line-height: 1; letter-spacing: -0.04em;
+      color: var(--claret);
+      font-variation-settings: "SOFT" 60, "opsz" 144;
+    }
+    .nf-headword {
+      font-family: var(--font-display); font-style: italic; font-weight: 400;
+      font-size: clamp(1.4rem, 3vw, 2rem); color: var(--ink);
+      margin-top: 8px;
+    }
+    .nf-def { color: var(--ink-2); max-width: 44ch; margin: 20px auto 32px; }
+    .nf-pron { font-family: var(--font-mono); color: var(--sepia); margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Deckionary home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h10a4 4 0 0 1 4 4v14a1 1 0 0 1-1.5.87L12 19.2l-4.5 2.67A1 1 0 0 1 6 21V5a2 2 0 0 1 2-2h.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8h6M8 11h6M8 14h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>Deckionary</span>
+      </a>
+      <div class="navcta" style="margin-left:auto;">
+        <a class="btn btn-primary" href="/">Back to dictionary</a>
+      </div>
+    </div>
+  </nav>
+  <main class="wrap nf">
+    <p class="nf-code">404</p>
+    <p class="nf-pron">/ˌnɒt ˈfaʊnd/</p>
+    <p class="nf-headword">not&nbsp;found <span style="font-style:normal;color:var(--sepia);font-size:0.6em">adjective</span></p>
+    <p class="nf-def">That page isn't in our dictionary. Try looking up something that exists — like the homepage.</p>
+    <a class="btn btn-primary btn-lg" href="/">Take me home</a>
+  </main>
+</body>
+</html>

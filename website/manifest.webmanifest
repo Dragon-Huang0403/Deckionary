@@ -1,0 +1,17 @@
+{
+  "name": "Deckionary",
+  "short_name": "Deckionary",
+  "description": "Oxford Advanced Learner's Dictionary with FSRS spaced repetition, macOS hotkey, and cross-device sync.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f2e8",
+  "theme_color": "#8b2323",
+  "lang": "en-US",
+  "categories": ["education", "productivity", "books"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
