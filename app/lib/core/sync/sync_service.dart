@@ -166,5 +166,8 @@ class SyncService {
     await _reviewSync.cleanupSoftDeletes(retentionDays: retentionDays);
     await _vocabularyListSync.cleanupSoftDeletes(retentionDays: retentionDays);
     await _speakingSync.cleanupSoftDeletes(retentionDays: retentionDays);
+    // Speaking audio has its own, shorter retention — recordings are large
+    // and the transcript/analysis already preserves the useful part.
+    await _speakingSync.cleanupOldAudio();
   }
 }

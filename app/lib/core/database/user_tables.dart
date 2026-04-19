@@ -157,6 +157,8 @@ class SpeakingResults extends Table {
       text().named('audio_local_path').nullable()();
   TextColumn get audioStorageKey =>
       text().named('audio_storage_key').nullable()();
+  TextColumn get pronunciationIssuesJson =>
+      text().named('pronunciation_issues_json').nullable()();
   TextColumn get createdAt => text()
       .named('created_at')
       .withDefault(Constant(DateTime.now().toIso8601String()))();

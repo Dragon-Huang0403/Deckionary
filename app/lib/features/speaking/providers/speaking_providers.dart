@@ -154,8 +154,24 @@ final speakingResultByIdProvider =
         corrections: corrections,
         naturalVersion: row.naturalVersion,
         overallNote: row.overallNote,
+        pronunciationIssues: _decodePronunciationIssues(
+          row.pronunciationIssuesJson,
+        ),
       );
     });
+
+List<PronunciationIssue>? _decodePronunciationIssues(String? json) {
+  if (json == null || json.isEmpty) return null;
+  try {
+    final list = jsonDecode(json);
+    if (list is! List || list.isEmpty) return null;
+    return list
+        .map((e) => PronunciationIssue.fromJson(e as Map<String, dynamic>))
+        .toList();
+  } catch (_) {
+    return null;
+  }
+}
 
 /// Loads all attempts for one session (for history detail screen).
 final speakingSessionByIdProvider =
@@ -185,6 +201,9 @@ SpeakingAttempt _rowToAttempt(SpeakingResultRow row) {
     corrections: corrections,
     naturalVersion: row.naturalVersion,
     overallNote: row.overallNote,
+    pronunciationIssues: _decodePronunciationIssues(
+      row.pronunciationIssuesJson,
+    ),
   );
   return SpeakingAttempt(
     id: row.id,

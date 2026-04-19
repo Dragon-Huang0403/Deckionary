@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/app_database.dart';
@@ -48,6 +50,7 @@ class SpeakingSync {
           'session_id': data['session_id'],
           'attempt_number': data['attempt_number'],
           'audio_storage_key': data['audio_storage_key'],
+          'pronunciation_issues_json': data['pronunciation_issues_json'],
           'created_at': data['created_at'],
           'updated_at': data['updated_at'],
           'deleted_at': data['deleted_at'],
@@ -96,13 +99,18 @@ class SpeakingSync {
       final correctionsText = correctionsJson is String
           ? correctionsJson
           : correctionsJson.toString();
+      final pronJson = row['pronunciation_issues_json'];
+      final pronText = pronJson == null
+          ? null
+          : (pronJson is String ? pronJson : pronJson.toString());
 
       await _db.customInsert(
         '''INSERT INTO speaking_results
            (id, topic, is_custom_topic, transcript, corrections_json,
             natural_version, overall_note, session_id, attempt_number,
-            audio_storage_key, created_at, updated_at, synced)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
+            audio_storage_key, pronunciation_issues_json,
+            created_at, updated_at, synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)''',
         variables: [
           Variable.withString(id),
           Variable.withString(row['topic'] as String),
@@ -121,6 +129,9 @@ class SpeakingSync {
               : const Variable(null),
           row['audio_storage_key'] != null
               ? Variable.withString(row['audio_storage_key'] as String)
+              : const Variable(null),
+          pronText != null
+              ? Variable.withString(pronText)
               : const Variable(null),
           Variable.withString(row['created_at'] as String),
           Variable.withString(remoteUpdatedAt),
@@ -147,12 +158,17 @@ class SpeakingSync {
         final correctionsText = correctionsJson is String
             ? correctionsJson
             : correctionsJson.toString();
+        final pronJson = row['pronunciation_issues_json'];
+        final pronText = pronJson == null
+            ? null
+            : (pronJson is String ? pronJson : pronJson.toString());
 
         await _db.customUpdate(
           '''UPDATE speaking_results SET
              topic = ?, is_custom_topic = ?, transcript = ?,
              corrections_json = ?, natural_version = ?, overall_note = ?,
              session_id = ?, attempt_number = ?, audio_storage_key = ?,
+             pronunciation_issues_json = ?,
              updated_at = ?, synced = 1
              WHERE id = ?''',
           variables: [
@@ -173,6 +189,9 @@ class SpeakingSync {
             row['audio_storage_key'] != null
                 ? Variable.withString(row['audio_storage_key'] as String)
                 : const Variable(null),
+            pronText != null
+                ? Variable.withString(pronText)
+                : const Variable(null),
             Variable.withString(remoteUpdatedAt),
             Variable.withString(id),
           ],
@@ -189,6 +208,9 @@ class SpeakingSync {
   Future<void> syncSpeakingData() async {
     await pullSpeakingResults();
     await pushAllUnsynced();
+    // Opportunistic retention sweep — the SELECT is a no-op when nothing is
+    // due, so this is cheap to run on every sync tick.
+    await cleanupOldAudio();
   }
 
   Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {
@@ -201,5 +223,84 @@ class SpeakingSync {
       variables: [Variable.withString(cutoff)],
       updates: {_db.speakingResults},
     );
+  }
+
+  /// Retention policy for user recordings: audio files (local + remote bucket
+  /// objects) are purged after [retentionDays] days from the attempt's
+  /// creation. The speaking_results row itself (transcript + analysis) is
+  /// kept. Nulls out `audio_local_path` and `audio_storage_key`, flipping
+  /// `synced = 0` so the cleared key propagates to other devices.
+  ///
+  /// On remote-delete failure, the storage key is preserved so the next
+  /// cleanup run can retry; the local file is still cleared (cheap to re-
+  /// download on demand).
+  Future<int> cleanupOldAudio({int retentionDays = 7}) async {
+    final cutoff = DateTime.now()
+        .subtract(Duration(days: retentionDays))
+        .toUtc()
+        .toIso8601String();
+    final rows = await _db
+        .customSelect(
+          'SELECT id, audio_local_path, audio_storage_key '
+          'FROM speaking_results '
+          'WHERE created_at < ? '
+          'AND (audio_local_path IS NOT NULL OR audio_storage_key IS NOT NULL)',
+          variables: [Variable.withString(cutoff)],
+          readsFrom: {_db.speakingResults},
+        )
+        .get();
+    if (rows.isEmpty) return 0;
+
+    // Best-effort local delete (unconditional — cheap to re-download).
+    for (final row in rows) {
+      final localPath = row.data['audio_local_path'] as String?;
+      if (localPath == null) continue;
+      try {
+        final f = File(localPath);
+        if (f.existsSync()) await f.delete();
+      } catch (e) {
+        globalTalker.error('[Speaking] cleanup: local delete failed: $e');
+      }
+    }
+
+    // Batch-remove remote objects.
+    final storageKeys = rows
+        .map((r) => r.data['audio_storage_key'] as String?)
+        .whereType<String>()
+        .toList();
+    var remoteRemoved = true;
+    if (storageKeys.isNotEmpty && _getUserId() != null) {
+      try {
+        await _supabase.storage.from('speaking-audio').remove(storageKeys);
+      } catch (e) {
+        remoteRemoved = false;
+        globalTalker.error('[Speaking] cleanup: remote delete failed: $e');
+      }
+    } else if (storageKeys.isNotEmpty) {
+      // Not signed in — skip remote delete; keep keys so a later run retries.
+      remoteRemoved = false;
+    }
+
+    final now = DateTime.now().toUtc().toIso8601String();
+    for (final row in rows) {
+      final id = row.data['id'] as String;
+      if (remoteRemoved) {
+        await _db.customUpdate(
+          'UPDATE speaking_results SET audio_local_path = NULL, '
+          'audio_storage_key = NULL, updated_at = ?, synced = 0 WHERE id = ?',
+          variables: [Variable.withString(now), Variable.withString(id)],
+          updates: {_db.speakingResults},
+        );
+      } else {
+        // Only the local path is cleared; remote key is preserved for retry.
+        await _db.customUpdate(
+          'UPDATE speaking_results SET audio_local_path = NULL WHERE id = ?',
+          variables: [Variable.withString(id)],
+          updates: {_db.speakingResults},
+        );
+      }
+    }
+
+    return rows.length;
   }
 }

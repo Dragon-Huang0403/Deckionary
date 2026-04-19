@@ -108,6 +108,7 @@ class SpeakingService {
   }) async {
     final now = DateTime.now().toUtc().toIso8601String();
     final id = const Uuid().v4();
+    final pronIssues = result.pronunciationIssues;
     await _db
         .into(_db.speakingResults)
         .insert(
@@ -123,6 +124,11 @@ class SpeakingService {
             attemptNumber: Value(attemptNumber),
             audioLocalPath: Value(audioLocalPath),
             audioStorageKey: Value(audioStorageKey),
+            pronunciationIssuesJson: Value(
+              pronIssues == null || pronIssues.isEmpty
+                  ? null
+                  : jsonEncode(pronIssues.map((p) => p.toJson()).toList()),
+            ),
             createdAt: Value(now),
             updatedAt: Value(now),
           ),

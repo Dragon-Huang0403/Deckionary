@@ -2921,6 +2921,17 @@ class $SpeakingResultsTable extends SpeakingResults
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _pronunciationIssuesJsonMeta =
+      const VerificationMeta('pronunciationIssuesJson');
+  @override
+  late final GeneratedColumn<String> pronunciationIssuesJson =
+      GeneratedColumn<String>(
+        'pronunciation_issues_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2979,6 +2990,7 @@ class $SpeakingResultsTable extends SpeakingResults
     attemptNumber,
     audioLocalPath,
     audioStorageKey,
+    pronunciationIssuesJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -3090,6 +3102,15 @@ class $SpeakingResultsTable extends SpeakingResults
         ),
       );
     }
+    if (data.containsKey('pronunciation_issues_json')) {
+      context.handle(
+        _pronunciationIssuesJsonMeta,
+        pronunciationIssuesJson.isAcceptableOrUnknown(
+          data['pronunciation_issues_json']!,
+          _pronunciationIssuesJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -3167,6 +3188,10 @@ class $SpeakingResultsTable extends SpeakingResults
         DriftSqlType.string,
         data['${effectivePrefix}audio_storage_key'],
       ),
+      pronunciationIssuesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pronunciation_issues_json'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}created_at'],
@@ -3205,6 +3230,7 @@ class SpeakingResultRow extends DataClass
   final int? attemptNumber;
   final String? audioLocalPath;
   final String? audioStorageKey;
+  final String? pronunciationIssuesJson;
   final String createdAt;
   final String updatedAt;
   final String? deletedAt;
@@ -3221,6 +3247,7 @@ class SpeakingResultRow extends DataClass
     this.attemptNumber,
     this.audioLocalPath,
     this.audioStorageKey,
+    this.pronunciationIssuesJson,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -3249,6 +3276,11 @@ class SpeakingResultRow extends DataClass
     }
     if (!nullToAbsent || audioStorageKey != null) {
       map['audio_storage_key'] = Variable<String>(audioStorageKey);
+    }
+    if (!nullToAbsent || pronunciationIssuesJson != null) {
+      map['pronunciation_issues_json'] = Variable<String>(
+        pronunciationIssuesJson,
+      );
     }
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
@@ -3282,6 +3314,9 @@ class SpeakingResultRow extends DataClass
       audioStorageKey: audioStorageKey == null && nullToAbsent
           ? const Value.absent()
           : Value(audioStorageKey),
+      pronunciationIssuesJson: pronunciationIssuesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pronunciationIssuesJson),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
@@ -3308,6 +3343,9 @@ class SpeakingResultRow extends DataClass
       attemptNumber: serializer.fromJson<int?>(json['attemptNumber']),
       audioLocalPath: serializer.fromJson<String?>(json['audioLocalPath']),
       audioStorageKey: serializer.fromJson<String?>(json['audioStorageKey']),
+      pronunciationIssuesJson: serializer.fromJson<String?>(
+        json['pronunciationIssuesJson'],
+      ),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
@@ -3329,6 +3367,9 @@ class SpeakingResultRow extends DataClass
       'attemptNumber': serializer.toJson<int?>(attemptNumber),
       'audioLocalPath': serializer.toJson<String?>(audioLocalPath),
       'audioStorageKey': serializer.toJson<String?>(audioStorageKey),
+      'pronunciationIssuesJson': serializer.toJson<String?>(
+        pronunciationIssuesJson,
+      ),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
       'deletedAt': serializer.toJson<String?>(deletedAt),
@@ -3348,6 +3389,7 @@ class SpeakingResultRow extends DataClass
     Value<int?> attemptNumber = const Value.absent(),
     Value<String?> audioLocalPath = const Value.absent(),
     Value<String?> audioStorageKey = const Value.absent(),
+    Value<String?> pronunciationIssuesJson = const Value.absent(),
     String? createdAt,
     String? updatedAt,
     Value<String?> deletedAt = const Value.absent(),
@@ -3370,6 +3412,9 @@ class SpeakingResultRow extends DataClass
     audioStorageKey: audioStorageKey.present
         ? audioStorageKey.value
         : this.audioStorageKey,
+    pronunciationIssuesJson: pronunciationIssuesJson.present
+        ? pronunciationIssuesJson.value
+        : this.pronunciationIssuesJson,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -3404,6 +3449,9 @@ class SpeakingResultRow extends DataClass
       audioStorageKey: data.audioStorageKey.present
           ? data.audioStorageKey.value
           : this.audioStorageKey,
+      pronunciationIssuesJson: data.pronunciationIssuesJson.present
+          ? data.pronunciationIssuesJson.value
+          : this.pronunciationIssuesJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -3425,6 +3473,7 @@ class SpeakingResultRow extends DataClass
           ..write('attemptNumber: $attemptNumber, ')
           ..write('audioLocalPath: $audioLocalPath, ')
           ..write('audioStorageKey: $audioStorageKey, ')
+          ..write('pronunciationIssuesJson: $pronunciationIssuesJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -3446,6 +3495,7 @@ class SpeakingResultRow extends DataClass
     attemptNumber,
     audioLocalPath,
     audioStorageKey,
+    pronunciationIssuesJson,
     createdAt,
     updatedAt,
     deletedAt,
@@ -3466,6 +3516,7 @@ class SpeakingResultRow extends DataClass
           other.attemptNumber == this.attemptNumber &&
           other.audioLocalPath == this.audioLocalPath &&
           other.audioStorageKey == this.audioStorageKey &&
+          other.pronunciationIssuesJson == this.pronunciationIssuesJson &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
@@ -3484,6 +3535,7 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
   final Value<int?> attemptNumber;
   final Value<String?> audioLocalPath;
   final Value<String?> audioStorageKey;
+  final Value<String?> pronunciationIssuesJson;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<String?> deletedAt;
@@ -3501,6 +3553,7 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     this.attemptNumber = const Value.absent(),
     this.audioLocalPath = const Value.absent(),
     this.audioStorageKey = const Value.absent(),
+    this.pronunciationIssuesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -3519,6 +3572,7 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     this.attemptNumber = const Value.absent(),
     this.audioLocalPath = const Value.absent(),
     this.audioStorageKey = const Value.absent(),
+    this.pronunciationIssuesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -3541,6 +3595,7 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     Expression<int>? attemptNumber,
     Expression<String>? audioLocalPath,
     Expression<String>? audioStorageKey,
+    Expression<String>? pronunciationIssuesJson,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<String>? deletedAt,
@@ -3559,6 +3614,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
       if (attemptNumber != null) 'attempt_number': attemptNumber,
       if (audioLocalPath != null) 'audio_local_path': audioLocalPath,
       if (audioStorageKey != null) 'audio_storage_key': audioStorageKey,
+      if (pronunciationIssuesJson != null)
+        'pronunciation_issues_json': pronunciationIssuesJson,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -3579,6 +3636,7 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     Value<int?>? attemptNumber,
     Value<String?>? audioLocalPath,
     Value<String?>? audioStorageKey,
+    Value<String?>? pronunciationIssuesJson,
     Value<String>? createdAt,
     Value<String>? updatedAt,
     Value<String?>? deletedAt,
@@ -3597,6 +3655,8 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
       attemptNumber: attemptNumber ?? this.attemptNumber,
       audioLocalPath: audioLocalPath ?? this.audioLocalPath,
       audioStorageKey: audioStorageKey ?? this.audioStorageKey,
+      pronunciationIssuesJson:
+          pronunciationIssuesJson ?? this.pronunciationIssuesJson,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -3641,6 +3701,11 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
     if (audioStorageKey.present) {
       map['audio_storage_key'] = Variable<String>(audioStorageKey.value);
     }
+    if (pronunciationIssuesJson.present) {
+      map['pronunciation_issues_json'] = Variable<String>(
+        pronunciationIssuesJson.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
     }
@@ -3673,6 +3738,7 @@ class SpeakingResultsCompanion extends UpdateCompanion<SpeakingResultRow> {
           ..write('attemptNumber: $attemptNumber, ')
           ..write('audioLocalPath: $audioLocalPath, ')
           ..write('audioStorageKey: $audioStorageKey, ')
+          ..write('pronunciationIssuesJson: $pronunciationIssuesJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6104,6 +6170,7 @@ typedef $$SpeakingResultsTableCreateCompanionBuilder =
       Value<int?> attemptNumber,
       Value<String?> audioLocalPath,
       Value<String?> audioStorageKey,
+      Value<String?> pronunciationIssuesJson,
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<String?> deletedAt,
@@ -6123,6 +6190,7 @@ typedef $$SpeakingResultsTableUpdateCompanionBuilder =
       Value<int?> attemptNumber,
       Value<String?> audioLocalPath,
       Value<String?> audioStorageKey,
+      Value<String?> pronunciationIssuesJson,
       Value<String> createdAt,
       Value<String> updatedAt,
       Value<String?> deletedAt,
@@ -6191,6 +6259,11 @@ class $$SpeakingResultsTableFilterComposer
 
   ColumnFilters<String> get audioStorageKey => $composableBuilder(
     column: $table.audioStorageKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pronunciationIssuesJson => $composableBuilder(
+    column: $table.pronunciationIssuesJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6279,6 +6352,11 @@ class $$SpeakingResultsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get pronunciationIssuesJson => $composableBuilder(
+    column: $table.pronunciationIssuesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6358,6 +6436,11 @@ class $$SpeakingResultsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get pronunciationIssuesJson => $composableBuilder(
+    column: $table.pronunciationIssuesJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6419,6 +6502,7 @@ class $$SpeakingResultsTableTableManager
                 Value<int?> attemptNumber = const Value.absent(),
                 Value<String?> audioLocalPath = const Value.absent(),
                 Value<String?> audioStorageKey = const Value.absent(),
+                Value<String?> pronunciationIssuesJson = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<String?> deletedAt = const Value.absent(),
@@ -6436,6 +6520,7 @@ class $$SpeakingResultsTableTableManager
                 attemptNumber: attemptNumber,
                 audioLocalPath: audioLocalPath,
                 audioStorageKey: audioStorageKey,
+                pronunciationIssuesJson: pronunciationIssuesJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,
@@ -6455,6 +6540,7 @@ class $$SpeakingResultsTableTableManager
                 Value<int?> attemptNumber = const Value.absent(),
                 Value<String?> audioLocalPath = const Value.absent(),
                 Value<String?> audioStorageKey = const Value.absent(),
+                Value<String?> pronunciationIssuesJson = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
                 Value<String> updatedAt = const Value.absent(),
                 Value<String?> deletedAt = const Value.absent(),
@@ -6472,6 +6558,7 @@ class $$SpeakingResultsTableTableManager
                 attemptNumber: attemptNumber,
                 audioLocalPath: audioLocalPath,
                 audioStorageKey: audioStorageKey,
+                pronunciationIssuesJson: pronunciationIssuesJson,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 deletedAt: deletedAt,

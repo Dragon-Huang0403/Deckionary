@@ -7,6 +7,7 @@ import '../../../../core/logging/logging_service.dart';
 import '../../domain/speaking_attempt.dart';
 import '../../providers/speaking_providers.dart';
 import 'correction_card.dart';
+import 'pronunciation_card.dart';
 import 'shadow_block.dart';
 
 class AttemptCard extends StatelessWidget {
@@ -190,6 +191,22 @@ class AttemptCard extends StatelessWidget {
           )
         else
           ...corrections.map((c) => CorrectionCard(correction: c)),
+
+        if (result.pronunciationIssues != null &&
+            result.pronunciationIssues!.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Pronunciation to work on (${result.pronunciationIssues!.length})',
+              style: textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ...result.pronunciationIssues!.map(
+            (issue) => PronunciationCard(issue: issue),
+          ),
+        ],
 
         const SizedBox(height: 8),
         const Divider(height: 32),
