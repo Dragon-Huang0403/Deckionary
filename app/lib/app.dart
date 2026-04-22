@@ -72,10 +72,13 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
 
     _showInDock = await dao.getShowInDock();
 
-    // Listen for native-to-Flutter calls (dock icon click)
+    // Listen for native-to-Flutter calls
     _windowChannel.setMethodCallHandler((call) async {
-      if (call.method == 'dockClicked') {
-        await _showNormalMode();
+      switch (call.method) {
+        case 'dockClicked':
+          await _showNormalMode();
+        case 'onClickOutside':
+          _onClickOutside();
       }
     });
 
@@ -413,8 +416,7 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     }
   }
 
-  @override
-  void onWindowBlur() {
+  void _onClickOutside() {
     if (_windowTransitioning) return;
     if (!ref.read(isOverlayModeProvider)) return;
     if (ref.read(signInInProgressProvider)) return;

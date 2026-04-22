@@ -23,6 +23,19 @@ class MainFlutterWindow: NSPanel {
       name: "com.deckionary/window",
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+
+    // Hide overlay ONLY on an actual mouse click outside the panel.
+    // Focus/active notifications fire on passive cursor movement (hover,
+    // crossing displays, menu bar) with .nonactivatingPanel, which we don't
+    // want to treat as dismissal. A global event monitor only sees events
+    // delivered to *other* applications — clicks inside our panel are not
+    // reported here, so this naturally distinguishes inside vs outside.
+    NSEvent.addGlobalMonitorForEvents(
+      matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+    ) { [weak self] _ in
+      self?.windowChannel?.invokeMethod("onClickOutside", arguments: nil)
+    }
+
     windowChannel!.setMethodCallHandler { [weak self] (call, result) in
       switch call.method {
       case "prepareForShow":
