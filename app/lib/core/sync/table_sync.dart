@@ -34,11 +34,7 @@ class TableSync {
   }) async {
     if (_getUserId() == null) return 0;
 
-    final cursor = watermarkKey != null
-        ? await getLastSyncAt(_db, watermarkKey)
-        : null;
-
-    var query = _supabase
+    final baseQuery = _supabase
         .from(remoteTable)
         .select()
         .eq('user_id', _getUserId()!);
@@ -46,23 +42,29 @@ class TableSync {
     // Watermark uses `server_updated_at` (set by DB trigger at write arrival)
     // rather than client-provided `updated_at`, which can be older than the
     // cursor when a delayed push lands after another device has already pulled.
-    if (cursor != null) {
-      query = query.gte('server_updated_at', cursor);
+    // Tables without a watermark (e.g. user_settings) skip this column entirely.
+    final List<dynamic> rows;
+    if (watermarkKey != null) {
+      final cursor = await getLastSyncAt(_db, watermarkKey);
+      final filtered = cursor != null
+          ? baseQuery.gte('server_updated_at', cursor)
+          : baseQuery;
+      rows = await filtered.order('server_updated_at', ascending: false);
+    } else {
+      rows = await baseQuery;
     }
-
-    final rows = await query.order('server_updated_at', ascending: false);
     if (rows.isEmpty) return 0;
 
     var pulled = 0;
     for (final row in rows) {
-      if (await processRow(row)) pulled++;
+      if (await processRow(row as Map<String, dynamic>)) pulled++;
     }
 
     if (watermarkKey != null) {
       await setLastSyncAt(
         _db,
         watermarkKey,
-        rows.first['server_updated_at'] as String,
+        (rows.first as Map<String, dynamic>)['server_updated_at'] as String,
       );
     }
 
