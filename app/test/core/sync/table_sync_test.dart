@@ -200,11 +200,13 @@ void main() {
     });
 
     test('watermark is updated after successful pull', () async {
-      final t = '2026-04-15T08:00:00.000+00:00';
+      // server_updated_at is stamped by the DB trigger at insert time, so the
+      // watermark reflects "around now" rather than any client-supplied ts.
+      final beforeInsert = DateTime.now().toUtc();
       final id1 = testUuid();
       await supabase
           .from('review_cards')
-          .upsert(makeReviewCard(id: id1, userId: userId, updatedAt: t));
+          .upsert(makeReviewCard(id: id1, userId: userId));
 
       await tableSync.pull(
         remoteTable: 'review_cards',
@@ -219,10 +221,61 @@ void main() {
           )
           .getSingle();
 
-      // Watermark should contain the timestamp (Supabase normalizes format)
       final value = meta.data['value'] as String;
       expect(value, isNotEmpty);
-      expect(value, contains('2026-04-15'));
+      final watermark = DateTime.parse(value);
+      expect(watermark.isBefore(beforeInsert), isFalse);
+    });
+
+    test('delayed push with older client updated_at is not skipped '
+        '(server_updated_at watermark race fix)', () async {
+      // Simulates the production bug: device A creates a record at T1 but
+      // push is slow; device B creates+pushes a record at T2 (> T1) which
+      // lands first; device C pulls and advances its watermark to T2;
+      // device A's push finally lands with client updated_at = T1 (< T2).
+      // With a server-authoritative watermark, device C's next pull must
+      // still fetch A's record.
+      final tEarly = '2026-01-01T00:00:00.000+00:00';
+      final tLate = '2026-06-01T00:00:00.000+00:00';
+      final idB = testUuid();
+      final idA = testUuid();
+
+      // Device B pushes first (later client timestamp)
+      await supabase
+          .from('review_cards')
+          .upsert(makeReviewCard(id: idB, userId: userId, updatedAt: tLate));
+
+      // Device C pulls → watermark advances to server_updated_at of idB
+      await tableSync.pull(
+        remoteTable: 'review_cards',
+        watermarkKey: 'review_cards',
+        processRow: insertLocalReviewCard,
+      );
+
+      // Device A's delayed push arrives with OLDER client updated_at.
+      // The trigger stamps server_updated_at = now() (strictly > idB's).
+      await supabase
+          .from('review_cards')
+          .upsert(makeReviewCard(id: idA, userId: userId, updatedAt: tEarly));
+
+      // Device C pulls again. With the old client-timestamp watermark this
+      // would skip idA (because tEarly < tLate). With server_updated_at it
+      // must be included.
+      final pulled = await tableSync.pull(
+        remoteTable: 'review_cards',
+        watermarkKey: 'review_cards',
+        processRow: insertLocalReviewCard,
+      );
+
+      expect(pulled, 1);
+
+      final local = await db
+          .customSelect(
+            'SELECT COUNT(*) AS cnt FROM review_cards WHERE id = ?',
+            variables: [Variable.withString(idA)],
+          )
+          .getSingle();
+      expect(local.data['cnt'], 1);
     });
 
     test('watermark is NOT updated when watermarkKey is null', () async {

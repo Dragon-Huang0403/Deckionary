@@ -316,27 +316,29 @@ void main() {
       final t2 = '2026-04-12T10:00:00.000+00:00';
       final id1 = testUuid(), id2 = testUuid();
 
-      // Device A pushes 2 cards at different times
+      // Device A pushes 2 cards
       await createLocalCard(dbA, id: id1, headword: 'early', updatedAt: t1);
       await pushCard(dbA, supabase, id1, userId);
       await createLocalCard(dbA, id: id2, headword: 'late', updatedAt: t2);
       await pushCard(dbA, supabase, id2, userId);
 
-      // Device B only pulls the late card (simulate corrupted watermark)
-      // Manually set watermark to t2 so t1 card is missed
+      // Simulate a corrupted watermark: a far-future value makes gte() match
+      // nothing. Since the watermark column is now server_updated_at (stamped
+      // at now()), the previous approach of injecting a past client timestamp
+      // wouldn't actually skip any rows.
       await dbB.customInsert(
         "INSERT INTO sync_meta (key, value) VALUES ('review_cards_last_sync_at', ?)",
-        variables: [Variable.withString(t2)],
+        variables: [Variable.withString('2099-01-01T00:00:00.000+00:00')],
         updates: {dbB.syncMeta},
       );
 
-      // Pull with corrupted watermark — only gets cards >= t2
+      // Pull with corrupted watermark — gets nothing
       await syncB.pull(
         remoteTable: 'review_cards',
         watermarkKey: 'review_cards',
         processRow: pullCallback(dbB),
       );
-      expect(await countLocalCards(dbB), 1); // only the late card
+      expect(await countLocalCards(dbB), 0);
 
       // Force full sync: clear watermarks, then pull
       await syncB.clearAllWatermarks();

@@ -134,7 +134,10 @@ class SyncService {
   /// Auto-clear watermarks on first run after a sync bug fix.
   /// Bump [_currentSyncVersion] whenever a fix requires full resync.
   Future<void> init() async {
-    const currentSyncVersion = 2;
+    // v3: switched pull cursor from client `updated_at` to server-trigger
+    // `server_updated_at`. Old watermarks are no longer comparable and may
+    // have skipped records; clearing forces a one-time full re-pull.
+    const currentSyncVersion = 3;
 
     final stored = await _db
         .customSelect(

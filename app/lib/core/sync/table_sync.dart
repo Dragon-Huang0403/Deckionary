@@ -43,11 +43,14 @@ class TableSync {
         .select()
         .eq('user_id', _getUserId()!);
 
+    // Watermark uses `server_updated_at` (set by DB trigger at write arrival)
+    // rather than client-provided `updated_at`, which can be older than the
+    // cursor when a delayed push lands after another device has already pulled.
     if (cursor != null) {
-      query = query.gte('updated_at', cursor);
+      query = query.gte('server_updated_at', cursor);
     }
 
-    final rows = await query.order('updated_at', ascending: false);
+    final rows = await query.order('server_updated_at', ascending: false);
     if (rows.isEmpty) return 0;
 
     var pulled = 0;
@@ -59,7 +62,7 @@ class TableSync {
       await setLastSyncAt(
         _db,
         watermarkKey,
-        rows.first['updated_at'] as String,
+        rows.first['server_updated_at'] as String,
       );
     }
 
