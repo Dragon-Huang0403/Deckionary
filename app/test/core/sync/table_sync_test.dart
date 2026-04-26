@@ -200,9 +200,10 @@ void main() {
     });
 
     test('watermark is updated after successful pull', () async {
-      // server_updated_at is stamped by the DB trigger at insert time, so the
-      // watermark reflects "around now" rather than any client-supplied ts.
-      final beforeInsert = DateTime.now().toUtc();
+      // server_updated_at is stamped by the DB trigger at insert time. The
+      // watermark must match that exact value — comparing against
+      // DateTime.now() on the client is unreliable when the test runner's
+      // clock differs from the Postgres container's by a few milliseconds.
       final id1 = testUuid();
       await supabase
           .from('review_cards')
@@ -221,10 +222,22 @@ void main() {
           )
           .getSingle();
 
-      final value = meta.data['value'] as String;
-      expect(value, isNotEmpty);
-      final watermark = DateTime.parse(value);
-      expect(watermark.isBefore(beforeInsert), isFalse);
+      final watermarkRaw = meta.data['value'] as String;
+      expect(watermarkRaw, isNotEmpty);
+
+      final serverRow = await supabase
+          .from('review_cards')
+          .select('server_updated_at')
+          .eq('id', id1)
+          .single();
+      final serverUpdatedAt = serverRow['server_updated_at'] as String;
+
+      // Both timestamps come from the server; they must represent the same
+      // instant regardless of representation differences.
+      expect(
+        DateTime.parse(watermarkRaw).toUtc(),
+        DateTime.parse(serverUpdatedAt).toUtc(),
+      );
     });
 
     test('delayed push with older client updated_at is not skipped '
