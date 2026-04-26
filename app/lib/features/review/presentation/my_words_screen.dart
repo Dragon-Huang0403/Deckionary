@@ -398,9 +398,16 @@ class _SearchHistoryImportSheetState
 
   Future<void> _loadHistory() async {
     final dao = ref.read(searchHistoryDaoProvider);
+    final listDao = ref.read(vocabularyListDaoProvider);
+    final list = await ref.read(myWordsListProvider.future);
+    final existing = (await listDao.getEntries(list.id))
+        .map((e) => e.entryId)
+        .toSet();
     final items = await dao.getRecentUnique(limit: 50);
-    // Only show items with a matched dictionary entry
-    final withEntry = items.where((h) => h.entryId != null).toList();
+    // Only show items with a matched dictionary entry not already in My Words
+    final withEntry = items
+        .where((h) => h.entryId != null && !existing.contains(h.entryId))
+        .toList();
     if (mounted) {
       setState(() {
         _history = withEntry;

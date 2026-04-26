@@ -152,15 +152,16 @@ class VocabularyListDao {
   }
 
   /// Watch all active entries (for reactive UI).
-  /// Display order follows setting: oldest = ASC, newest = DESC.
-  /// Random keeps oldest-first display (randomness only in queue selection).
+  /// Display order follows setting: oldest = ASC, newest/random = DESC.
+  /// Random shows newest-first; queue-selection randomness is handled
+  /// separately via getEntries(order: 'random').
   Stream<List<VocabularyListEntry>> watchEntries(
     String listId, {
     String order = 'oldest',
   }) {
     final orderClause = switch (order) {
-      'newest' => 'ORDER BY added_at DESC',
-      _ => 'ORDER BY added_at ASC', // oldest + random both show oldest-first
+      'newest' || 'random' => 'ORDER BY added_at DESC',
+      _ => 'ORDER BY added_at ASC',
     };
     return _db
         .customSelect(
