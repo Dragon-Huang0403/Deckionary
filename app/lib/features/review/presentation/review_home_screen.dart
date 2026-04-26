@@ -307,8 +307,8 @@ class ReviewHomeScreen extends ConsumerWidget {
         context,
         MaterialPageRoute(builder: (_) => const ReviewSessionScreen()),
       );
-      // Refresh summary when returning
-      ref.invalidate(reviewSummaryProvider);
+      // No manual invalidate: reviewSummaryProvider is driven by drift
+      // streams that already fired during the session as cards were rated.
     }
   }
 }

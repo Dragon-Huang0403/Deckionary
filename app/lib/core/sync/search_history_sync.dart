@@ -152,9 +152,11 @@ class SearchHistorySync {
 
   // ── Orchestration ──────────────────────────────────────────────────────────
 
+  /// Sync order: push first, then pull. See ReviewSync.syncReviewData for
+  /// the rationale.
   Future<({int pushed, int pulled})> syncSearchHistory() async {
-    final pulled = await pullSearchHistory();
     final pushed = await pushAllUnsynced();
+    final pulled = await pullSearchHistory();
     return (pushed: pushed, pulled: pulled);
   }
 

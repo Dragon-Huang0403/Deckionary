@@ -203,6 +203,59 @@ class ReviewDao {
         .map((row) => row.data['cnt'] as int);
   }
 
+  /// Watch reviewed-today count (local day boundary) as a stream.
+  Stream<int> watchReviewedTodayCount() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day)
+        .toUtc()
+        .toIso8601String();
+    return _db
+        .customSelect(
+          'SELECT COUNT(*) as cnt FROM review_logs WHERE deleted_at IS NULL AND reviewed_at >= ?',
+          variables: [Variable.withString(startOfDay)],
+          readsFrom: {_db.reviewLogs},
+        )
+        .watchSingle()
+        .map((row) => row.data['cnt'] as int);
+  }
+
+  /// Watch new-cards-learned-today count (local day boundary) as a stream.
+  Stream<int> watchNewLearnedTodayCount() {
+    final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day)
+        .toUtc()
+        .toIso8601String();
+    return _db
+        .customSelect(
+          '''SELECT COUNT(DISTINCT card_id) as cnt FROM review_logs
+         WHERE deleted_at IS NULL AND reviewed_at >= ?
+         AND card_id IN (
+           SELECT card_id FROM review_logs
+           WHERE deleted_at IS NULL
+           GROUP BY card_id
+           HAVING MIN(reviewed_at) >= ?
+         )''',
+          variables: [
+            Variable.withString(startOfDay),
+            Variable.withString(startOfDay),
+          ],
+          readsFrom: {_db.reviewLogs},
+        )
+        .watchSingle()
+        .map((row) => row.data['cnt'] as int);
+  }
+
+  /// Watch total non-deleted card count as a stream.
+  Stream<int> watchTotalCardsCount() {
+    return _db
+        .customSelect(
+          'SELECT COUNT(*) as cnt FROM review_cards WHERE deleted_at IS NULL',
+          readsFrom: {_db.reviewCards},
+        )
+        .watchSingle()
+        .map((row) => row.data['cnt'] as int);
+  }
+
   /// Soft-delete all review cards and logs, resetting progress.
   Future<void> clearAllProgress() async {
     final now = DateTime.now().toUtc().toIso8601String();

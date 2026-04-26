@@ -82,7 +82,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       _syncResult = null;
     });
     try {
-      // Pull remote first, then push local
+      // Each sync*Data orchestrator pushes local writes first, then pulls.
+      // Settings stays pull-then-push because settings_sync uses dirty
+      // tracking to avoid clobbering local edits.
       await syncService.syncSearchHistory();
       await syncService.syncReviewData();
       await syncService.syncVocabularyData();
@@ -90,8 +92,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       await syncService.pushDirtySettings();
       await syncService.cleanupSoftDeletes();
 
-      // Refresh UI providers with synced data
-      ref.invalidate(reviewSummaryProvider);
+      // reviewSummaryProvider is driven by drift streams on review_cards /
+      // review_logs, so it auto-refreshes after the sync writes. We only
+      // need to invalidate settings-derived providers here.
       if (settingsPulled > 0) {
         ref.invalidate(themeModeProvider);
         ref.invalidate(reviewFilterProvider);

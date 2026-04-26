@@ -383,11 +383,19 @@ class ReviewSync {
 
   // ── Orchestration ──────────────────────────────────────────────────────────
 
+  /// Sync order: push first, then pull.
+  ///
+  /// Push-first guarantees this device's local writes reach the server before
+  /// the pull step runs, so a user opening another device immediately after
+  /// will see them on the next foreground without alternating reopens. With
+  /// last-write-wins by `updated_at`, our own rows are authoritative for
+  /// themselves, so there's no "stale push overwrites fresh remote" race that
+  /// pull-first would protect against.
   Future<void> syncReviewData() async {
-    await pullReviewCards();
-    await pullReviewLogs();
     await pushAllUnsyncedReviewCards();
     await pushAllUnsyncedReviewLogs();
+    await pullReviewCards();
+    await pullReviewLogs();
   }
 
   Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {

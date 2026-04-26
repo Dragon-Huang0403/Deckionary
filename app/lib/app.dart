@@ -454,12 +454,17 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     }
 
     sync.syncSearchHistory();
-    sync.syncReviewData().then((_) {
-      ref.invalidate(reviewSummaryProvider);
-    });
+    // syncReviewData updates review_cards / review_logs locally; drift's
+    // table-watcher streams (wired into reviewSummaryProvider) re-emit
+    // automatically, so no manual invalidate is needed here.
+    sync.syncReviewData();
     sync.syncVocabularyData();
     sync.syncSpeakingData();
-    // Pull settings first, then push dirty (was push→pull, now pull→push).
+    // Settings sync stays pull-then-push: settings_sync uses dirty tracking
+    // to avoid clobbering local edits, so pull-first is safe there.
+    // Settings values (e.g. newCardsPerDay) aren't drift-watched, so we
+    // still invalidate dependent providers when a pull actually changed
+    // something.
     sync.pullSettings().then((pulled) {
       if (pulled > 0) {
         ref.invalidate(themeModeProvider);

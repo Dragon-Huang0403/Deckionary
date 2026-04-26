@@ -205,9 +205,11 @@ class SpeakingSync {
 
   // ── Orchestration ──────────────────────────────────────────────────────────
 
+  /// Sync order: push first, then pull. See ReviewSync.syncReviewData for
+  /// the rationale.
   Future<void> syncSpeakingData() async {
-    await pullSpeakingResults();
     await pushAllUnsynced();
+    await pullSpeakingResults();
     // Opportunistic retention sweep — the SELECT is a no-op when nothing is
     // due, so this is cheap to run on every sync tick.
     await cleanupOldAudio();

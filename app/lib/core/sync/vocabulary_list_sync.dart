@@ -333,11 +333,13 @@ class VocabularyListSync {
 
   // ── Orchestration ──────────────────────────────────────────────────────────
 
+  /// Sync order: push first, then pull. See ReviewSync.syncReviewData for
+  /// the rationale.
   Future<void> syncVocabularyData() async {
-    await pullLists();
-    await pullEntries();
     await pushAllUnsyncedLists();
     await pushAllUnsyncedEntries();
+    await pullLists();
+    await pullEntries();
   }
 
   Future<void> cleanupSoftDeletes({int retentionDays = 30}) async {

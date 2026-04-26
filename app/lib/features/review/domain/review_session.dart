@@ -3,6 +3,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/review_dao.dart';
 import '../../../core/database/settings_dao.dart';
 import '../../../core/database/vocabulary_list_dao.dart';
+import '../../../core/logging/logging_service.dart';
 import '../../../core/sync/sync_service.dart';
 import 'review_filter.dart';
 import 'review_service.dart';
@@ -85,7 +86,12 @@ class ReviewSession {
     _currentIndex = 0;
 
     // 1. Due review cards
+    final dueCardsTotal = await _dao.countDueCards();
     final dueCards = await _dao.getDueCards(limit: maxReviewsPerDay);
+    globalTalker.info(
+      '[Diagnose] loadQueue: dueCardsTotal=$dueCardsTotal '
+      'dueCardsLoaded=${dueCards.length} maxReviewsPerDay=$maxReviewsPerDay',
+    );
     for (final card in dueCards) {
       _queue.add(
         QueueCard(
@@ -104,6 +110,11 @@ class ReviewSession {
       0,
       newCardsPerDay,
     );
+    globalTalker.info(
+      '[Diagnose] loadQueue: newLearnedToday=$newLearnedToday '
+      'newCardsPerDay=$newCardsPerDay newLimit=$newLimit '
+      'filterEmpty=${filter.isEmpty} myWordsListId=${myWordsListId != null}',
+    );
 
     if (newLimit > 0) {
       final newIds = await _resolveNewCardIds(
@@ -120,6 +131,7 @@ class ReviewSession {
         final entries = await _dao.getEntryDetails(newIds);
         // Sort entries to match newIds order (getEntryDetails may reorder)
         final entryMap = {for (final e in entries) e['id'] as int: e};
+        var addedFromNewIds = 0;
         for (final id in newIds) {
           final entry = entryMap[id];
           if (entry != null) {
@@ -131,11 +143,23 @@ class ReviewSession {
                 isNew: true,
               ),
             );
+            addedFromNewIds++;
           }
         }
+        globalTalker.info(
+          '[Diagnose] loadQueue: newIds=${newIds.length} '
+          'entriesFetched=${entries.length} addedFromNewIds=$addedFromNewIds',
+        );
+      } else {
+        globalTalker.info(
+          '[Diagnose] loadQueue: _resolveNewCardIds returned 0 ids',
+        );
       }
     }
 
+    globalTalker.info(
+      '[Diagnose] loadQueue: FINAL queue.length=${_queue.length}',
+    );
     _isLoaded = true;
   }
 
@@ -157,16 +181,29 @@ class ReviewSession {
 
     // Try persisted queue
     final persisted = await _settingsDao.getNewCardsQueue();
+    final persistedHash = persisted?['hash'] as String?;
+    final persistedAllLen = (persisted?['ids'] as List?)?.length ?? 0;
+    final persistedPos = persisted?['position'] as int?;
+    globalTalker.info(
+      '[Diagnose] resolveNewCardIds: persisted=${persisted != null} '
+      'hashMatch=${persistedHash == currentHash} '
+      'allIds.len=$persistedAllLen position=$persistedPos newLimit=$newLimit',
+    );
     if (persisted != null && persisted['hash'] == currentHash) {
       final allIds = (persisted['ids'] as List).cast<int>();
       final position = persisted['position'] as int;
       var resumeIds = allIds.skip(position).take(newLimit).toList();
+      final initialResumeLen = resumeIds.length;
 
       // Remove IDs that have since been reviewed
       if (resumeIds.isNotEmpty) {
         final existing = await _dao.getAllReviewedEntryIds();
         resumeIds.removeWhere((id) => existing.contains(id));
       }
+      globalTalker.info(
+        '[Diagnose] resolveNewCardIds: persisted-branch resumeIds '
+        'initial=$initialResumeLen afterFilter=${resumeIds.length}',
+      );
 
       if (resumeIds.isNotEmpty) return resumeIds;
     }
@@ -199,6 +236,10 @@ class ReviewSession {
     }
 
     final newIds = [...myWordsIds, ...filterIds];
+    globalTalker.info(
+      '[Diagnose] resolveNewCardIds: fresh-gen myWordsIds=${myWordsIds.length} '
+      'filterIds=${filterIds.length} newIds=${newIds.length}',
+    );
 
     // Persist for session resumption
     if (newIds.isNotEmpty) {
