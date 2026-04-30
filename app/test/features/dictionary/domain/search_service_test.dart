@@ -359,6 +359,59 @@ void main() {
     });
   });
 
+  // ── 6b. searchDefinitionsZh (Chinese FTS) ───────────────────────────────
+
+  group('searchDefinitionsZh', () {
+    test('Traditional "撞擊試驗" finds crash-test entries (MATCH path)', () async {
+      final results = await db.searchDefinitionsZh('撞擊試驗', limit: 15);
+      expect(results, isNotEmpty);
+      final headwords = results.map((r) => r['headword'] as String).toSet();
+      expect(
+        headwords.any((h) => h.contains('crash')),
+        isTrue,
+        reason: 'Should match crash/crash-test entries via Chinese definition',
+      );
+    });
+
+    test('Simplified "撞击试验" finds same crash-test entries', () async {
+      final results = await db.searchDefinitionsZh('撞击试验', limit: 15);
+      expect(results, isNotEmpty);
+      final headwords = results.map((r) => r['headword'] as String).toSet();
+      expect(headwords.any((h) => h.contains('crash')), isTrue);
+    });
+
+    test('1-char "車" returns vehicle-related entries (LIKE path)', () async {
+      final results = await db.searchDefinitionsZh('車', limit: 15);
+      expect(results, isNotEmpty,
+          reason: 'LIKE fallback should return entries with 車 in zh content');
+    });
+
+    test('1-char Simplified "车" returns same kind of entries', () async {
+      final results = await db.searchDefinitionsZh('车', limit: 15);
+      expect(results, isNotEmpty,
+          reason: 'Dual-form storage means Simplified 车 also matches');
+    });
+
+    test('1-char "樹" returns tree-related entries', () async {
+      final results = await db.searchDefinitionsZh('樹', limit: 15);
+      expect(results, isNotEmpty);
+    });
+
+    test('empty query returns empty', () async {
+      expect(await db.searchDefinitionsZh('', limit: 15), isEmpty);
+    });
+
+    test('LIKE wildcards in user input are escaped (not interpreted)', () async {
+      // "車%" should match entries containing the literal substring "車%".
+      // Without escaping, "%" would be a wildcard and match every row that
+      // contains 車, returning a far larger result set.
+      final literal = await db.searchDefinitionsZh('車%', limit: 100);
+      final plain = await db.searchDefinitionsZh('車', limit: 100);
+      expect(literal.length, lessThan(plain.length),
+          reason: 'literal "車%" must not match more than plain "車"');
+    });
+  });
+
   // ── 7. searchEntries (full pipeline) ────────────────────────────────────
 
   group('searchEntries', () {
@@ -503,6 +556,44 @@ void main() {
       for (final r in headwordResults) {
         expect(r.entry.headword, 'cat');
       }
+    });
+  });
+
+  // ── 9. searchEntries — Chinese branch ──────────────────────────────────
+
+  group('searchEntries — Chinese', () {
+    test('Traditional 3+ chars dispatches to Chinese FTS', () async {
+      final results = await searchEntries(db, '撞擊試驗');
+      expect(results, isNotEmpty);
+      expect(
+        results.any((r) => r.entry.headword.contains('crash')),
+        isTrue,
+        reason: 'Traditional Chinese phrase should match crash-test entries',
+      );
+      // Snippet should contain Chinese, not English fallback.
+      final hasChineseSnippet = results.any(
+        (r) => RegExp(r'[一-鿿]').hasMatch(r.snippet),
+      );
+      expect(hasChineseSnippet, isTrue);
+    });
+
+    test('Simplified equivalent yields the same results', () async {
+      final tradResults = await searchEntries(db, '撞擊試驗');
+      final simpResults = await searchEntries(db, '撞击试验');
+      expect(simpResults, isNotEmpty);
+      final tradHeadwords = tradResults.map((r) => r.entry.headword).toSet();
+      final simpHeadwords = simpResults.map((r) => r.entry.headword).toSet();
+      expect(simpHeadwords, equals(tradHeadwords));
+    });
+
+    test('1-char CJK takes Chinese branch (LIKE path)', () async {
+      final results = await searchEntries(db, '車');
+      expect(results, isNotEmpty);
+    });
+
+    test('2-char CJK takes Chinese branch (LIKE path)', () async {
+      final results = await searchEntries(db, '車禍');
+      expect(results, isNotEmpty);
     });
   });
 }

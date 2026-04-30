@@ -154,6 +154,82 @@ extension DictionarySearch on DictionaryDatabase {
     }
   }
 
+  /// Search Chinese definitions and examples via the FTS5 table
+  /// `dictionary_fts_zh`. Each row stores Traditional + Simplified text so
+  /// either input form matches.
+  ///
+  /// Dispatches by query length:
+  ///   * 3+ chars → trigram MATCH ranked by BM25 (definitions weighted 5x examples)
+  ///   * 1–2 chars → LIKE substring scan (trigram index can't form n-grams),
+  ///                 ordered by headword for stable results
+  Future<List<Map<String, dynamic>>> searchDefinitionsZh(
+    String query, {
+    int limit = 15,
+  }) async {
+    final q = query.trim();
+    if (q.isEmpty) return [];
+
+    if (q.length >= 3) {
+      // Strip FTS5 syntax-significant characters; wrap in quotes for phrase match.
+      final cleaned = q.replaceAll(RegExp(r'["\\(){}^*:]'), '');
+      if (cleaned.isEmpty) return [];
+      final sanitized = '"$cleaned"';
+      try {
+        final results = await db
+            .customSelect(
+              '''SELECT e.* FROM dictionary_fts_zh fts
+             JOIN entries e ON e.id = fts.rowid
+             WHERE dictionary_fts_zh MATCH ?
+             ORDER BY bm25(dictionary_fts_zh, 10.0, 5.0, 1.0)
+             LIMIT ?''',
+              variables: [
+                Variable.withString(sanitized),
+                Variable.withInt(limit),
+              ],
+            )
+            .get();
+        return results.map((r) => r.data).toList();
+      } catch (_) {
+        return [];
+      }
+    }
+
+    // 1–2 char fallback: LIKE substring on FTS columns. Prefer definition
+    // matches; rank entries whose definition starts with the char first.
+    // Escape SQLite LIKE metacharacters so user input like "%" / "_" is literal.
+    final escaped = q
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+    final pattern = '%$escaped%';
+    final startsWith = '$escaped%';
+    try {
+      final results = await db
+          .customSelect(
+            r'''SELECT e.* FROM dictionary_fts_zh fts
+           JOIN entries e ON e.id = fts.rowid
+           WHERE fts.definitions_zh LIKE ? ESCAPE '\'
+              OR fts.examples_zh LIKE ? ESCAPE '\'
+           ORDER BY
+             CASE WHEN fts.definitions_zh LIKE ? ESCAPE '\' THEN 0 ELSE 1 END,
+             LENGTH(fts.definitions_zh),
+             e.headword,
+             e.entry_index
+           LIMIT ?''',
+            variables: [
+              Variable.withString(pattern),
+              Variable.withString(pattern),
+              Variable.withString(startsWith),
+              Variable.withInt(limit),
+            ],
+          )
+          .get();
+      return results.map((r) => r.data).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<Map<String, dynamic>>> lookupWord(String headword) async {
     final results = await db
         .customSelect(

@@ -14,11 +14,17 @@ from .parser import parse_entry
 from .schema import create_schema
 
 _converter = opencc.OpenCC('s2t')
+_t2s_converter = opencc.OpenCC('t2s')
 
 
 def s2t(text: str) -> str:
     """Convert Simplified Chinese to Traditional Chinese."""
     return _converter.convert(text) if text else ""
+
+
+def t2s(text: str) -> str:
+    """Convert Traditional Chinese to Simplified Chinese."""
+    return _t2s_converter.convert(text) if text else ""
 
 CONTENTS = Path("oxford.dictionary/Contents").resolve()
 BODY = CONTENTS / "Body.data"
@@ -312,6 +318,40 @@ def import_all(db_path: str | Path, verbose: bool = False) -> None:
     db.commit()
     fts_count = db.execute("SELECT COUNT(*) FROM dictionary_fts").fetchone()[0]
     print(f"  {fts_count} entries indexed", file=sys.stderr)
+
+    # Populate Chinese FTS index (trigram tokenizer; dual Traditional + Simplified)
+    print("Building Chinese definition/example FTS index...", file=sys.stderr)
+    rows = db.execute("""
+        SELECT
+            e.id,
+            e.headword,
+            COALESCE((SELECT GROUP_CONCAT(s.definition_zh, char(10))
+                      FROM senses s
+                      WHERE s.entry_id = e.id AND s.definition_zh != ''), ''),
+            COALESCE((SELECT GROUP_CONCAT(ex.text_zh, char(10))
+                      FROM examples ex
+                      JOIN senses s2 ON ex.sense_id = s2.id
+                      WHERE s2.entry_id = e.id AND ex.text_zh != ''), '')
+        FROM entries e
+    """).fetchall()
+
+    zh_inserted = 0
+    for entry_id, headword, defs_zh, examples_zh in rows:
+        if not defs_zh and not examples_zh:
+            continue
+        # Store Traditional + Simplified back-to-back so trigram FTS matches either input form.
+        defs_dual = f"{defs_zh}\n{t2s(defs_zh)}" if defs_zh else ""
+        examples_dual = f"{examples_zh}\n{t2s(examples_zh)}" if examples_zh else ""
+        db.execute(
+            "INSERT INTO dictionary_fts_zh(rowid, headword, definitions_zh, examples_zh) "
+            "VALUES (?, ?, ?, ?)",
+            (entry_id, headword, defs_dual, examples_dual),
+        )
+        zh_inserted += 1
+
+    db.execute("INSERT INTO dictionary_fts_zh(dictionary_fts_zh) VALUES('optimize')")
+    db.commit()
+    print(f"  {zh_inserted} entries indexed (Chinese)", file=sys.stderr)
 
     # Optimize
     print("Optimizing database...", file=sys.stderr)

@@ -2,7 +2,7 @@
 
 import sqlite3
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 7
 
 TABLES = """
 CREATE TABLE IF NOT EXISTS sources (
@@ -218,6 +218,15 @@ CREATE VIRTUAL TABLE IF NOT EXISTS dictionary_fts USING fts5(
 );
 """
 
+DICTIONARY_FTS_ZH_TABLE = """
+CREATE VIRTUAL TABLE IF NOT EXISTS dictionary_fts_zh USING fts5(
+    headword,
+    definitions_zh,
+    examples_zh,
+    tokenize='trigram'
+);
+"""
+
 META_TABLE = """
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
@@ -230,6 +239,7 @@ def create_schema(db: sqlite3.Connection) -> None:
     db.executescript(TABLES)
     db.executescript(FTS_TABLE)
     db.executescript(DICTIONARY_FTS_TABLE)
+    db.executescript(DICTIONARY_FTS_ZH_TABLE)
     db.executescript(META_TABLE)
     db.execute(
         "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)",

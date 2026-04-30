@@ -131,7 +131,7 @@ class DictionaryDatabase {
 
   /// Must match SCHEMA_VERSION in db/schema.py.
   /// Bump this when the bundled oald10.db is rebuilt with a new schema.
-  static const _bundledSchemaVersion = 5;
+  static const _bundledSchemaVersion = 7;
 
   static Future<DictionaryDatabase> open() async {
     final dir = await getApplicationDocumentsDirectory();
