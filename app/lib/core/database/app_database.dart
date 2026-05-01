@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import '../logging/logging_service.dart';
 
 import 'user_tables.dart';
 
@@ -166,7 +167,8 @@ class DictionaryDatabase {
           .get();
       if (rows.isEmpty) return 0;
       return int.tryParse(rows.first.data['value'] as String? ?? '') ?? 0;
-    } catch (_) {
+    } catch (e, st) {
+      globalTalker.error('[DictionaryDatabase] read schema_version failed', e, st);
       return 0;
     } finally {
       await db.close();

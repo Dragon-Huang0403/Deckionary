@@ -40,10 +40,14 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
           if (path != null) {
             try {
               await File(path).delete();
-            } catch (_) {}
+            } catch (e, st) {
+              globalTalker.error('[Speaking] dispose: delete temp recording failed', e, st);
+            }
           }
         })
-        .catchError((_) {});
+        .catchError((Object e, StackTrace st) {
+          globalTalker.error('[Speaking] dispose: recorder stop failed', e, st);
+        });
     _recorder.dispose();
     _textController.dispose();
     super.dispose();
@@ -66,9 +70,13 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
       if (path != null) {
         try {
           await File(path).delete();
-        } catch (_) {}
+        } catch (e, st) {
+          globalTalker.error('[Speaking] cancelRecording: delete temp recording failed', e, st);
+        }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      globalTalker.error('[Speaking] cancelRecording: recorder stop failed', e, st);
+    }
     if (mounted) {
       ref.read(recordingStatusProvider.notifier).set(RecordingStatus.idle);
     }

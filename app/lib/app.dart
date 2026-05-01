@@ -86,7 +86,9 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       _lastSeenClipText = data?.text?.trim();
-    } catch (_) {}
+    } catch (e, st) {
+      globalTalker.error('[App] init clipboard snapshot failed', e, st);
+    }
 
     // Show window in normal mode on startup
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -338,7 +340,9 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
           text != _lastSeenClipText) {
         clipText = text;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      globalTalker.error('[App] read clipboard for focus search failed', e, st);
+    }
     ref.read(clipboardSearchText.notifier).set(clipText);
     ref.read(searchBarFocusTrigger.notifier).increment();
   }
@@ -348,7 +352,9 @@ class _DeckionaryAppState extends ConsumerState<DeckionaryApp>
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       _lastSeenClipText = data?.text?.trim();
-    } catch (_) {}
+    } catch (e, st) {
+      globalTalker.error('[App] hideWindow clipboard snapshot failed', e, st);
+    }
     ref.read(isOverlayModeProvider.notifier).set(false);
     await _windowChannel.invokeMethod('setNormalMode');
     await _windowChannel.invokeMethod('resetLevel', _showInDock);

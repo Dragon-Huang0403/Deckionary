@@ -101,7 +101,10 @@ class LogFlushService with WidgetsBindingObserver {
     _buffer.clear();
     try {
       await _insertBatch(batch);
-    } catch (_) {
+    } catch (e) {
+      // Cannot route through globalTalker — its observer flushes through this
+      // service, so logging here would loop. debugPrint surfaces in logcat.
+      debugPrint('[LogFlush] insert batch failed: $e');
       // Put entries back for retry on next flush
       _buffer.insertAll(0, batch);
     }

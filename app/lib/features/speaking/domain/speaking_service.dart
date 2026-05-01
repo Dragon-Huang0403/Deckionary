@@ -156,7 +156,9 @@ class SpeakingService {
       await File(tempPath).copy(finalPath);
       try {
         await File(tempPath).delete();
-      } catch (_) {}
+      } catch (e, st) {
+        globalTalker.error('[Speaking] delete temp recording after copy failed', e, st);
+      }
     }
     await (_db.update(_db.speakingResults)
           ..where((t) => t.id.equals(attemptId)))

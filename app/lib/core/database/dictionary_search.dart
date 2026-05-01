@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../logging/logging_service.dart';
 import 'app_database.dart';
 
 int levenshtein(String s, String t) {
@@ -149,7 +150,8 @@ extension DictionarySearch on DictionaryDatabase {
           )
           .get();
       return results.map((r) => r.data).toList();
-    } catch (_) {
+    } catch (e, st) {
+      globalTalker.error('[Dict] searchDefinitions FTS failed', e, st);
       return []; // graceful fallback on malformed queries
     }
   }
@@ -189,7 +191,8 @@ extension DictionarySearch on DictionaryDatabase {
             )
             .get();
         return results.map((r) => r.data).toList();
-      } catch (_) {
+      } catch (e, st) {
+        globalTalker.error('[Dict] searchDefinitionsZh MATCH failed for "$q"', e, st);
         return [];
       }
     }
@@ -225,7 +228,8 @@ extension DictionarySearch on DictionaryDatabase {
           )
           .get();
       return results.map((r) => r.data).toList();
-    } catch (_) {
+    } catch (e, st) {
+      globalTalker.error('[Dict] searchDefinitionsZh LIKE failed for "$q"', e, st);
       return [];
     }
   }

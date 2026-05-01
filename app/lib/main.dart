@@ -118,8 +118,9 @@ Future<void> _reportStartupFailure(Object error, StackTrace stack) async {
       'platform': Platform.operatingSystem,
       'created_at': DateTime.now().toUtc().toIso8601String(),
     });
-  } catch (_) {
+  } catch (e, st) {
     // Best-effort; the on-screen message already tells the user.
+    globalTalker.error('[STARTUP] pre-init log to Supabase failed', e, st);
   }
 }
 

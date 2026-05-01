@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/database/database_provider.dart';
+import '../../../core/logging/logging_service.dart';
 import '../../../main.dart';
 import '../data/curated_topics.dart';
 import '../domain/speaking_attempt.dart';
@@ -106,7 +107,9 @@ final speakingHistoryProvider = FutureProvider<List<SpeakingHistoryItem>>((
     try {
       final list = jsonDecode(latest.correctionsJson);
       if (list is List) count = list.length;
-    } catch (_) {}
+    } catch (e, st) {
+      globalTalker.error('[Speaking] decode corrections JSON failed', e, st);
+    }
     return SpeakingHistoryItem(
       sessionId: entry.key,
       topic: latest.topic,
@@ -168,7 +171,8 @@ List<PronunciationIssue>? _decodePronunciationIssues(String? json) {
     return list
         .map((e) => PronunciationIssue.fromJson(e as Map<String, dynamic>))
         .toList();
-  } catch (_) {
+  } catch (e, st) {
+    globalTalker.error('[Speaking] decode pronunciation issues JSON failed', e, st);
     return null;
   }
 }
