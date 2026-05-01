@@ -122,6 +122,7 @@ class ReviewSession {
         newCardsPerDay: newCardsPerDay,
         cardOrder: cardOrder,
         newLimit: newLimit,
+        newLearnedToday: newLearnedToday,
         randomOrder: randomOrder,
         myWordsListId: myWordsListId,
         myWordsOrder: myWordsOrder,
@@ -170,6 +171,7 @@ class ReviewSession {
     required int newCardsPerDay,
     required String cardOrder,
     required int newLimit,
+    required int newLearnedToday,
     required bool randomOrder,
     String? myWordsListId,
     String myWordsOrder = 'oldest',
@@ -192,20 +194,32 @@ class ReviewSession {
     if (persisted != null && persisted['hash'] == currentHash) {
       final allIds = (persisted['ids'] as List).cast<int>();
       final position = persisted['position'] as int;
-      var resumeIds = allIds.skip(position).take(newLimit).toList();
-      final initialResumeLen = resumeIds.length;
+      // Invariant: position advances 1:1 with new-card grades, which write
+      // review_logs that countNewLearnedToday reads. position > newLearnedToday
+      // means progress was made on a previous local day (or logs were lost) —
+      // discard and regenerate so today's quota is honored.
+      if (position > newLearnedToday) {
+        globalTalker.info(
+          '[Diagnose] resolveNewCardIds: stale persisted '
+          'position=$position > newLearnedToday=$newLearnedToday — discarding',
+        );
+        await _settingsDao.clearNewCardsQueue();
+      } else {
+        var resumeIds = allIds.skip(position).take(newLimit).toList();
+        final initialResumeLen = resumeIds.length;
 
-      // Remove IDs that have since been reviewed
-      if (resumeIds.isNotEmpty) {
-        final existing = await _dao.getAllReviewedEntryIds();
-        resumeIds.removeWhere((id) => existing.contains(id));
+        // Remove IDs that have since been reviewed
+        if (resumeIds.isNotEmpty) {
+          final existing = await _dao.getAllReviewedEntryIds();
+          resumeIds.removeWhere((id) => existing.contains(id));
+        }
+        globalTalker.info(
+          '[Diagnose] resolveNewCardIds: persisted-branch resumeIds '
+          'initial=$initialResumeLen afterFilter=${resumeIds.length}',
+        );
+
+        if (resumeIds.isNotEmpty) return resumeIds;
       }
-      globalTalker.info(
-        '[Diagnose] resolveNewCardIds: persisted-branch resumeIds '
-        'initial=$initialResumeLen afterFilter=${resumeIds.length}',
-      );
-
-      if (resumeIds.isNotEmpty) return resumeIds;
     }
 
     // Generate fresh queue: My Words first, filter fills remaining

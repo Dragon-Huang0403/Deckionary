@@ -231,6 +231,79 @@ void main() {
     });
   });
 
+  // ── loadQueue stale persisted queue ───────────────────────────────────────
+
+  group('loadQueue stale persisted queue', () {
+    test('discards persisted state when position > newLearnedToday', () async {
+      // Simulate an abandoned session from a previous local day: persisted
+      // queue claims position=3, but review_logs has 0 entries from today,
+      // so newLearnedToday=0. Without the staleness check, the resume branch
+      // would return only allIds.length - position = 2 cards.
+      const filter = defaultFilter;
+      final hash = filter.queueHash(
+        newCardsPerDay: 5,
+        cardOrder: 'alphabetical',
+      );
+      await settingsDao.setNewCardsQueue([
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+      ], 3, hash);
+
+      await session.loadQueue(
+        filter: filter,
+        newCardsPerDay: 5,
+        maxReviewsPerDay: 200,
+        cardOrder: 'alphabetical',
+      );
+
+      // Stale state should be discarded and a fresh queue of 5 generated.
+      expect(session.total, 5);
+    });
+
+    test('resumes from persisted position on same-day reload', () async {
+      // First loadQueue: fresh-gen produces a queue persisted at position=0.
+      await session.loadQueue(
+        filter: defaultFilter,
+        newCardsPerDay: 5,
+        maxReviewsPerDay: 200,
+        cardOrder: 'alphabetical',
+      );
+      expect(session.total, 5);
+      final firstEntryId = session.currentCard!.entryId;
+
+      // Rate the first new card → _advanceQueuePosition bumps to position=1
+      // and a review_log is inserted, so countNewLearnedToday becomes 1.
+      await session.rateCurrentCard(fsrs.Rating.good);
+
+      // Sanity-check: the persisted-position bookkeeping is correct.
+      final persisted = await settingsDao.getNewCardsQueue();
+      expect(persisted, isNotNull);
+      expect(persisted!['position'], 1);
+
+      // Reload with a fresh ReviewSession (simulates app restart same day).
+      // position(1) == newLearnedToday(1) → persisted-branch must be used,
+      // returning the remaining 4 ids (not regenerating).
+      final session2 = ReviewSession(
+        dao: dao,
+        service: service,
+        settingsDao: settingsDao,
+      );
+      await session2.loadQueue(
+        filter: defaultFilter,
+        newCardsPerDay: 5,
+        maxReviewsPerDay: 200,
+        cardOrder: 'alphabetical',
+      );
+
+      // newLimit = 5 - 1 = 4; resume skips the first (rated) entry.
+      expect(session2.total, 4);
+      expect(session2.currentCard!.entryId, isNot(firstEntryId));
+    });
+  });
+
   // ── loadQueue empty filter skips new cards ────────────────────────────────
 
   group('loadQueue empty filter skips new cards', () {
