@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:audio_session/audio_session.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
@@ -266,6 +267,11 @@ class AudioService {
   final AudioPlayer _player = AudioPlayer();
   final AudioDb _audioDB;
 
+  /// Bumped on every `play()` call so a stale completion watcher from a
+  /// superseded clip doesn't deactivate the session while a newer clip is
+  /// still playing.
+  int _playGeneration = 0;
+
   static const _r2AudioUrl = '$r2BaseUrl/audio';
 
   AudioService({AudioDb? db}) : _audioDB = db ?? AudioDb();
@@ -277,6 +283,7 @@ class AudioService {
   Future<void> play(String filename) async {
     if (filename.isEmpty) return;
 
+    final gen = ++_playGeneration;
     try {
       // Check local audio.db
       var data = await _audioDB.get(filename);
@@ -301,9 +308,30 @@ class AudioService {
       await tmpFile.writeAsBytes(data);
       await _player.setFilePath(tmpFile.path);
       await _player.play();
+      await _deactivateSessionAfterCompletion(gen);
     } catch (e, st) {
       globalTalker.error('[Audio] error $filename', e, st);
     }
+  }
+
+  /// Wait for the current playback to terminate (either natural `completed`
+  /// or `idle` from a `stop()`), then release the audio session so background
+  /// apps (Spotify, etc.) un-duck and resume at full volume.
+  ///
+  /// `gen` is the generation snapshot at the start of the play() call. If the
+  /// current generation has advanced, a newer play() is in flight and owns
+  /// the session lifetime — this watcher exits without deactivating.
+  Future<void> _deactivateSessionAfterCompletion(int gen) async {
+    try {
+      await _player.processingStateStream.firstWhere(
+        (s) => s == ProcessingState.completed || s == ProcessingState.idle,
+      );
+    } catch (_) {
+      // Stream closed (player disposed). Continue to deactivate.
+    }
+    if (_playGeneration != gen) return;
+    final session = await AudioSession.instance;
+    await session.setActive(false);
   }
 
   /// Play pronunciation for an entry.

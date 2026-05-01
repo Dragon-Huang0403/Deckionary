@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:audio_session/audio_session.dart';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -19,6 +20,11 @@ class TtsCacheService {
   final AudioPlayer _player = AudioPlayer();
   GeneratedDatabase? _db;
   bool _initialized = false;
+
+  /// Bumped on every play call so a stale completion watcher from a
+  /// superseded clip doesn't deactivate the session while a newer clip is
+  /// still playing.
+  int _playGeneration = 0;
 
   TtsCacheService({required SupabaseClient supabase}) : _supabase = supabase;
 
@@ -90,6 +96,7 @@ class TtsCacheService {
 
   /// Play TTS audio for [text]. Fetches and caches if needed.
   Future<void> play(String text) async {
+    final gen = ++_playGeneration;
     try {
       await _player.stop();
       final audioBytes = await getAudio(text);
@@ -99,7 +106,8 @@ class TtsCacheService {
       await tmpFile.writeAsBytes(audioBytes);
       await _player.setFilePath(tmpFile.path);
       await _player.play();
-      // Clean up temp file after playback finishes
+      await _deactivateSessionAfterCompletion(gen);
+      // Delete only after the native decoder has released the file.
       tmpFile.delete().ignore();
     } catch (e, st) {
       globalTalker.error('[TTS] playback error', e, st);
@@ -110,13 +118,35 @@ class TtsCacheService {
 
   /// Play a local audio file (e.g. the user's shadow recording).
   Future<void> playLocalFile(String path) async {
+    final gen = ++_playGeneration;
     try {
       await _player.stop();
       await _player.setFilePath(path);
       await _player.play();
+      await _deactivateSessionAfterCompletion(gen);
     } catch (e, st) {
       globalTalker.error('[TTS] local playback error', e, st);
     }
+  }
+
+  /// Wait for the current playback to terminate (either natural `completed`
+  /// or `idle` from a `stop()`), then release the audio session so background
+  /// apps (Spotify, etc.) un-duck and resume at full volume.
+  ///
+  /// `gen` is the generation snapshot at the start of the play call. If the
+  /// current generation has advanced, a newer play is in flight and owns the
+  /// session lifetime — this watcher exits without deactivating.
+  Future<void> _deactivateSessionAfterCompletion(int gen) async {
+    try {
+      await _player.processingStateStream.firstWhere(
+        (s) => s == ProcessingState.completed || s == ProcessingState.idle,
+      );
+    } catch (_) {
+      // Stream closed (player disposed). Continue to deactivate.
+    }
+    if (_playGeneration != gen) return;
+    final session = await AudioSession.instance;
+    await session.setActive(false);
   }
 
   void dispose() {

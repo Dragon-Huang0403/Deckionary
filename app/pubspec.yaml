@@ -25,6 +25,7 @@ dependencies:
 
   # Audio
   just_audio: any
+  audio_session: any
   record: any
 
   # FSRS spaced repetition

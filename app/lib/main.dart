@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -26,6 +27,30 @@ void main() async {
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
   }
+
+  // Configure audio session so pronunciation playback ducks (rather than
+  // permanently stops) any background music, and other apps resume after.
+  final audioSession = await AudioSession.instance;
+  await audioSession.configure(
+    const AudioSessionConfiguration(
+      avAudioSessionCategory: AVAudioSessionCategory.playback,
+      avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.duckOthers,
+      // Default mode (not spokenAudio): spokenAudio would interrupt other
+      // spoken-audio apps (podcasts, audiobooks) instead of ducking them.
+      avAudioSessionMode: AVAudioSessionMode.defaultMode,
+      avAudioSessionRouteSharingPolicy:
+          AVAudioSessionRouteSharingPolicy.defaultPolicy,
+      avAudioSessionSetActiveOptions:
+          AVAudioSessionSetActiveOptions.notifyOthersOnDeactivation,
+      androidAudioAttributes: AndroidAudioAttributes(
+        contentType: AndroidAudioContentType.speech,
+        flags: AndroidAudioFlags.none,
+        usage: AndroidAudioUsage.media,
+      ),
+      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+      androidWillPauseWhenDucked: false,
+    ),
+  );
 
   // Initialize databases + sync services before runApp so that
   // globalTalker is fully configured when TalkerRiverpodObserver captures it.
