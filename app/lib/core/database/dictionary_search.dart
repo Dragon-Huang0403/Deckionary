@@ -197,9 +197,12 @@ extension DictionarySearch on DictionaryDatabase {
       }
     }
 
-    // 1–2 char fallback: LIKE substring on FTS columns. Prefer definition
-    // matches; rank entries whose definition starts with the char first.
-    // Escape SQLite LIKE metacharacters so user input like "%" / "_" is literal.
+    // 1–2 char fallback: LIKE substring on the regular dictionary_zh_like
+    // sidecar (NOT the FTS5 virtual table — LIKE on FTS5 columns is unreliable
+    // across SQLite builds: works on Apple's system sqlite3, returns empty on
+    // Linux/Android sqlite3 bundles). Prefer definition matches; rank entries
+    // whose definition starts with the char first. Escape SQLite LIKE
+    // metacharacters so user input like "%" / "_" is literal.
     final escaped = q
         .replaceAll(r'\', r'\\')
         .replaceAll('%', r'\%')
@@ -209,13 +212,13 @@ extension DictionarySearch on DictionaryDatabase {
     try {
       final results = await db
           .customSelect(
-            r'''SELECT e.* FROM dictionary_fts_zh fts
-           JOIN entries e ON e.id = fts.rowid
-           WHERE fts.definitions_zh LIKE ? ESCAPE '\'
-              OR fts.examples_zh LIKE ? ESCAPE '\'
+            r'''SELECT e.* FROM dictionary_zh_like zh
+           JOIN entries e ON e.id = zh.entry_id
+           WHERE zh.definitions_zh LIKE ? ESCAPE '\'
+              OR zh.examples_zh LIKE ? ESCAPE '\'
            ORDER BY
-             CASE WHEN fts.definitions_zh LIKE ? ESCAPE '\' THEN 0 ELSE 1 END,
-             LENGTH(fts.definitions_zh),
+             CASE WHEN zh.definitions_zh LIKE ? ESCAPE '\' THEN 0 ELSE 1 END,
+             LENGTH(zh.definitions_zh),
              e.headword,
              e.entry_index
            LIMIT ?''',

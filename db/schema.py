@@ -2,7 +2,7 @@
 
 import sqlite3
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 TABLES = """
 CREATE TABLE IF NOT EXISTS sources (
@@ -227,6 +227,18 @@ CREATE VIRTUAL TABLE IF NOT EXISTS dictionary_fts_zh USING fts5(
 );
 """
 
+# Sidecar regular table mirroring dictionary_fts_zh's dual Trad+Simp text.
+# LIKE on FTS5 virtual-table columns is unreliable across SQLite builds (works
+# on Apple's system sqlite3, returns empty on Linux/Android sqlite3 bundles),
+# so 1–2 char Chinese substring search runs against this regular table instead.
+DICTIONARY_ZH_LIKE_TABLE = """
+CREATE TABLE IF NOT EXISTS dictionary_zh_like (
+    entry_id        INTEGER PRIMARY KEY,
+    definitions_zh  TEXT NOT NULL DEFAULT '',
+    examples_zh     TEXT NOT NULL DEFAULT ''
+);
+"""
+
 META_TABLE = """
 CREATE TABLE IF NOT EXISTS meta (
     key   TEXT PRIMARY KEY,
@@ -240,6 +252,7 @@ def create_schema(db: sqlite3.Connection) -> None:
     db.executescript(FTS_TABLE)
     db.executescript(DICTIONARY_FTS_TABLE)
     db.executescript(DICTIONARY_FTS_ZH_TABLE)
+    db.executescript(DICTIONARY_ZH_LIKE_TABLE)
     db.executescript(META_TABLE)
     db.execute(
         "INSERT OR REPLACE INTO meta(key, value) VALUES ('schema_version', ?)",

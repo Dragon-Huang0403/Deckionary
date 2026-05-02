@@ -347,6 +347,13 @@ def import_all(db_path: str | Path, verbose: bool = False) -> None:
             "VALUES (?, ?, ?, ?)",
             (entry_id, headword, defs_dual, examples_dual),
         )
+        # Mirror into a regular table so 1–2 char LIKE substring search works
+        # on every SQLite build (LIKE on FTS5 virtual-table columns is flaky).
+        db.execute(
+            "INSERT INTO dictionary_zh_like(entry_id, definitions_zh, examples_zh) "
+            "VALUES (?, ?, ?)",
+            (entry_id, defs_dual, examples_dual),
+        )
         zh_inserted += 1
 
     db.execute("INSERT INTO dictionary_fts_zh(dictionary_fts_zh) VALUES('optimize')")
