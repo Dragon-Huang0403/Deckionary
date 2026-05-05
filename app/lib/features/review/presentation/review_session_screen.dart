@@ -83,10 +83,21 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
     }
 
     // 'pronunciation' or 'sentence_pronunciation'
-    await audio.playPronunciation(entry.pronunciations, dialect: dialect);
     if (sentenceAudio != null) {
-      await Future.delayed(const Duration(milliseconds: 1000));
-      await audio.play(sentenceAudio);
+      final pron =
+          entry.pronunciations
+              .where((p) => p['dialect'] == dialect)
+              .firstOrNull ??
+          entry.pronunciations.first;
+      final headwordFile = pron['audio_file'] as String? ?? '';
+      if (headwordFile.isEmpty) return;
+      final gapMs = await settings.getReviewSentenceGapMs();
+      await audio.playSequence(
+        [headwordFile, sentenceAudio],
+        gap: Duration(milliseconds: gapMs),
+      );
+    } else {
+      await audio.playPronunciation(entry.pronunciations, dialect: dialect);
     }
   }
 

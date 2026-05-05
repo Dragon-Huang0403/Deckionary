@@ -126,6 +126,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Divider(),
             const SectionHeader('Review'),
             ReviewAutoPlayModeTile(settings.reviewAutoPlayMode, ref),
+            if (settings.reviewAutoPlayMode == 'sentence_pronunciation')
+              ReviewSentenceGapTile(settings.reviewSentenceGapMs, ref),
             CardOrderTile(settings.reviewCardOrder, ref),
             NewCardsPerDayTile(
               settings.newCardsPerDay,

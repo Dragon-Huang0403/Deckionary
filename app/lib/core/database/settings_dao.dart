@@ -86,6 +86,13 @@ class SettingsDao {
   Future<void> setReviewAutoPlayMode(String mode) =>
       set('review_auto_play_mode', mode);
 
+  /// Pause between headword and example sentence in review auto-play mode
+  /// 'sentence_pronunciation'. Default 500ms; UI offers 250 or 500.
+  Future<int> getReviewSentenceGapMs() async =>
+      int.tryParse(await get('review_sentence_gap_ms') ?? '') ?? 500;
+  Future<void> setReviewSentenceGapMs(int ms) =>
+      set('review_sentence_gap_ms', ms.toString());
+
   Future<String?> getReviewFilter() async => await get('review_filter');
   Future<void> setReviewFilter(String json) => set('review_filter', json);
 

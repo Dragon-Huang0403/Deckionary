@@ -27,6 +27,8 @@ final settingsStateProvider = FutureProvider<AppSettings>((ref) async {
     newCardsPerDay: int.tryParse(all['new_cards_per_day'] ?? '') ?? 20,
     maxReviewsPerDay: int.tryParse(all['max_reviews_per_day'] ?? '') ?? 200,
     reviewAutoPlayMode: reviewAutoPlayMode,
+    reviewSentenceGapMs:
+        int.tryParse(all['review_sentence_gap_ms'] ?? '') ?? 500,
     reviewCardOrder: all['review_card_order'] ?? 'random',
     quickSearchHotKey: Platform.isMacOS
         ? all['quick_search_hotkey'] ?? SettingsDao.defaultHotKey
@@ -48,6 +50,7 @@ class AppSettings {
   final int newCardsPerDay;
   final int maxReviewsPerDay;
   final String reviewAutoPlayMode;
+  final int reviewSentenceGapMs;
   final String reviewCardOrder;
   final String quickSearchHotKey;
   final bool showTrayIcon;
@@ -62,6 +65,7 @@ class AppSettings {
     required this.newCardsPerDay,
     required this.maxReviewsPerDay,
     required this.reviewAutoPlayMode,
+    required this.reviewSentenceGapMs,
     required this.reviewCardOrder,
     required this.quickSearchHotKey,
     required this.showTrayIcon,

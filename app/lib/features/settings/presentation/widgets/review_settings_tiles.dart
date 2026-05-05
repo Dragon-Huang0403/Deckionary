@@ -35,6 +35,31 @@ class ReviewAutoPlayModeTile extends StatelessWidget {
   }
 }
 
+class ReviewSentenceGapTile extends StatelessWidget {
+  final int currentMs;
+  final WidgetRef ref;
+  const ReviewSentenceGapTile(this.currentMs, this.ref, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: const Text('Pause between word and example'),
+      subtitle: Text('${currentMs}ms'),
+      trailing: SegmentedButton<int>(
+        segments: const [
+          ButtonSegment(value: 250, label: Text('250ms')),
+          ButtonSegment(value: 500, label: Text('500ms')),
+        ],
+        selected: {currentMs},
+        onSelectionChanged: (val) async {
+          await ref.read(settingsDaoProvider).setReviewSentenceGapMs(val.first);
+          ref.invalidate(settingsStateProvider);
+        },
+      ),
+    );
+  }
+}
+
 class CardOrderTile extends StatelessWidget {
   final String current;
   final WidgetRef ref;

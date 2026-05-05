@@ -25,6 +25,7 @@ class SettingsSync {
     'max_reviews_per_day',
     'review_card_order',
     'review_auto_play_mode',
+    'review_sentence_gap_ms',
     'review_filter',
     'audio_dialect',
     'pronunciation_display',

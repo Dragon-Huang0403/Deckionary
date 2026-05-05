@@ -279,28 +279,30 @@ class AudioService {
   /// Expose AudioDb for AudioDownloadManager to use directly.
   AudioDb get audioDB => _audioDB;
 
+  /// Resolve audio bytes for [filename]: cache hit, or fetch from R2 and cache.
+  /// Returns null on failure (logged).
+  Future<Uint8List?> _resolveBytes(String filename) async {
+    var data = await _audioDB.get(filename);
+    if (data != null) return data;
+    final response = await http.get(Uri.parse('$_r2AudioUrl/$filename'));
+    if (response.statusCode != 200) {
+      globalTalker.warning(
+        '[Audio] server returned ${response.statusCode} for $filename',
+      );
+      return null;
+    }
+    await _audioDB.put(filename, response.bodyBytes);
+    return response.bodyBytes;
+  }
+
   /// Play audio by filename. Checks local DB first, fetches from API if missing.
   Future<void> play(String filename) async {
     if (filename.isEmpty) return;
 
     final gen = ++_playGeneration;
     try {
-      // Check local audio.db
-      var data = await _audioDB.get(filename);
-
-      if (data == null) {
-        // Fetch from R2, store in audio.db
-        final response = await http.get(Uri.parse('$_r2AudioUrl/$filename'));
-        if (response.statusCode == 200) {
-          data = response.bodyBytes;
-          await _audioDB.put(filename, data);
-        } else {
-          globalTalker.warning(
-            '[Audio] server returned ${response.statusCode} for $filename',
-          );
-          return;
-        }
-      }
+      final data = await _resolveBytes(filename);
+      if (data == null) return;
 
       // Write to temp file and play (just_audio needs a file path or URL)
       final dir = await getApplicationDocumentsDirectory();
@@ -311,6 +313,60 @@ class AudioService {
       await _deactivateSessionAfterCompletion(gen);
     } catch (e, st) {
       globalTalker.error('[Audio] error $filename', e, st);
+    }
+  }
+
+  /// Play multiple audio files back-to-back with an optional [gap] of silence
+  /// between clips. Holds the audio session active across the whole sequence
+  /// (no `setActive(false)` until after the last clip) so background music
+  /// ducks once at the start and un-ducks once at the end — no duck-up cycle
+  /// between clips.
+  ///
+  /// `SilenceAudioSource` from just_audio is Android-only as of 0.10.5, so we
+  /// implement the gap with `Future.delayed` between sequential `play()` calls
+  /// rather than a single playlist.
+  Future<void> playSequence(
+    List<String> filenames, {
+    Duration gap = Duration.zero,
+  }) async {
+    final files = filenames.where((f) => f.isNotEmpty).toList();
+    if (files.isEmpty) return;
+
+    final gen = ++_playGeneration;
+    try {
+      final byteList = await Future.wait(files.map(_resolveBytes));
+      if (_playGeneration != gen) return;
+
+      // Drop unresolved clips so e.g. a missing example-sentence audio doesn't
+      // suppress the headword that did resolve. Preserves prior single-clip
+      // behavior on partial failure.
+      final ok = byteList.whereType<Uint8List>().toList();
+      if (ok.isEmpty) return;
+
+      final dir = await getApplicationDocumentsDirectory();
+      final tmpFile = File('${dir.path}/_audio_playback.mp3');
+
+      for (var i = 0; i < ok.length; i++) {
+        if (_playGeneration != gen) return;
+        if (i > 0 && gap > Duration.zero) {
+          await Future.delayed(gap);
+          if (_playGeneration != gen) return;
+        }
+        await tmpFile.writeAsBytes(ok[i]);
+        await _player.setFilePath(tmpFile.path);
+        await _player.play();
+        await _player.processingStateStream.firstWhere(
+          (s) =>
+              s == ProcessingState.completed || s == ProcessingState.idle,
+        );
+      }
+
+      // Final un-duck. Skip if a newer play() superseded us mid-sequence.
+      if (_playGeneration != gen) return;
+      final session = await AudioSession.instance;
+      await session.setActive(false);
+    } catch (e, st) {
+      globalTalker.error('[Audio] sequence error $files', e, st);
     }
   }
 
