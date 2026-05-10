@@ -8,3 +8,10 @@ __pycache__/
 *.pyc
 export/
 .worktrees/
+audio_es/
+.spanish_bundles.json
+data_es/
+db_es/ipa_index.sqlite
+db_es/ipa_cache.sqlite
+db_es/piper_voices/
+audio_es_tts/

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Deckionary ES preview{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <a href="/" class="brand">Deckionary <span>ES preview</span></a>
+    <form action="/search" method="get" class="searchbar">
+      <input type="text" name="q" placeholder="buscar palabra..." value="{{ q|default('') }}" autofocus>
+      <button type="submit">Buscar</button>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/audio.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{% extends "_layout.html" %}
+{% block title %}{{ headword }}{% endblock %}
+{% block content %}
+<article class="entry">
+  <header class="entry-head">
+    <h1>
+      {{ headword }}
+      <button class="audio-btn" data-audio-word="{{ headword }}" title="Reproducir pronunciación">🔊</button>
+    </h1>
+    <div class="meta">
+      {% if pos %}<span class="pos">{{ pos }}</span>{% endif %}
+      {% if gender %}<span class="gender">{{ gender }}</span>{% endif %}
+      {% if frequency_tier %}<span class="freq freq-{{ frequency_tier }}">{{ frequency_tier|upper }}</span>{% endif %}
+      {% if ipa %}<span class="ipa">[{{ ipa }}]</span>{% endif %}
+    </div>
+    {% if summary_en %}
+      <div class="summary-en">→ {{ summary_en }}</div>
+    {% endif %}
+  </header>
+
+  {% for sg in sense_groups %}
+    <section class="sense-group">
+      {% if sg.topic %}
+        <h2 class="topic">
+          {{ sg.topic }}
+          {% if sg.topic_en %}<span class="topic-en">— {{ sg.topic_en }}</span>{% endif %}
+        </h2>
+      {% endif %}
+      <ol class="senses">
+        {% for s in sg.senses %}
+          <li class="sense">
+            <div class="sense-head">
+              {% if s.grammar %}<span class="grammar">{{ s.grammar }}</span>{% endif %}
+              {% if s.labels %}<span class="labels">{{ s.labels }}</span>{% endif %}
+            </div>
+            <div class="def">{{ s.definition }}</div>
+            {% if s.definition_en %}
+              <div class="def-en">{{ s.definition_en }}</div>
+            {% endif %}
+            {% if s.examples %}
+              <ul class="examples">
+                {% for ex in s.examples %}
+                  <li>
+                    <span class="ex-es">{{ ex.text_plain }}</span>
+                    {% if ex.text_en %}
+                      <span class="ex-en">— {{ ex.text_en }}</span>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endfor %}
+</article>
+{% endblock %}

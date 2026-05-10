@@ -1,0 +1,29 @@
+{% extends "_layout.html" %}
+{% block content %}
+{% if not db_exists %}
+  <div class="warning">
+    <h2>vox_es.db not built yet</h2>
+    <p>Run <code>python build_es_db.py</code> from the repo root once the
+    Spanish bundles are installed in macOS Dictionary.app.</p>
+    <p>Audio test still works — try
+      <a href="/audio/correr">/audio/correr</a> in your browser to confirm
+      Wikimedia Commons fetching is wired up.</p>
+  </div>
+{% else %}
+  <h1>Random words</h1>
+  <ul class="wordlist">
+    {% for w in sample %}
+      <li><a href="/entry/{{ w }}">{{ w }}</a></li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<div class="audio-test">
+  <h2>Try audio</h2>
+  <p>Type any Spanish word and click 🔊 — fetches from Wikimedia Commons on
+  first hit, caches under <code>audio_es/</code>.</p>
+  <input id="audio-test-word" type="text" placeholder="e.g. tiempo">
+  <button data-audio-test>🔊 Play</button>
+  <span id="audio-test-status"></span>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "_layout.html" %}
+{% block title %}Buscar: {{ q }}{% endblock %}
+{% block content %}
+<h1>Resultados para “{{ q }}”</h1>
+{% if not db_exists %}
+  <p class="warning">vox_es.db not built yet.</p>
+{% elif not results %}
+  <p>Sin resultados.</p>
+{% else %}
+  <ul class="wordlist">
+    {% for w in results %}
+      <li><a href="/entry/{{ w }}">{{ w }}</a></li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}
