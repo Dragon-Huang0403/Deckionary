@@ -107,3 +107,73 @@ jobs:
           releaseFiles: app/build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
+
+  build-macos:
+    needs: migrate
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Decode Firebase config
+        run: |
+          echo "${{ secrets.FIREBASE_OPTIONS_DART }}" | base64 -d > lib/firebase_options.dart
+          echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_MACOS }}" | base64 -d > macos/Runner/GoogleService-Info.plist
+
+      - name: Download dictionary database
+        run: curl -fSL -o assets/oald10.db "${{ secrets.R2_BASE_URL }}/db/oald10.db"
+
+      - name: Disable code signing for CI
+        run: |
+          cd macos/Runner.xcodeproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' project.pbxproj
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=macosx\*\]" = "Apple Development"/"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-"/g' project.pbxproj
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: *//' | sed 's/+.*//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build macOS
+        run: >-
+          flutter build macos --release
+          --build-name=${{ steps.version.outputs.version }}-dev
+          --build-number=${{ github.run_number }}
+          --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          --dart-define=R2_BASE_URL=${{ secrets.R2_BASE_URL }}
+          --dart-define=BUILD_COMMIT=${{ github.event.workflow_run.head_sha || github.sha }}
+          --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          --dart-define=SENTRY_ENVIRONMENT=internal
+
+      - name: Upload Sentry debug symbols & associate commits
+        run: dart run sentry_dart_plugin
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
+      - name: Ad-hoc sign & archive macOS app
+        working-directory: app/build/macos/Build/Products/Release
+        run: |
+          codesign --force --deep --sign - Deckionary.app
+          codesign --verify --deep --strict --verbose=2 Deckionary.app
+          ditto -c -k --sequesterRsrc --keepParent Deckionary.app "$GITHUB_WORKSPACE/app/Deckionary-macOS.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: internal-macos
+          path: app/Deckionary-macOS.zip

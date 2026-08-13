@@ -61,15 +61,17 @@ Get the latest release from [GitHub Releases](https://github.com/Dragon-Huang040
 
 ### macOS Installation
 
-The app is not code-signed, so macOS will block it on first launch:
+The app is ad-hoc signed but not notarized (no paid Apple Developer account), so macOS attaches a quarantine flag to browser downloads that Gatekeeper refuses to run. One-time fix:
 
-1. Download **Deckionary-macOS.zip** from the [latest release](https://github.com/Dragon-Huang0403/Deckionary/releases/latest)
-2. Extract and move **Deckionary.app** to `/Applications`
-3. Double-click to open — a warning will appear saying the app can't be opened. Click **Done** (do not move to Trash)
-4. Go to **System Settings > Privacy & Security**, scroll down to find the blocked message for **Deckionary**, and click **Open Anyway**
-5. A confirmation dialog will appear — click **Open**
+1. Download **Deckionary-macOS.zip** from the [latest release](https://github.com/Dragon-Huang0403/Deckionary/releases/latest) and extract it.
+2. Move **Deckionary.app** to `/Applications`.
+3. Open **Terminal** and run:
+   ```bash
+   xattr -cr /Applications/Deckionary.app
+   ```
+4. Open the app normally.
 
-You only need to do this once. Future launches will open normally.
+`xattr -cr` clears the `com.apple.quarantine` extended attribute macOS adds to downloaded files. The app itself is still ad-hoc signed and passes `codesign --verify --deep --strict`.
 
 ---
 

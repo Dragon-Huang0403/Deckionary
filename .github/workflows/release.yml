@@ -126,13 +126,17 @@ jobs:
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 
-      - name: Archive macOS app
-        run: cd build/macos/Build/Products/Release && zip -r ../../../../../macos-build.zip *.app
+      - name: Ad-hoc sign & archive macOS app
+        working-directory: app/build/macos/Build/Products/Release
+        run: |
+          codesign --force --deep --sign - Deckionary.app
+          codesign --verify --deep --strict --verbose=2 Deckionary.app
+          ditto -c -k --sequesterRsrc --keepParent Deckionary.app "$GITHUB_WORKSPACE/app/Deckionary-macOS.zip"
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: app/macos-build.zip
+          path: app/Deckionary-macOS.zip
 
   release:
     needs: [build-android, build-macos]
@@ -153,7 +157,7 @@ jobs:
             --title "Release $TAG" \
             --generate-notes \
             artifacts/android-apk/app-release.apk#Deckionary-Android.apk \
-            artifacts/macos-build/macos-build.zip#Deckionary-macOS.zip
+            artifacts/macos-build/Deckionary-macOS.zip#Deckionary-macOS.zip
 
       - name: Decode Google Play service account
         run: echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" | base64 -d > /tmp/service-account.json
