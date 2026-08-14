@@ -8,7 +8,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All Flutter commands run from `app/`, prefixed with `fvm` so they use the pinned SDK:
+The root `Makefile` wraps the common tasks (`make` lists them): `make setup`, `make run`,
+`make build-macos`, `make install`, `make test-offline`, `make lint`, `make gen`. Each one
+prefixes Flutter with `fvm` when available. macOS builds go through
+`scripts/build_macos.sh`, which builds unsigned and ad-hoc signs, so no Apple Developer
+certificate is needed.
+
+The underlying commands run from `app/`, prefixed with `fvm` so they use the pinned SDK:
 
 ```bash
 cd app

@@ -137,6 +137,20 @@ CocoaPods (`brew install cocoapods`).
 
 ### Build & Run
 
+The `Makefile` at the repo root wraps the common tasks. Run `make` to list them:
+
+```bash
+make setup          # SDK via fvm, dictionary DB, dependencies
+make run            # run on macOS
+make build-macos    # release build, ad-hoc signed (no Apple account needed)
+make install        # build and copy to /Applications
+make test-offline   # every test that does not need Supabase
+make lint           # analyze + format check, as CI enforces
+```
+
+Each target prefixes Flutter with `fvm` when it is installed, so it uses the pinned SDK.
+Or drive it directly:
+
 ```bash
 cd app
 fvm flutter pub get
@@ -149,24 +163,38 @@ Without `env.json`, the app runs in local-only mode (no sync).
 
 The Xcode project signs with an `Apple Development` identity and team `MDTULLV9BQ`. Without
 that certificate in your keychain, `flutter build macos` fails with `No profiles for
-'com.deckionary.deckionary' were found`. Build unsigned and ad-hoc sign afterwards — the
-same thing CI does:
+'com.deckionary.deckionary' were found`. `make build-macos` handles this — it builds
+unsigned and ad-hoc signs afterwards, the same thing CI does:
+
+```bash
+make build-macos            # release, ad-hoc signed
+make install                # also copy to /Applications and launch
+
+./scripts/build_macos.sh --help    # --debug, --signed, --open, --zip, --install
+```
+
+Equivalent by hand:
 
 ```bash
 cd app
 XCODE_XCCONFIG_FILE=$PWD/macos/Unsigned.xcconfig \
   fvm flutter build macos --release --dart-define-from-file=env.json
 codesign --force --deep --sign - build/macos/Build/Products/Release/Deckionary.app
-open build/macos/Build/Products/Release/Deckionary.app
 ```
 
 The `codesign` step is not optional — macOS refuses to run an unsigned bundle. The result
 is ad-hoc signed and not notarized, exactly like the published releases, so the
 [`xattr -cr` note](#macos-installation) applies if you move it around.
 
-For `flutter run` during development, set `XCODE_XCCONFIG_FILE` the same way. Signing in to
-Xcode with a free Apple ID (Settings → Accounts) is the alternative: a personal team issues
-development certificates at no cost, and then plain `flutter run` works.
+Two things to know:
+
+- `make run` / `flutter run` need signing too. Either set `XCODE_XCCONFIG_FILE` the same
+  way, or sign in to Xcode with a free Apple ID (Settings → Accounts) — a personal team
+  issues development certificates at no cost, and then plain `flutter run` works.
+- Any macOS build migrates the Xcode project to Swift Package Manager, leaving
+  `macos/Podfile.lock`, `macos/Runner.xcodeproj/project.pbxproj` and the shared scheme
+  modified. Flutter redoes this on every build, so either commit it once or
+  `git checkout -- app/macos` when it clutters your diff.
 
 ### Upgrading Flutter
 
