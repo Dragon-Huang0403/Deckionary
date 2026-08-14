@@ -113,13 +113,24 @@ unconditionally by `lib/main.dart`, so the project will not compile without it:
 ```bash
 npm install -g firebase-tools
 fvm dart pub global activate flutterfire_cli
+gem install --user-install xcodeproj   # flutterfire edits the Xcode project via this gem
 firebase login
-cd app && fvm exec flutterfire configure --platforms=macos,ios,android
+cd app && fvm exec flutterfire configure \
+  --project=deckionary --platforms=macos,ios,android \
+  --macos-bundle-id=com.deckionary.deckionary \
+  --ios-bundle-id=com.deckionary.deckionary \
+  --android-package-name=com.deckionary.deckionary
 ```
 
-Use `fvm exec flutterfire` rather than bare `flutterfire` — the pub-global wrapper invokes
-`dart`, which is not on `PATH` when the SDK is fvm-managed. This also writes
-`macos/Runner/GoogleService-Info.plist` and `android/app/google-services.json`.
+This also writes `ios|macos/Runner/GoogleService-Info.plist` and
+`android/app/google-services.json`. Two gotchas:
+
+- Use `fvm exec flutterfire`, not bare `flutterfire` — the pub-global wrapper invokes
+  `dart`, which is not on `PATH` when the SDK is fvm-managed. Alternatively run
+  `fvm global <version>` once and put `$HOME/fvm/default/bin` on your `PATH`.
+- `flutterfire` also rewrites the `web` app id in the tracked `app/firebase.json`, even when
+  `--platforms` excludes web. Check `git diff app/firebase.json` afterwards and revert it
+  unless you meant to change it.
 
 **4. macOS/iOS builds** additionally need Xcode (not just Command Line Tools) and
 CocoaPods (`brew install cocoapods`).
