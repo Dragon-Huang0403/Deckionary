@@ -103,13 +103,11 @@ jobs:
       - name: Download dictionary database
         run: curl -fSL -o assets/oald10.db "${{ secrets.R2_BASE_URL }}/db/oald10.db"
 
-      - name: Disable code signing for CI
-        run: |
-          cd macos/Runner.xcodeproj
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' project.pbxproj
-          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=macosx\*\]" = "Apple Development"/"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-"/g' project.pbxproj
-
+      # Runners have no signing certificate; the app is ad-hoc signed after the build.
+      # See app/macos/Unsigned.xcconfig for why this replaced project.pbxproj patching.
       - name: Build macOS
+        env:
+          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/app/macos/Unsigned.xcconfig
         run: >-
           flutter build macos --release
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}

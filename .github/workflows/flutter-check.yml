@@ -101,13 +101,11 @@ jobs:
           echo "${{ secrets.FIREBASE_OPTIONS_DART }}" | base64 -d > lib/firebase_options.dart
           echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_MACOS }}" | base64 -d > macos/Runner/GoogleService-Info.plist
 
-      - name: Disable macOS code signing for CI
-        run: |
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' macos/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=macosx\*\]" = "Apple Development"/"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-"/g' macos/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/DEVELOPMENT_TEAM = MDTULLV9BQ/DEVELOPMENT_TEAM = ""/g' macos/Runner.xcodeproj/project.pbxproj
-
+      # Runners have no signing certificate. See app/macos/Unsigned.xcconfig for why
+      # this replaced the old project.pbxproj patching.
       - name: Build MacOS
+        env:
+          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/app/macos/Unsigned.xcconfig
         run: >-
           flutter build macos
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}

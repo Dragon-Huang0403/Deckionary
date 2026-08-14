@@ -145,6 +145,29 @@ fvm flutter run --dart-define-from-file=env.json
 
 Without `env.json`, the app runs in local-only mode (no sync).
 
+### Building macOS without an Apple Developer certificate
+
+The Xcode project signs with an `Apple Development` identity and team `MDTULLV9BQ`. Without
+that certificate in your keychain, `flutter build macos` fails with `No profiles for
+'com.deckionary.deckionary' were found`. Build unsigned and ad-hoc sign afterwards — the
+same thing CI does:
+
+```bash
+cd app
+XCODE_XCCONFIG_FILE=$PWD/macos/Unsigned.xcconfig \
+  fvm flutter build macos --release --dart-define-from-file=env.json
+codesign --force --deep --sign - build/macos/Build/Products/Release/Deckionary.app
+open build/macos/Build/Products/Release/Deckionary.app
+```
+
+The `codesign` step is not optional — macOS refuses to run an unsigned bundle. The result
+is ad-hoc signed and not notarized, exactly like the published releases, so the
+[`xattr -cr` note](#macos-installation) applies if you move it around.
+
+For `flutter run` during development, set `XCODE_XCCONFIG_FILE` the same way. Signing in to
+Xcode with a free Apple ID (Settings → Accounts) is the alternative: a personal team issues
+development certificates at no cost, and then plain `flutter run` works.
+
 ### Upgrading Flutter
 
 Upgrades are deliberate, never automatic. Bump the pin and regenerate the lockfile in the

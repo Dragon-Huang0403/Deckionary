@@ -37,6 +37,9 @@ migrate_working_dir/
 # FVM — .fvmrc (the pinned version) is committed; the per-machine SDK symlink is not
 .fvm/
 
+# Swift Package Manager resolution state, written by macOS/iOS builds
+**/xcshareddata/swiftpm/
+
 # Symbolication related
 app.*.symbols
 

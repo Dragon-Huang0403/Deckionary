@@ -1,0 +1,25 @@
+// Build the macOS app without code signing.
+//
+// Used by CI and by local builds on machines with no Apple Developer certificate.
+// Point Xcode at it via the environment variable, which xcodebuild applies as a
+// global overlay across every target (Runner, Pods and Swift Package deps alike):
+//
+//   XCODE_XCCONFIG_FILE=$PWD/macos/Unsigned.xcconfig \
+//     flutter build macos --release --dart-define-from-file=env.json
+//   codesign --force --deep --sign - build/macos/Build/Products/Release/Deckionary.app
+//
+// The codesign step is required: macOS will not run an unsigned bundle, and the
+// linker's automatic signature identifies the app as "Deckionary" rather than
+// com.deckionary.deckionary.
+//
+// Why not patch signing settings in project.pbxproj (what CI used to do)? Xcode 26
+// rejects that: the Runner target carries a keychain-access-groups entitlement whose
+// $(AppIdentifierPrefix) can only come from a real provisioning profile, so the build
+// fails with "Runner requires a provisioning profile" even under manual signing with
+// an ad-hoc identity. Skipping signing entirely during the build sidesteps that, and
+// the final `codesign --force` produces the same artifact as before (that command
+// drops entitlements either way, since they are not carried over from a prior
+// signature and no --entitlements is passed).
+
+CODE_SIGNING_ALLOWED = NO
+CODE_SIGNING_REQUIRED = NO

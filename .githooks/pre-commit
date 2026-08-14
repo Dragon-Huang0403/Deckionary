@@ -13,7 +13,10 @@ if command -v fvm >/dev/null 2>&1 && [ -f .fvmrc ]; then
 fi
 
 echo "Auto-formatting..."
-$DART format .
+# lib and test only, never `.` — a macOS build checks Swift Package dependencies out
+# under build/, including read-only Dart sources (flutterfire), and `dart format .`
+# walks into them and dies with "Permission denied".
+$DART format lib test
 
 echo "Running lint..."
 $FLUTTER analyze --fatal-warnings
