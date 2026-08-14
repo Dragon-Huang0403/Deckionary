@@ -107,7 +107,21 @@ curl -fSL -o app/assets/oald10.db \
 
 The file is ~210 MB and not checked into git.
 
-**3. macOS/iOS builds** additionally need Xcode (not just Command Line Tools) and
+**3. Firebase config** — `lib/firebase_options.dart` is gitignored but imported
+unconditionally by `lib/main.dart`, so the project will not compile without it:
+
+```bash
+npm install -g firebase-tools
+fvm dart pub global activate flutterfire_cli
+firebase login
+cd app && fvm exec flutterfire configure --platforms=macos,ios,android
+```
+
+Use `fvm exec flutterfire` rather than bare `flutterfire` — the pub-global wrapper invokes
+`dart`, which is not on `PATH` when the SDK is fvm-managed. This also writes
+`macos/Runner/GoogleService-Info.plist` and `android/app/google-services.json`.
+
+**4. macOS/iOS builds** additionally need Xcode (not just Command Line Tools) and
 CocoaPods (`brew install cocoapods`).
 
 ### Build & Run
