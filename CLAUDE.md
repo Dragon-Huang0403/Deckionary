@@ -8,19 +8,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-All Flutter commands run from `app/`:
+All Flutter commands run from `app/`, prefixed with `fvm` so they use the pinned SDK:
 
 ```bash
 cd app
-flutter pub get
-flutter run --dart-define-from-file=env.json    # Run app (sync-enabled)
-flutter run                                      # Run app (local-only, no sync)
-flutter analyze --fatal-warnings                 # Lint (CI enforces this)
-dart format .                                    # Format all Dart files
-dart run build_runner build --delete-conflicting-outputs  # Regenerate Drift code
-flutter build apk --release --dart-define-from-file=env.json
-flutter build macos --release --dart-define-from-file=env.json
+fvm flutter pub get
+fvm flutter pub get --enforce-lockfile           # exactly what CI runs
+fvm flutter run --dart-define-from-file=env.json # Run app (sync-enabled)
+fvm flutter run                                  # Run app (local-only, no sync)
+fvm flutter analyze --fatal-warnings             # Lint (CI enforces this)
+fvm dart format .                                # Format all Dart files
+fvm dart run build_runner build --delete-conflicting-outputs  # Regenerate Drift code
+fvm flutter build apk --release --dart-define-from-file=env.json
+fvm flutter build macos --release --dart-define-from-file=env.json
 ```
+
+### Flutter version pinning
+
+`app/.fvmrc` is the single source of truth for the Flutter version. `fvm install` reads it
+locally; every workflow reads the same file via `subosito/flutter-action`'s
+`flutter-version-file: app/.fvmrc`. Never add `channel: stable` back to a workflow — an
+unpinned channel is what silently broke CI whenever Flutter shipped a new minor.
+
+All workflows run `flutter pub get --enforce-lockfile`, so `pubspec.lock` must match the
+pinned SDK. To upgrade Flutter: edit `.fvmrc`, `fvm install`, `fvm flutter pub get`,
+`fvm flutter analyze --fatal-warnings`, then commit `.fvmrc` and `pubspec.lock` together.
 
 Python tools (from repo root):
 ```bash

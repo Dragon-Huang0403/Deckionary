@@ -79,28 +79,62 @@ The app is ad-hoc signed but not notarized (no paid Apple Developer account), so
 
 ### Prerequisites
 
-Place `oald10.db` in `app/assets/` before building:
+**1. Flutter SDK — pinned via [fvm](https://fvm.app)**
+
+The exact Flutter version lives in `app/.fvmrc` and is the single source of truth: `fvm`
+reads it locally and every CI workflow reads the same file via
+`subosito/flutter-action`'s `flutter-version-file`. Local and CI therefore cannot drift, and
+a new Flutter stable release can never break the build on its own.
+
+```bash
+brew install fvm
+cd app && fvm install          # installs exactly the version in .fvmrc
+fvm flutter doctor -v
+```
+
+Prefix commands with `fvm` (`fvm flutter …`, `fvm dart …`) so they use the pinned SDK.
+
+**2. Dictionary database** — place `oald10.db` in `app/assets/`:
 
 ```bash
 # Option A: Copy from project root (after running build_db.py)
 cp oald10.db app/assets/oald10.db
 
 # Option B: Download from R2
-curl -o app/assets/oald10.db \
+curl -fSL -o app/assets/oald10.db \
   https://r2.deckionary.com/db/oald10.db
 ```
 
-The file is ~93 MB and not checked into git.
+The file is ~210 MB and not checked into git.
+
+**3. macOS/iOS builds** additionally need Xcode (not just Command Line Tools) and
+CocoaPods (`brew install cocoapods`).
 
 ### Build & Run
 
 ```bash
 cd app
-flutter pub get
-flutter run --dart-define-from-file=env.json
+fvm flutter pub get
+fvm flutter run --dart-define-from-file=env.json
 ```
 
 Without `env.json`, the app runs in local-only mode (no sync).
+
+### Upgrading Flutter
+
+Upgrades are deliberate, never automatic. Bump the pin and regenerate the lockfile in the
+same commit:
+
+```bash
+cd app
+# edit .fvmrc to the new version
+fvm install
+fvm flutter pub get                    # regenerates pubspec.lock
+fvm flutter analyze --fatal-warnings   # fix any new lints before committing
+```
+
+Commit `.fvmrc` and `pubspec.lock` together — CI runs `flutter pub get --enforce-lockfile`,
+so a lockfile that doesn't match the pinned SDK fails the build.
 
 ### Project Structure
 

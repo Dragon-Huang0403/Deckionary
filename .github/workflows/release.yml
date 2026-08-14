@@ -20,10 +20,10 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version-file: app/.fvmrc
           cache: true
 
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
 
       - name: Decode Firebase config
         run: |
@@ -90,10 +90,10 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version-file: app/.fvmrc
           cache: true
 
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
 
       - name: Decode Firebase config
         run: |
