@@ -172,7 +172,11 @@ List<PronunciationIssue>? _decodePronunciationIssues(String? json) {
         .map((e) => PronunciationIssue.fromJson(e as Map<String, dynamic>))
         .toList();
   } catch (e, st) {
-    globalTalker.error('[Speaking] decode pronunciation issues JSON failed', e, st);
+    globalTalker.error(
+      '[Speaking] decode pronunciation issues JSON failed',
+      e,
+      st,
+    );
     return null;
   }
 }

@@ -244,13 +244,11 @@ void main() {
         newCardsPerDay: 5,
         cardOrder: 'alphabetical',
       );
-      await settingsDao.setNewCardsQueue([
-        1001,
-        1002,
-        1003,
-        1004,
-        1005,
-      ], 3, hash);
+      await settingsDao.setNewCardsQueue(
+        [1001, 1002, 1003, 1004, 1005],
+        3,
+        hash,
+      );
 
       await session.loadQueue(
         filter: filter,

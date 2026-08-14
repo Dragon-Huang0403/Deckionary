@@ -92,10 +92,10 @@ class _ReviewSessionScreenState extends ConsumerState<ReviewSessionScreen> {
       final headwordFile = pron['audio_file'] as String? ?? '';
       if (headwordFile.isEmpty) return;
       final gapMs = await settings.getReviewSentenceGapMs();
-      await audio.playSequence(
-        [headwordFile, sentenceAudio],
-        gap: Duration(milliseconds: gapMs),
-      );
+      await audio.playSequence([
+        headwordFile,
+        sentenceAudio,
+      ], gap: Duration(milliseconds: gapMs));
     } else {
       await audio.playPronunciation(entry.pronunciations, dialect: dialect);
     }

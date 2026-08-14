@@ -206,9 +206,11 @@ class ReviewDao {
   /// Watch reviewed-today count (local day boundary) as a stream.
   Stream<int> watchReviewedTodayCount() {
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day)
-        .toUtc()
-        .toIso8601String();
+    final startOfDay = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).toUtc().toIso8601String();
     return _db
         .customSelect(
           'SELECT COUNT(*) as cnt FROM review_logs WHERE deleted_at IS NULL AND reviewed_at >= ?',
@@ -222,9 +224,11 @@ class ReviewDao {
   /// Watch new-cards-learned-today count (local day boundary) as a stream.
   Stream<int> watchNewLearnedTodayCount() {
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day)
-        .toUtc()
-        .toIso8601String();
+    final startOfDay = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).toUtc().toIso8601String();
     return _db
         .customSelect(
           '''SELECT COUNT(DISTINCT card_id) as cnt FROM review_logs

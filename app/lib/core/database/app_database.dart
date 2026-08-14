@@ -168,7 +168,11 @@ class DictionaryDatabase {
       if (rows.isEmpty) return 0;
       return int.tryParse(rows.first.data['value'] as String? ?? '') ?? 0;
     } catch (e, st) {
-      globalTalker.error('[DictionaryDatabase] read schema_version failed', e, st);
+      globalTalker.error(
+        '[DictionaryDatabase] read schema_version failed',
+        e,
+        st,
+      );
       return 0;
     } finally {
       await db.close();

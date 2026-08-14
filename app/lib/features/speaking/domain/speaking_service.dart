@@ -157,7 +157,11 @@ class SpeakingService {
       try {
         await File(tempPath).delete();
       } catch (e, st) {
-        globalTalker.error('[Speaking] delete temp recording after copy failed', e, st);
+        globalTalker.error(
+          '[Speaking] delete temp recording after copy failed',
+          e,
+          st,
+        );
       }
     }
     await (_db.update(_db.speakingResults)

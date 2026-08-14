@@ -41,9 +41,7 @@ Future<bool> startFlexibleUpdate() async {
       },
       onError: (e) {
         sub.cancel();
-        globalTalker.error(
-          '[UPDATE] listener error (${e.runtimeType}): $e',
-        );
+        globalTalker.error('[UPDATE] listener error (${e.runtimeType}): $e');
       },
     );
     return true;

@@ -67,7 +67,9 @@ class SpeakingResult {
     final rawIssues = json['pronunciation_issues'];
     final issues = rawIssues is List
         ? rawIssues
-              .map((e) => PronunciationIssue.fromJson(e as Map<String, dynamic>))
+              .map(
+                (e) => PronunciationIssue.fromJson(e as Map<String, dynamic>),
+              )
               .toList()
         : null;
     return SpeakingResult(

@@ -382,14 +382,20 @@ void main() {
 
     test('1-char "車" returns vehicle-related entries (LIKE path)', () async {
       final results = await db.searchDefinitionsZh('車', limit: 15);
-      expect(results, isNotEmpty,
-          reason: 'LIKE fallback should return entries with 車 in zh content');
+      expect(
+        results,
+        isNotEmpty,
+        reason: 'LIKE fallback should return entries with 車 in zh content',
+      );
     });
 
     test('1-char Simplified "车" returns same kind of entries', () async {
       final results = await db.searchDefinitionsZh('车', limit: 15);
-      expect(results, isNotEmpty,
-          reason: 'Dual-form storage means Simplified 车 also matches');
+      expect(
+        results,
+        isNotEmpty,
+        reason: 'Dual-form storage means Simplified 车 also matches',
+      );
     });
 
     test('1-char "樹" returns tree-related entries', () async {
@@ -401,15 +407,21 @@ void main() {
       expect(await db.searchDefinitionsZh('', limit: 15), isEmpty);
     });
 
-    test('LIKE wildcards in user input are escaped (not interpreted)', () async {
-      // "車%" should match entries containing the literal substring "車%".
-      // Without escaping, "%" would be a wildcard and match every row that
-      // contains 車, returning a far larger result set.
-      final literal = await db.searchDefinitionsZh('車%', limit: 100);
-      final plain = await db.searchDefinitionsZh('車', limit: 100);
-      expect(literal.length, lessThan(plain.length),
-          reason: 'literal "車%" must not match more than plain "車"');
-    });
+    test(
+      'LIKE wildcards in user input are escaped (not interpreted)',
+      () async {
+        // "車%" should match entries containing the literal substring "車%".
+        // Without escaping, "%" would be a wildcard and match every row that
+        // contains 車, returning a far larger result set.
+        final literal = await db.searchDefinitionsZh('車%', limit: 100);
+        final plain = await db.searchDefinitionsZh('車', limit: 100);
+        expect(
+          literal.length,
+          lessThan(plain.length),
+          reason: 'literal "車%" must not match more than plain "車"',
+        );
+      },
+    );
   });
 
   // ── 7. searchEntries (full pipeline) ────────────────────────────────────

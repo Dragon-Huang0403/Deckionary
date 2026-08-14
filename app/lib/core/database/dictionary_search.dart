@@ -192,7 +192,11 @@ extension DictionarySearch on DictionaryDatabase {
             .get();
         return results.map((r) => r.data).toList();
       } catch (e, st) {
-        globalTalker.error('[Dict] searchDefinitionsZh MATCH failed for "$q"', e, st);
+        globalTalker.error(
+          '[Dict] searchDefinitionsZh MATCH failed for "$q"',
+          e,
+          st,
+        );
         return [];
       }
     }
@@ -232,7 +236,11 @@ extension DictionarySearch on DictionaryDatabase {
           .get();
       return results.map((r) => r.data).toList();
     } catch (e, st) {
-      globalTalker.error('[Dict] searchDefinitionsZh LIKE failed for "$q"', e, st);
+      globalTalker.error(
+        '[Dict] searchDefinitionsZh LIKE failed for "$q"',
+        e,
+        st,
+      );
       return [];
     }
   }
