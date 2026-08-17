@@ -400,9 +400,9 @@ class _SearchHistoryImportSheetState
     final dao = ref.read(searchHistoryDaoProvider);
     final listDao = ref.read(vocabularyListDaoProvider);
     final list = await ref.read(myWordsListProvider.future);
-    final existing = (await listDao.getEntries(list.id))
-        .map((e) => e.entryId)
-        .toSet();
+    final existing = (await listDao.getEntries(
+      list.id,
+    )).map((e) => e.entryId).toSet();
     final items = await dao.getRecentUnique(limit: 50);
     // Only show items with a matched dictionary entry not already in My Words
     final withEntry = items

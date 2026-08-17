@@ -41,7 +41,11 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
             try {
               await File(path).delete();
             } catch (e, st) {
-              globalTalker.error('[Speaking] dispose: delete temp recording failed', e, st);
+              globalTalker.error(
+                '[Speaking] dispose: delete temp recording failed',
+                e,
+                st,
+              );
             }
           }
         })
@@ -71,11 +75,19 @@ class _SpeakingRecordScreenState extends ConsumerState<SpeakingRecordScreen> {
         try {
           await File(path).delete();
         } catch (e, st) {
-          globalTalker.error('[Speaking] cancelRecording: delete temp recording failed', e, st);
+          globalTalker.error(
+            '[Speaking] cancelRecording: delete temp recording failed',
+            e,
+            st,
+          );
         }
       }
     } catch (e, st) {
-      globalTalker.error('[Speaking] cancelRecording: recorder stop failed', e, st);
+      globalTalker.error(
+        '[Speaking] cancelRecording: recorder stop failed',
+        e,
+        st,
+      );
     }
     if (mounted) {
       ref.read(recordingStatusProvider.notifier).set(RecordingStatus.idle);

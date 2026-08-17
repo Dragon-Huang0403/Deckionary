@@ -356,8 +356,7 @@ class AudioService {
         await _player.setFilePath(tmpFile.path);
         await _player.play();
         await _player.processingStateStream.firstWhere(
-          (s) =>
-              s == ProcessingState.completed || s == ProcessingState.idle,
+          (s) => s == ProcessingState.completed || s == ProcessingState.idle,
         );
       }
 

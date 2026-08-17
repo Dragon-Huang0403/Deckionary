@@ -137,6 +137,34 @@ Key architectural decisions in Deckionary and the reasoning behind them.
 
 ---
 
+## Browser OAuth on macOS, Native SDK Elsewhere
+
+**Decision**: macOS signs in through the system browser (`signInWithOAuth`, redirect
+`com.deckionary.deckionary://login-callback`). Android and iOS keep the native
+`google_sign_in` SDK. Branch is on `Platform.isMacOS` in `AuthService`.
+
+**Why**:
+- The GoogleSignIn SDK stores tokens in the data-protection keychain, which requires a
+  `keychain-access-groups` entitlement. `$(AppIdentifierPrefix)` in that entitlement only
+  resolves from a real provisioning profile, so **any** ad-hoc signed build fails with
+  `GoogleSignInException(providerConfigurationError, keychain error)`.
+- That covered every published macOS release: `release.yml` ends with
+  `codesign --force --deep --sign -`, which strips entitlements. macOS sign-in was broken
+  for anyone who downloaded the zip, not just for developers without a certificate.
+- Browser OAuth touches no keychain — `supabase_flutter` keeps the session in
+  `shared_preferences` — so it works with no Apple Developer account at all.
+- Deep-link handling is already built into `supabase_flutter` (`detectSessionInUri`
+  defaults to true, via `app_links`), so this needed no new dependency.
+
+**Trade-off**: two sign-in code paths, and macOS users get a browser round-trip instead of
+a native dialog. Accepted because the native path cannot work on macOS without a paid-tier
+signing setup, and the mobile UX is worth keeping. The redirect URL must stay registered in
+both `macos/Runner/Info.plist` and the Supabase dashboard
+(Authentication → URL Configuration); the sign-in throws a `TimeoutException` naming the
+redirect if the dashboard entry is missing.
+
+---
+
 ## Riverpod for State Management
 
 **Decision**: use Riverpod (Provider, FutureProvider, AsyncNotifier, StreamProvider) instead of BLoC, GetX, or setState.

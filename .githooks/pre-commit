@@ -3,10 +3,22 @@ set -e
 
 cd app
 
+# Use the version pinned in app/.fvmrc when fvm is available, so the hook and CI
+# always run the same Flutter. Fall back to whatever is on PATH otherwise.
+FLUTTER="flutter"
+DART="dart"
+if command -v fvm >/dev/null 2>&1 && [ -f .fvmrc ]; then
+  FLUTTER="fvm flutter"
+  DART="fvm dart"
+fi
+
 echo "Auto-formatting..."
-dart format .
+# lib and test only, never `.` — a macOS build checks Swift Package dependencies out
+# under build/, including read-only Dart sources (flutterfire), and `dart format .`
+# walks into them and dies with "Permission denied".
+$DART format lib test
 
 echo "Running lint..."
-flutter analyze --fatal-warnings
+$FLUTTER analyze --fatal-warnings
 
 echo "All checks passed."

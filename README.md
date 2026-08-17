@@ -79,28 +79,138 @@ The app is ad-hoc signed but not notarized (no paid Apple Developer account), so
 
 ### Prerequisites
 
-Place `oald10.db` in `app/assets/` before building:
+**1. Flutter SDK — pinned via [fvm](https://fvm.app)**
+
+The exact Flutter version lives in `app/.fvmrc` and is the single source of truth: `fvm`
+reads it locally and every CI workflow reads the same file via
+`subosito/flutter-action`'s `flutter-version-file`. Local and CI therefore cannot drift, and
+a new Flutter stable release can never break the build on its own.
+
+```bash
+brew install fvm
+cd app && fvm install          # installs exactly the version in .fvmrc
+fvm flutter doctor -v
+```
+
+Prefix commands with `fvm` (`fvm flutter …`, `fvm dart …`) so they use the pinned SDK.
+
+**2. Dictionary database** — place `oald10.db` in `app/assets/`:
 
 ```bash
 # Option A: Copy from project root (after running build_db.py)
 cp oald10.db app/assets/oald10.db
 
 # Option B: Download from R2
-curl -o app/assets/oald10.db \
+curl -fSL -o app/assets/oald10.db \
   https://r2.deckionary.com/db/oald10.db
 ```
 
-The file is ~93 MB and not checked into git.
+The file is ~210 MB and not checked into git.
+
+**3. Firebase config** — `lib/firebase_options.dart` is gitignored but imported
+unconditionally by `lib/main.dart`, so the project will not compile without it:
+
+```bash
+npm install -g firebase-tools
+fvm dart pub global activate flutterfire_cli
+gem install --user-install xcodeproj   # flutterfire edits the Xcode project via this gem
+firebase login
+cd app && fvm exec flutterfire configure \
+  --project=deckionary --platforms=macos,ios,android \
+  --macos-bundle-id=com.deckionary.deckionary \
+  --ios-bundle-id=com.deckionary.deckionary \
+  --android-package-name=com.deckionary.deckionary
+```
+
+This also writes `ios|macos/Runner/GoogleService-Info.plist` and
+`android/app/google-services.json`. Two gotchas:
+
+- Use `fvm exec flutterfire`, not bare `flutterfire` — the pub-global wrapper invokes
+  `dart`, which is not on `PATH` when the SDK is fvm-managed. Alternatively run
+  `fvm global <version>` once and put `$HOME/fvm/default/bin` on your `PATH`.
+- `flutterfire` also rewrites the `web` app id in the tracked `app/firebase.json`, even when
+  `--platforms` excludes web. Check `git diff app/firebase.json` afterwards and revert it
+  unless you meant to change it.
+
+**4. macOS/iOS builds** additionally need Xcode (not just Command Line Tools) and
+CocoaPods (`brew install cocoapods`).
 
 ### Build & Run
 
+The `Makefile` at the repo root wraps the common tasks. Run `make` to list them:
+
+```bash
+make setup          # SDK via fvm, dictionary DB, dependencies
+make run            # run on macOS
+make build-macos    # release build, ad-hoc signed (no Apple account needed)
+make install        # build and copy to /Applications
+make test-offline   # every test that does not need Supabase
+make lint           # analyze + format check, as CI enforces
+```
+
+Each target prefixes Flutter with `fvm` when it is installed, so it uses the pinned SDK.
+Or drive it directly:
+
 ```bash
 cd app
-flutter pub get
-flutter run --dart-define-from-file=env.json
+fvm flutter pub get
+fvm flutter run --dart-define-from-file=env.json
 ```
 
 Without `env.json`, the app runs in local-only mode (no sync).
+
+### Building macOS without an Apple Developer certificate
+
+The Xcode project signs with an `Apple Development` identity and team `MDTULLV9BQ`. Without
+that certificate in your keychain, `flutter build macos` fails with `No profiles for
+'com.deckionary.deckionary' were found`. `make build-macos` handles this — it builds
+unsigned and ad-hoc signs afterwards, the same thing CI does:
+
+```bash
+make build-macos            # release, ad-hoc signed
+make install                # also copy to /Applications and launch
+
+./scripts/build_macos.sh --help    # --debug, --signed, --open, --zip, --install
+```
+
+Equivalent by hand:
+
+```bash
+cd app
+XCODE_XCCONFIG_FILE=$PWD/macos/Unsigned.xcconfig \
+  fvm flutter build macos --release --dart-define-from-file=env.json
+codesign --force --deep --sign - build/macos/Build/Products/Release/Deckionary.app
+```
+
+The `codesign` step is not optional — macOS refuses to run an unsigned bundle. The result
+is ad-hoc signed and not notarized, exactly like the published releases, so the
+[`xattr -cr` note](#macos-installation) applies if you move it around.
+
+Two things to know:
+
+- `make run` / `flutter run` need signing too. Either set `XCODE_XCCONFIG_FILE` the same
+  way, or sign in to Xcode with a free Apple ID (Settings → Accounts) — a personal team
+  issues development certificates at no cost, and then plain `flutter run` works.
+- Any macOS build migrates the Xcode project to Swift Package Manager, leaving
+  `macos/Podfile.lock`, `macos/Runner.xcodeproj/project.pbxproj` and the shared scheme
+  modified. Flutter redoes this on every build, so either commit it once or
+  `git checkout -- app/macos` when it clutters your diff.
+
+### Upgrading Flutter
+
+Upgrades are deliberate, never automatic. Bump the pin and regenerate the lockfile in the
+same commit:
+
+```bash
+cd app
+# edit .fvmrc to the new version
+fvm install
+fvm flutter pub get                    # regenerates pubspec.lock
+fvm flutter analyze --fatal-warnings   # fix any new lints before committing
+```
+
+Commit `.fvmrc` and `pubspec.lock` together — CI runs `flutter pub get --enforce-lockfile`,
+so a lockfile that doesn't match the pinned SDK fails the build.
 
 ### Project Structure
 
