@@ -40,6 +40,15 @@
 				<string>com.googleusercontent.apps.43742335452-bjfojos2a7r2aqfbiml07clpkov4adi1</string>
 			</array>
 		</dict>
+		<!-- Supabase redirects here after browser-based OAuth; see AuthService. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.deckionary.deckionary</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.deckionary.deckionary</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>
